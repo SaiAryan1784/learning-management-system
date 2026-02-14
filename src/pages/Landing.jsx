@@ -24,7 +24,7 @@ export default function Landing() {
             <nav id="navbar">
                 <div className="nav-container">
                     <div className="logo"><img
-                            src="../src/images/lms-logo.png"
+                            src="/public/images/lms-logo.png"
                             className="nv-img"
                             alt="Brand Logo"
                             /> </div>
@@ -102,7 +102,7 @@ export default function Landing() {
           </div>
           <div className="col-lg-6">
             <div className="hero-image-wrapper" data-aos="fade-up" data-aos-delay="300">
-              <img src="/src/assets/img/about/about-square-13.webp" alt="" className="img-fluid hero-image"/>
+              <img src="/public/assets/img/about/about-square-13.webp" alt="" className="img-fluid hero-image"/>
               <div className="stat-card top-right">
                 <div className="stat-value">18.9K</div>
                 <div className="stat-label">Improved market presence</div>
@@ -200,7 +200,7 @@ export default function Landing() {
 
               <div className="services-image-container">
                 <div className="services-image">
-                  <img src="src/assets/img/services/services-12.webp" alt="Services" className="img-fluid" />
+                  <img src="/public/assets/img/services/services-12.webp" alt="Services" className="img-fluid" />
                 </div>
               </div>
             </div>
@@ -289,52 +289,52 @@ export default function Landing() {
         <div className="clients-slider">
           <div className="clients-track track-1" data-aos="fade-right" data-aos-delay="200">
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-1.webp" className="img-fluid" alt="Client 1" />
+              <img src="/public/assets/img/clients/clients-1.webp" className="img-fluid" alt="Client 1" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-2.webp" className="img-fluid" alt="Client 2" />
+              <img src="/public/assets/img/clients/clients-2.webp" className="img-fluid" alt="Client 2" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-3.webp" className="img-fluid" alt="Client 3" />
+              <img src="/public/assets/img/clients/clients-3.webp" className="img-fluid" alt="Client 3" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-4.webp" className="img-fluid" alt="Client 4" />
+              <img src="/public/assets/img/clients/clients-4.webp" className="img-fluid" alt="Client 4" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-5.webp" className="img-fluid" alt="Client 5" />
+              <img src="/public/assets/img/clients/clients-5.webp" className="img-fluid" alt="Client 5" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-6.webp" className="img-fluid" alt="Client 6" />
+              <img src="/public/assets/img/clients/clients-6.webp" className="img-fluid" alt="Client 6" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-7.webp" className="img-fluid" alt="Client 7" />
+              <img src="/public/assets/img/clients/clients-7.webp" className="img-fluid" alt="Client 7" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-8.webp" className="img-fluid" alt="Client 8" />
+              <img src="/public/assets/img/clients/clients-8.webp" className="img-fluid" alt="Client 8" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-1.webp" className="img-fluid" alt="Client 1" />
+              <img src="/public/assets/img/clients/clients-1.webp" className="img-fluid" alt="Client 1" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-2.webp" className="img-fluid" alt="Client 2" />
+              <img src="/public/assets/img/clients/clients-2.webp" className="img-fluid" alt="Client 2" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-3.webp" className="img-fluid" alt="Client 3" />
+              <img src="/public/assets/img/clients/clients-3.webp" className="img-fluid" alt="Client 3" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-4.webp" className="img-fluid" alt="Client 4" />
+              <img src="/public/assets/img/clients/clients-4.webp" className="img-fluid" alt="Client 4" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-5.webp" className="img-fluid" alt="Client 5" />
+              <img src="/public/assets/img/clients/clients-5.webp" className="img-fluid" alt="Client 5" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-6.webp" className="img-fluid" alt="Client 6" />
+              <img src="/public/assets/img/clients/clients-6.webp" className="img-fluid" alt="Client 6" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-7.webp" className="img-fluid" alt="Client 7" />
+              <img src="/public/assets/img/clients/clients-7.webp" className="img-fluid" alt="Client 7" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-8.webp" className="img-fluid" alt="Client 8" />
+              <img src="/public/assets/img/clients/clients-8.webp" className="img-fluid" alt="Client 8" />
             </div>
           </div>
         </div>
@@ -342,52 +342,52 @@ export default function Landing() {
         <div className="clients-slider">
           <div className="clients-track track-2" data-aos="fade-left" data-aos-delay="300">
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-8.webp" className="img-fluid" alt="Client 8" />
+              <img src="/public/assets/img/clients/clients-8.webp" className="img-fluid" alt="Client 8" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-7.webp" className="img-fluid" alt="Client 7" />
+              <img src="/public/assets/img/clients/clients-7.webp" className="img-fluid" alt="Client 7" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-6.webp" className="img-fluid" alt="Client 6" />
+              <img src="/public/assets/img/clients/clients-6.webp" className="img-fluid" alt="Client 6" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-5.webp" className="img-fluid" alt="Client 5" />
+              <img src="/public/assets/img/clients/clients-5.webp" className="img-fluid" alt="Client 5" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-4.webp" className="img-fluid" alt="Client 4" />
+              <img src="/public/assets/img/clients/clients-4.webp" className="img-fluid" alt="Client 4" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-3.webp" className="img-fluid" alt="Client 3" />
+              <img src="/public/assets/img/clients/clients-3.webp" className="img-fluid" alt="Client 3" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-2.webp" className="img-fluid" alt="Client 2" />
+              <img src="/public/assets/img/clients/clients-2.webp" className="img-fluid" alt="Client 2" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-1.webp" className="img-fluid" alt="Client 1" />
+              <img src="/public/assets/img/clients/clients-1.webp" className="img-fluid" alt="Client 1" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-8.webp" className="img-fluid" alt="Client 8" />
+              <img src="/public/assets/img/clients/clients-8.webp" className="img-fluid" alt="Client 8" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-7.webp" className="img-fluid" alt="Client 7" />
+              <img src="/public/assets/img/clients/clients-7.webp" className="img-fluid" alt="Client 7" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-6.webp" className="img-fluid" alt="Client 6" />
+              <img src="/public/assets/img/clients/clients-6.webp" className="img-fluid" alt="Client 6" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-5.webp" className="img-fluid" alt="Client 5" />
+              <img src="/public/assets/img/clients/clients-5.webp" className="img-fluid" alt="Client 5" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-4.webp" className="img-fluid" alt="Client 4" />
+              <img src="/public/assets/img/clients/clients-4.webp" className="img-fluid" alt="Client 4" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-3.webp" className="img-fluid" alt="Client 3" />
+              <img src="/public/assets/img/clients/clients-3.webp" className="img-fluid" alt="Client 3" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-2.webp" className="img-fluid" alt="Client 2" />
+              <img src="/public/assets/img/clients/clients-2.webp" className="img-fluid" alt="Client 2" />
             </div>
             <div className="clients-slide">
-              <img src="src/assets/img/clients/clients-1.webp" className="img-fluid" alt="Client 1" />
+              <img src="/public/assets/img/clients/clients-1.webp" className="img-fluid" alt="Client 1" />
             </div>
           </div>
         </div>
@@ -465,7 +465,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="cta-image" data-aos="fade-left" data-aos-delay="300">
-            <img src="/src/assets/img/illustration/illustration-13.webp" alt="CTA Illustration" className="img-fluid" />
+            <img src="/public/assets/img/illustration/illustration-13.webp" alt="CTA Illustration" className="img-fluid" />
           </div>
         </div>
       </div>
@@ -477,7 +477,7 @@ export default function Landing() {
       <div className="row gy-4">
         <div className="col-lg-4 col-md-6 footer-about">
           <Link href="" className="logo d-flex align-items-center">
-            <img src="../src/images/lms-logo.png" className="nv-img" alt="Brand Logo"/> 
+            <img src="/public/images/lms-logo.png" className="nv-img" alt="Brand Logo"/> 
           </Link>
           <div className="footer-contact pt-3">
             <p>A108 Adam Street</p>
