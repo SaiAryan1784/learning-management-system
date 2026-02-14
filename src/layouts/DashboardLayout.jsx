@@ -16,7 +16,7 @@ export default function DashboardLayout() {
         <div className="header">
           <a href="#">
            <img
-          src="../src/images/lms-logo.png"
+          src="/images/lms-logo.png"
           className="brand-img"
           alt="Brand Logo"
         />
