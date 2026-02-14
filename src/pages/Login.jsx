@@ -50,7 +50,7 @@ export default function Login() {
   return (
     <div className="lg-mn">
       <video autoPlay muted loop playsInline>
-        <source src="/src/images/rl-bnr.mp4" type="video/mp4" />
+        <source src="/images/rl-bnr.mp4" type="video/mp4" />
       </video>
       <div className="mx-wd">
       <div className="sc-wp">
@@ -59,7 +59,7 @@ export default function Login() {
         <p className="main-tx">Empower Learning Anytime, Anywhere</p> */}
         <div className="login-container" data-aos="fade-up">
         <img
-          src="../src/images/lms-logo.png"
+          src="/images/lms-logo.png"
           className="brand-img"
           alt="Brand Logo"
         />
