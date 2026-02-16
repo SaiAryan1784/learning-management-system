@@ -31,7 +31,7 @@ AOS.init({
               </div>
             </Link>
           </div>
-           <div className="col-md-3 col-12">
+           {/* <div className="col-md-3 col-12">
               <Link to="/dashboard/locations" className="datcard">
                 <div className="fplogo">
                   <i className="fa-solid fa-location-dot fa-2x mn-ic" data-aos="fade-down"></i>
@@ -85,7 +85,7 @@ AOS.init({
                   </div>
                 </div>
               </Link>
-            </div>
+            </div> */}
           </div>
         </>
       )}
