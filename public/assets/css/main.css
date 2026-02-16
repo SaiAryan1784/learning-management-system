@@ -518,8 +518,8 @@ h6 {
 }
 
 .footer .social-links a:hover {
-  color: #db767c;
-  border-color: #db767c;
+  color: #228f71;
+  border-color: #228f71;
 }
 
 .footer h4 {
@@ -563,7 +563,7 @@ h6 {
 }
 
 .footer .footer-links ul a:hover {
-  color: #db767c;
+  color: #228f71;
 }
 
 .footer .footer-contact p {
@@ -706,7 +706,7 @@ section,
   display: block;
   width: 50px;
   height: 3px;
-  background: #db767c;
+  background: #228f71;
   left: 0;
   right: 0;
   bottom: 0;
@@ -738,19 +738,19 @@ section,
 .hero .hero-tag {
   display: inline-flex;
   align-items: center;
-  background-color: color-mix(in srgb, #db767c, transparent 90%);
+  background-color: color-mix(in srgb, #228f71, transparent 90%);
   padding: 0.5rem 1rem;
   border-radius: 50px;
   margin-bottom: 1rem;
 }
 
 .hero .hero-tag i {
-  color: #db767c;
+  color: #228f71;
   margin-right: 0.5rem;
 }
 
 .hero .hero-tag span {
-  color: #db767c;
+  color: #228f71;
   font-weight: 600;
 }
 
@@ -800,8 +800,8 @@ section,
 }
 
 .hero .hero-cta .btn-primary {
-  background-color: #db767c;
-    border-color: #db767c;
+  background-color: #10184a;
+    border-color: #10184a;
     color: #fff;
     padding: 0.75rem 1.5rem;
     font-weight: 600;
@@ -869,20 +869,20 @@ section,
 .hero .hero-image-wrapper .stat-card .stat-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #db767c;
+  color: #10184a;
   margin-bottom: 0.25rem;
 }
 
 .hero .hero-image-wrapper .stat-card .stat-label {
   font-size: 0.875rem;
-  color:#db767c;
+  color:#228f71;
   margin-bottom: 0.5rem;
 }
 
 .hero .hero-image-wrapper .stat-card .stat-icon {
   align-self: flex-end;
   font-size: 1.25rem;
-  color: #db767c;
+  color: #228f71;
 }
 
 @media (max-width: 575px) {
@@ -918,7 +918,7 @@ section,
   position: absolute;
   width: 70px;
   height: 3px;
-  background: #db767c;
+  background: #228f71;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
@@ -952,7 +952,7 @@ section,
   left: 0;
   width: 100%;
   height: 0;
-  background: color-mix(in srgb, #db767c, transparent 90%);
+  background: color-mix(in srgb, #228f71, transparent 90%);
   z-index: -1;
   transition: height 0.5s cubic-bezier(0.65, 0, 0.35, 1);
   border-radius: 12px;
@@ -969,10 +969,10 @@ section,
 
 .about .feature-box:hover .icon-container {
   background: #fff;
-  color: #db767c;
+  color: #228f71;
 }
 .about .feature-box:hover .icon-container i{
-  color: #db767c!important;
+  color: #228f71!important;
 
 }
 .about .feature-box:hover .icon-container i.bi:before{
@@ -983,8 +983,8 @@ section,
   width: 70px;
   height: 70px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--accent-color), transparent 90%);
-  color: var(--accent-color);
+  background: color-mix(in srgb, #228f71, transparent 90%);
+  color: #db767c;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1453,7 +1453,7 @@ section,
 }
 
 .services .service-card {
-  background-color: color-mix(in srgb, #db767c, transparent 92%);
+  background-color: color-mix(in srgb, #228f71, transparent 92%);
   border-radius: 25px;
   padding: 30px 25px;
   margin-bottom: 25px;
@@ -1463,7 +1463,7 @@ section,
 }
 
 .services .service-card:hover {
-  background-color: #db767c;
+  background-color: #228f71;
   transform: translateY(-5px);
 }
 
@@ -1479,7 +1479,7 @@ section,
 }
 
 .services .service-card:hover .service-content .read-more-btn {
-  background-color: color-mix(in srgb, #db767c, transparent 84%);
+  background-color: color-mix(in srgb, #228f71, transparent 84%);
   color: var(--contrast-color);
 }
 
@@ -1489,7 +1489,7 @@ section,
   line-height: 65px;
   margin: 0 auto;
   font-size: 48px;
-  color: var(--heading-color);
+  color: #db767c;
   transition: all 0.3s ease;
 }
 
@@ -1519,7 +1519,7 @@ section,
 .services .service-content .service-action .read-more-btn {
   display: inline-block;
   padding: 8px 16px;
-  background-color: #db767c;
+  background-color: rgb(16, 24, 74);
   color: var(--contrast-color);
   border-radius: 5px;
   font-weight: 600;
@@ -2075,7 +2075,7 @@ section,
 }
 
 .faq .faq-list .faq-item h3:hover {
-  background-color:color-mix(in srgb, #db767c, transparent 90%);
+  background-color:color-mix(in srgb, #228f71, transparent 90%);
 }
 
 .faq .faq-list .faq-item h3 .num {
@@ -2085,8 +2085,8 @@ section,
   width: 28px;
   height: 28px;
   margin-right: 15px;
-  background-color: color-mix(in srgb, #db767c, transparent 80%);
-  color: #db767c;
+  background-color: color-mix(in srgb, #228f71, transparent 80%);
+  color: #228f71;
   border-radius: 50%;
   font-size: 0.9rem;
   font-weight: 700;
@@ -2135,7 +2135,7 @@ section,
 }
 
 .faq .faq-cta {
-  background-color: color-mix(in srgb, #db767c, transparent 90%);
+  background-color: color-mix(in srgb, #228f71, transparent 90%);
   padding: 30px;
   border-radius: 10px;
 }
@@ -2146,8 +2146,8 @@ section,
 }
 
 .faq .faq-cta .btn-primary {
-  background-color: #db767c;
-    border-color: #db767c;
+  background-color: #10184a;
+    border-color: #10184a;
     color: #fff;
     padding: 0.75rem 1.5rem;
     font-weight: 600;
@@ -2231,8 +2231,8 @@ section,
 }
 
 .call-to-action .cta-buttons .btn-primary {
-    background-color: #db767c;
-    border-color: #db767c;
+    background-color: #10184a;
+    border-color: #10184a;
     color: #fff;
     padding: 0.75rem 1.5rem;
     font-weight: 600;

@@ -12,67 +12,68 @@ export default function DashboardLayout() {
 
   return (
     <div className="dash-cnt">
-      <section className="sidebar">
-        <div className="header">
-          <a href="#">
-           <img
-          src="/images/lms-logo.png"
-          className="brand-img"
-          alt="Brand Logo"
-        />
-          </a>
+      <nav className="sidebar">
+        
+        <div className="logo">
+          <img src="/images/lms-logo.png" className="nv-img" alt="Brand Logo"/> 
         </div>
 
-        <div className="separator-wrapper">
-          <hr className="separator" />
-          <label className="minimize-btn">
-            <input type="checkbox" id="minimize" />
-            <i className="fa-solid fa-angle-left"></i>
-          </label>
+        <Link to="/dashboard" className="nav-item-full active">
+            <i className="fa-solid fa-house"></i>
+            <span>Dashboard</span>
+        </Link>
+
+        <div className="nav-grid">
+            <Link to="/dashboard" className="nav-item-grid">
+                <i className="fa-solid fa-building-user"></i>
+                <span>Company Type</span>
+            </Link>
+            <Link to="/dashboard" className="nav-item-grid">
+                <i className="fa-solid fa-user-tie"></i>
+                <span>Candidate</span>
+            </Link>
+            <Link to="/dashboard" className="nav-item-grid">
+                <i className="fa-solid fa-building"></i>
+                <span>Company</span>
+            </Link>
+            <Link to="/dashboard" className="nav-item-grid">
+                <i className="fa-solid fa-credit-card"></i>
+                <span>Subscription</span>
+            </Link>
+             <Link to="/dashboard" className="nav-item-grid">
+                <i className="fa-solid fa-box-archive"></i>
+                <span>Package Plan</span>
+            </Link>
         </div>
 
-        <div className="navigation">
-          <div className="section main-section">
-            <ul className="items">
-              <li className="item">
-                <a href="#">
-                  <i className="fa-solid fa-house"></i>
-                  <span className="item-text">Dashboard</span>
-                  <span className="item-tooltip">Dashboard</span>
-                </a>
-              </li>
-              <li className="item">
-                <a href="#">
-                  <i className="fa-solid fa-user"></i>
-                  <span className="item-text">Account</span>
-                  <span className="item-tooltip">Account</span>
-                </a>
-              </li>
-              <li className="item">
-                <a href="#">
-                  <i className="fa-solid fa-file"></i>
-                  <span className="item-text">Posts</span>
-                  <span className="item-tooltip">Posts</span>
-                </a>
-              </li>
-              <li className="item">
-                <a href="#">
-                  <i className="fa-solid fa-calendar"></i>
-                  <span className="item-text">Schedules</span>
-                  <span className="item-tooltip">Schedules</span>
-                </a>
-              </li>
-            </ul>
-          </div>
+        <h3 className="menu-heading">MANAGE JOB</h3>
+
+        <div className="nav-grid">
+            <Link to="/dashboard" className="nav-item-grid">
+                <i className="fa-solid fa-briefcase"></i>
+                <span>Jobs</span>
+            </Link>
+            <Link to="/dashboard" className="nav-item-grid">
+                <i className="fa-solid fa-users"></i>
+                <span>Job Applicant</span>
+            </Link>
+            <Link to="/dashboard" className="nav-item-grid">
+                <i className="fa-solid fa-list-check"></i>
+                <span>Job Type</span>
+            </Link>
+            <Link to="/dashboard" className="nav-item-grid">
+                <i className="fa-solid fa-tags"></i>
+                <span>Job Category</span>
+            </Link>
         </div>
-      </section>
+    </nav>
       <div className="main-data">
         <div className="main-hdr">
           <div className="mx-wd">
             <div className="hdr-wp">
               <div className="hdr-md">
                 <div className="nv-menus">
-                  <span className="nav-link" onClick={handleLogout}>Logout <i className="fa-solid fa-sign-out"></i></span>
+                  <span className="logout-btn" onClick={handleLogout}><i className="fa-solid fa-sign-out"></i></span>
                 </div>
               </div>
             </div>

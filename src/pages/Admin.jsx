@@ -31,6 +31,61 @@ AOS.init({
               </div>
             </Link>
           </div>
+           <div className="col-md-3 col-12">
+              <Link to="/dashboard/locations" className="datcard">
+                <div className="fplogo">
+                  <i className="fa-solid fa-location-dot fa-2x mn-ic" data-aos="fade-down"></i>
+                  <h2 className="mod-tl">VIEW LOCATION</h2>
+                  <p>View location for your business.</p>
+                  <div className="go-corner">
+                  </div>
+                </div>
+              </Link>
+            </div>
+            <div className="col-md-3 col-12">
+              <Link to="/dashboard/roles" className="datcard">
+                <div className="fplogo">
+                  <i className="fa-solid fa-chalkboard-user fa-2x mn-ic" data-aos="fade-down"></i>
+                  <h2 className="mod-tl">VIEW ROLES</h2>
+                  <p>View roles for your business.</p>
+                  <div className="go-corner">
+                  </div>
+                </div>
+              </Link>
+            </div>
+            <div className="col-md-3 col-12">
+              <Link to="/dashboard/staff" className="datcard">
+                <div className="fplogo">
+                  <i className="fa-solid fa-person-chalkboard fa-2x mn-ic" data-aos="fade-down"></i>
+                  <h2 className="mod-tl" data-aos="fade-in">ADD STAFF</h2>
+                  <p>View staff for your business.</p>
+                  <div className="go-corner">
+                  </div>
+                </div>
+              </Link>
+            </div>
+            <div className="col-md-3 col-12">
+              <Link to="/dashboard/course-categories" className="datcard">
+                <div className="fplogo">
+                  <i className="fa-solid fa-book-open-reader fa-2x mn-ic" data-aos="fade-down"></i>
+                  <h2 className="mod-tl">VIEW COURSES CATEGORY</h2>
+                  <p>View course category for your business.</p>
+                  <div className="go-corner">
+                  </div>
+                </div>
+              </Link>
+            </div>
+            <div className="col-md-3 col-12">
+              <Link to="/dashboard/courses" className="datcard">
+                <div className="fplogo">
+                  <i className="fa-solid fa-book fa-2x mn-ic" data-aos="fade-down"></i>
+                  <h2 className="mod-tl">VIEW COURSES</h2>
+                  <p>View courses for your business.</p>
+                  <div className="go-corner">
+                  </div>
+                </div>
+              </Link>
+            </div>
           </div>
         </>
       )}

@@ -135,18 +135,6 @@ export default function App() {
               }
             />
           </Route>
-
-          {/* Super Admin standalone view */}
-          <Route
-            path="/locations-view"
-            element={
-              <ProtectedRoute>
-                <SuperAdminRoute>
-                  <LocationsView />
-                </SuperAdminRoute>
-              </ProtectedRoute>
-            }
-          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

@@ -105,6 +105,7 @@ export default function CourseCategories() {
         <textarea
           className="login-ip"
           placeholder="Description"
+          rows="5"
           value={form.description}
           onChange={(e) =>
             setForm({ ...form, description: e.target.value })
