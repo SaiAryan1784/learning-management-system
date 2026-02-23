@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../../api/api";
 import toastr from "toastr";
 import $ from "jquery";
 import "datatables.net";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 export default function ModuleLessons() {
   const { courseId, moduleId } = useParams();
+  const tableRef = useRef();
 
   const [lessons, setLessons] = useState([]);
   const [editId, setEditId] = useState(null);
@@ -14,106 +17,157 @@ export default function ModuleLessons() {
   const [form, setForm] = useState({
     title: "",
     type: "video",
+    sourceType: "external_url",
+    contentUrl: "",
+    textContent: "",
     order: 1,
-    contentText: "",
   });
 
-  const [file, setFile] = useState(null);
-  const [uploadData, setUploadData] = useState(null);
-  const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedFileName, setUploadedFileName] = useState("");
 
-  // ---------------- LOAD LESSONS ----------------
+  const [activeTab, setActiveTab] = useState("addLesson"); // tabs
+  const [loading, setLoading] = useState(false);
+
+  // ================= LOAD LESSONS =================
   const loadLessons = async () => {
     try {
-      if ($.fn.DataTable.isDataTable("#lessonsTable")) {
-        $("#lessonsTable").DataTable().destroy();
-      }
-
+      setLoading(true);
       const res = await api.get(
-        `/courses/${courseId}/modules/${moduleId}/lessons`
+        `/courses/${courseId}/modules/${moduleId}/lessons?active=true&page=1&limit=100`
       );
-
       setLessons(res.data.lessons || []);
-    } catch {
+    } catch (err) {
       toastr.error("Failed to load lessons");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadLessons();
-  }, [courseId, moduleId]);
+  }, []);
 
+  // ================= DATA TABLE REFRESH =================
   useEffect(() => {
-    if (lessons.length > 0) {
+    if (activeTab === "lessonList" && lessons.length > 0 && !loading) {
+      if ($.fn.DataTable.isDataTable("#lessonsTable")) {
+        $("#lessonsTable").DataTable().destroy();
+      }
+
       setTimeout(() => {
-        $("#lessonsTable").DataTable();
-      }, 100);
+        $("#lessonsTable").DataTable({
+          pageLength: 5,
+          lengthMenu: [5, 10, 25],
+        });
+      }, 0);
     }
-  }, [lessons]);
+  }, [activeTab, lessons, loading]);
 
-  // ---------------- DRAG DROP ----------------
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0]);
-    }
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
   };
 
-  // ---------------- FILE UPLOAD ----------------
-  const handleFileUpload = async () => {
-    if (!file) return toastr.error("Select file first");
-
+  // ================= UPLOAD FILE =================
+  const uploadFile = async (file) => {
+    if (!file) return;
     try {
-      const presign = await api.post("/uploads/lessons/presign", {
-        lessonType: form.type,
-        fileName: file.name,
-        mimeType: file.type,
-      });
+      setUploading(true);
+      setUploadProgress(0);
 
-      const { uploadUrl, publicUrl, storageKey } = presign.data;
+      let presignRes;
+      try {
+        presignRes = await api.post("/uploads/lessons/presign", {
+          fileName: file.name,
+          mimeType: file.type,
+        });
+      } catch (err) {
+        presignRes = null;
+      }
 
-      await fetch(uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
+      if (presignRes && presignRes.data.uploadUrl) {
+        const { uploadUrl, fileUrl } = presignRes.data;
 
-      // ✅ Correct backend contract
-      setUploadData({
-        sourceType: "file",
-        contentUrl: publicUrl,
-        storageKey,
-        fileName: file.name,
-        mimeType: file.type,
-        fileSize: file.size,
-      });
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percent);
+          }
+        };
+        xhr.onload = () => {
+          setUploading(false);
+          setUploadedFileName(file.name);
+          setForm((prev) => ({
+            ...prev,
+            contentUrl: fileUrl,
+            sourceType: "file",
+          }));
+          toastr.success("Upload successful to S3");
+        };
+        xhr.onerror = () => {
+          setUploading(false);
+          toastr.error("Upload failed to S3");
+        };
+        xhr.send(file);
+      } else {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      toastr.success("File uploaded successfully");
-    } catch {
-      toastr.error("Upload failed");
+        const uploadRes = await api.post(
+          `/uploads/lessons/file/${form.type}`,
+          formData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+            onUploadProgress: (event) => {
+              if (event.lengthComputable) {
+                const percent = Math.round((event.loaded / event.total) * 100);
+                setUploadProgress(percent);
+              }
+            },
+          }
+        );
+
+        setUploading(false);
+        setUploadedFileName(file.name);
+        setForm((prev) => ({
+          ...prev,
+          contentUrl: uploadRes.data.fileUrl,
+          sourceType: "file",
+        }));
+        toastr.success("Upload successful to server");
+      }
+    } catch (err) {
+      setUploading(false);
+      toastr.error("Upload error");
+      console.error(err);
     }
   };
 
-  // ---------------- SUBMIT ----------------
-  const handleSubmit = async () => {
-    if (!form.title.trim())
-      return toastr.error("Lesson title required");
+  const getYouTubeEmbed = (url) => {
+    if (!url) return "";
+    const reg = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/;
+    const match = url.match(reg);
+    return match ? `https://www.youtube.com/embed/${match[1]}` : "";
+  };
 
-    let payload = {
-      title: form.title,
-      type: form.type,
-      order: form.order,
+  // ================= SUBMIT =================
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (uploading) return toastr.warning("Wait for upload");
+
+    const payload = {
+      title: form.title || "",
+      type: form.type || "video",
+      order: form.order || 1,
+      sourceType: form.sourceType || "external_url",
+      contentUrl: form.type !== "text" ? form.contentUrl || "" : undefined,
+      contentText: form.type === "text" ? form.textContent || "" : undefined,
     };
-
-    if (form.type === "text") {
-      payload.contentText = form.contentText;
-    } else {
-      if (!uploadData)
-        return toastr.error("Upload file first");
-
-      payload = { ...payload, ...uploadData };
-    }
 
     try {
       if (editId) {
@@ -130,240 +184,218 @@ export default function ModuleLessons() {
         toastr.success("Lesson added");
       }
 
-      resetForm();
-      loadLessons();
-    } catch (err) {
-      console.log(err);
-      toastr.error(err.response?.data?.error || "Error saving lesson");
-    }
-  };
-
-  // ---------------- EDIT ----------------
-  const handleEdit = (l) => {
-    setEditId(l.id || l._id);
-
-    setForm({
-      title: l.title,
-      type: l.type,
-      order: l.order,
-      contentText: l.contentText || "",
-    });
-
-    if (l.type !== "text") {
-      setUploadData({
-        sourceType: "file",
-        contentUrl: l.contentUrl,
-        storageKey: l.storageKey,
-        fileName: l.fileName,
-        mimeType: l.mimeType,
-        fileSize: l.fileSize,
+      setEditId(null);
+      setUploadedFileName("");
+      setForm({
+        title: "",
+        type: "video",
+        sourceType: "external_url",
+        contentUrl: "",
+        textContent: "",
+        order: 1,
       });
-    }
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+      loadLessons();
+      setActiveTab("lessonList");
+    } catch {
+      toastr.error("Save failed");
+    }
   };
 
-  const resetForm = () => {
-    setEditId(null);
+  const handleEdit = (lesson) => {
+    setEditId(lesson._id);
     setForm({
-      title: "",
-      type: "video",
-      order: 1,
-      contentText: "",
+      title: lesson.title || "",
+      type: lesson.type || "video",
+      sourceType: lesson.sourceType || "external_url",
+      contentUrl: lesson.contentUrl || "",
+      textContent: lesson.type === "text" ? lesson.contentText || "" : "",
+      order: lesson.order || 1,
     });
-    setFile(null);
-    setUploadData(null);
+    setActiveTab("addLesson");
   };
 
   return (
     <div className="mx-wd">
       <div className="dash-tp">
         <h1 className="wlc-tl">LESSON'S</h1>
-        <p className="wlc-ms">
-          Please add lesson's and take a look at your business.
-        </p>
+        <p className="wlc-ms">Please add your lesson's and take a look at lessons.</p>
       </div>
 
-      {/* FORM */}
-      <div className="frm-cntr">
-        <Link
-          className="logout-btn"
-          to={`/dashboard/courses/${courseId}/modules`}
+      <div className="pg-tabs">
+        <span
+          className={`pg-tb ${activeTab === "addLesson" ? "active-tab" : ""}`}
+          onClick={() => setActiveTab("addLesson")}
         >
-          <i className="fa-solid fa-arrow-left"></i> Modules
-        </Link>
-
-        <h2 className="sc-tl">
-          {editId ? "Edit Lesson" : "Add Lesson"}
-        </h2>
-
-        <input
-          className="login-ip"
-          placeholder="Lesson Title"
-          value={form.title}
-          onChange={(e) =>
-            setForm({ ...form, title: e.target.value })
-          }
-        />
-
-        <select
-          className="login-ip"
-          value={form.type}
-          onChange={(e) =>
-            setForm({ ...form, type: e.target.value })
-          }
+          Add Lesson
+        </span>
+        <span
+          className={`pg-tb ${activeTab === "lessonList" ? "active-tab" : ""}`}
+          onClick={() => setActiveTab("lessonList")}
         >
-          <option value="video">Video</option>
-          <option value="image">Image</option>
-          <option value="pdf">PDF</option>
-          <option value="text">Text</option>
-        </select>
+          Lesson List
+        </span>
+      </div>
 
-        {form.type === "text" ? (
-          <textarea
-            className="login-ip"
-            placeholder="Lesson Content"
-            value={form.contentText}
-            onChange={(e) =>
-              setForm({ ...form, contentText: e.target.value })
-            }
-          />
-        ) : (
-          <>
-            {/* DRAG DROP UI (your style kept) */}
-            <div
-              className="login-ip file-up"
-              style={{
-                background: dragActive ? "#eef6ff" : "transparent",
-              }}
-              onDragEnter={(e) => {
-                e.preventDefault();
-                setDragActive(true);
-              }}
-              onDragOver={(e) => e.preventDefault()}
-              onDragLeave={(e) => {
-                e.preventDefault();
-                setDragActive(false);
-              }}
-              onDrop={handleDrop}
-              onClick={() =>
-                document.getElementById("fileInput").click()
-              }
-            >
-              {file ? (
-                <p>{file.name}</p>
-              ) : (
-                <p>
-                    <i className="fa-solid fa-file-upload fa-2x"></i>
-                  Drag & Drop file here or Click to Upload
-                </p>
-              )}
+      <div className="tab-content">
+        {activeTab === "addLesson" && (
+          <div className="tab-cnnt">
+            <Link to="/dashboard/courses" className="logout-btn">
+              <i className="fa-solid fa-arrow-left"></i>
+              <span className="tooltiptext">Back to courses</span>
+            </Link>
+            <h2 className="sc-tl">{editId ? "Edit Lesson" : "Add Lesson"}</h2>
+            <form onSubmit={handleSubmit}>
               <input
-                id="fileInput"
-                type="file"
-                hidden
-                onChange={(e) => setFile(e.target.files[0])}
+                type="text"
+                name="title"
+                placeholder="Lesson Title"
+                value={form.title}
+                onChange={handleChange}
+                className="login-ip"
+                required
               />
-            </div>
 
-            <button
-              className="snd-btn"
-              type="button"
-              onClick={handleFileUpload}
-            >
-              Upload File
-            </button>
+              <select
+                name="type"
+                value={form.type}
+                onChange={handleChange}
+                className="login-ip"
+              >
+                <option value="video">Video</option>
+                <option value="pdf">PDF</option>
+                <option value="image">Image</option>
+                <option value="text">Text</option>
+              </select>
 
-            {uploadData && (
-              <p style={{ color: "green", margin: "10px 0" }}>
-                Uploaded: {uploadData.fileName}
-              </p>
-            )}
-          </>
-        )}
+              {form.type === "text" && (
+                <ReactQuill
+                  value={form.textContent}
+                  onChange={(value) => setForm({ ...form, textContent: value })}
+                  className="login-ip"
+                />
+              )}
 
-        <input
-          type="number"
-          className="login-ip"
-          placeholder="Order"
-          value={form.order}
-          onChange={(e) =>
-            setForm({ ...form, order: e.target.value })
-          }
-        />
+              {form.type !== "text" && (
+                <>
+                  <select
+                    name="sourceType"
+                    value={form.sourceType}
+                    onChange={handleChange}
+                    className="login-ip"
+                  >
+                    <option value="external_url">External URL</option>
+                    <option value="file">Upload File</option>
+                  </select>
 
-        <button className="snd-btn" onClick={handleSubmit}>
-          {editId ? "Update" : "Add"}
-        </button>
-
-        {editId && (
-          <button
-            className="snd-btn"
-            style={{ marginLeft: "10px" }}
-            onClick={resetForm}
-          >
-            Cancel
-          </button>
-        )}
-      </div>
-
-     {lessons.length === 0 ? (
-        <div style={{ textAlign: "center", marginBottom: "30px" }}>
-          <h3 style={{ textAlign: "center", marginBottom: "20px" }}>
-            No lessons available. Please add a lesson for this module.
-          </h3>
-        </div>
-      ) : (
-        <table
-          id="lessonsTable"
-          border="1"
-          cellPadding="10"
-          cellSpacing="0"
-          width="100%"
-        >
-          <thead>
-            <tr>
-              <th>Sr No</th>
-              <th>Thumbnail</th>
-              <th>Title</th>
-              <th>Type</th>
-              <th>Order</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lessons.map((l, i) => (
-              <tr key={l.id || l._id}>
-                <td>{i + 1}</td>
-                <td>
-                  {l.thumbnailUrl ? (
-                    <img
-                      src={l.thumbnailUrl}
-                      alt="thumb"
-                      width="60"
+                  {form.sourceType === "external_url" ? (
+                    <input
+                      type="text"
+                      name="contentUrl"
+                      placeholder="Enter URL"
+                      value={form.contentUrl}
+                      onChange={handleChange}
+                      className="login-ip"
                     />
                   ) : (
-                    "-"
+                    <input
+                      type="file"
+                      onChange={(e) => uploadFile(e.target.files[0])}
+                      className="login-ip file-up"
+                    />
                   )}
-                </td>
-                <td>{l.title}</td>
-                <td>{l.type}</td>
-                <td>{l.order}</td>
-                <td>
-                  <span
-                    className="logout-btn"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => handleEdit(l)}
-                  >
-                    <i className="fa fa-edit"></i>
-                    <span className="tooltiptext">Edit lesson</span>
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+
+                  {uploading && (
+                    <div className="progress mb-2">
+                      <div
+                        className="progress-bar progress-bar-striped progress-bar-animated"
+                        style={{ width: `${uploadProgress}%` }}
+                      >
+                        {uploadProgress}%
+                      </div>
+                    </div>
+                  )}
+
+                  {uploadedFileName && (
+                    <p className="text-success">Uploaded: {uploadedFileName}</p>
+                  )}
+                </>
+              )}
+
+              <input
+                type="number"
+                name="order"
+                value={form.order}
+                onChange={handleChange}
+                className="login-ip"
+              />
+
+              <button type="submit" className="snd-btn" disabled={uploading}>
+                {editId ? "Update Lesson" : "Add Lesson"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {activeTab === "lessonList" && (
+          <div>
+            {loading ? (
+              <p>Loading lessons...</p>
+            ) : (
+              <table id="lessonsTable" ref={tableRef}>
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Preview</th>
+                    <th>Order</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lessons.map((lesson) => (
+                    <tr key={lesson._id}>
+                      <td>{lesson.title}</td>
+                      <td>{lesson.type}</td>
+                      <td>
+                        {lesson.type === "video" && lesson.sourceType === "external_url" ? (
+                          <iframe
+                            width="200"
+                            height="120"
+                            src={getYouTubeEmbed(lesson.contentUrl)}
+                          />
+                        ) : lesson.type === "video" ? (
+                          <video width="200" controls>
+                            <source src={lesson.contentUrl} />
+                          </video>
+                        ) : lesson.type === "image" ? (
+                          <img src={lesson.contentUrl} width="150" alt="" />
+                        ) : lesson.type === "pdf" ? (
+                          <a href={lesson.contentUrl} target="_blank" rel="noreferrer">
+                            View PDF
+                          </a>
+                        ) : (
+                          <div dangerouslySetInnerHTML={{ __html: lesson.contentText }} />
+                        )}
+                      </td>
+                      <td>{lesson.order}</td>
+                      <td>
+                        <button
+                          className="logout-btn"
+                          onClick={() => handleEdit(lesson)}
+                        >
+                          <i className="fa fa-edit"></i>
+                          <span className="tooltiptext">Edit Lesson</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

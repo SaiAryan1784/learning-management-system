@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { useAuth } from "../../auth/AuthContext";
-import { Link } from "react-router-dom";
+import { Link,useNavigate } from "react-router-dom";
 import toastr from "toastr";
 import $ from "jquery";
 
 export default function OwnerStaff() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [staffList, setStaffList] = useState([]);
   const [roles, setRoles] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -18,7 +19,8 @@ export default function OwnerStaff() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("active");
   const [editStaffId, setEditStaffId] = useState(null);
-
+  const [openPop, setOpenPop] = useState(false);
+  
   const loadData = async () => {
     try {
       setLoading(true);
@@ -72,6 +74,8 @@ export default function OwnerStaff() {
       toastr.success(`Invite created! OTP: ${res.data.otp}`, "success");
       setForm({ email: "", roleId: "", locations: [] });
       loadData();
+      setOpenPop(false);
+
     } catch (err) {
       toastr.error("Failed to send invite", "error");
     }
@@ -84,6 +88,8 @@ export default function OwnerStaff() {
       roleId: staff.role?._id || "",
       locations: staff.locations?.map((l) => l._id) || [],
     });
+    setOpenPop(true); // 🔥 OPEN FORM
+
   };
 
   const cancelEdit = () => {
@@ -142,10 +148,23 @@ export default function OwnerStaff() {
         </p>
       </div>
 
-      <div className="frm-cntr">
-        <Link className="logout-btn" to="/dashboard">
+     <div className="tp-sc">
+        <span className="snd-btn" 
+        onClick={() => {
+          setOpenPop(true);
+        }}>Add Staff</span>
+        <Link to="/dashboard" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
+      </div>
+      <div className={`frm-cntr ${openPop ? "open" : ""}`}>
+        <span className="logout-btn"
+          onClick={() => {
+            setOpenPop(false);
+          }}
+        >
+          <i className="fa-solid fa-close"></i>
+        </span>
         <h2 className="sc-tl">
           {editStaffId ? "Edit Staff" : "Invite Staff"}
         </h2>
@@ -233,7 +252,6 @@ export default function OwnerStaff() {
         >
           <thead>
             <tr>
-              <th>Sr No</th>
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
@@ -245,7 +263,6 @@ export default function OwnerStaff() {
           <tbody>
             {filteredStaff.map((s, index) => (
               <tr key={s._id}>
-                <td>{index + 1}</td>
                 <td>
                   {s.user?.name ||
                     "Name will appear after the staff is Active"}
@@ -264,22 +281,30 @@ export default function OwnerStaff() {
                 </td>
                 <td>
                   <div className="act-btns">
+
+                    {/* Edit */}
                     <span
-                    className="logout-btn"
-                    onClick={() => handleEdit(s)}
+                      className="logout-btn"
+                      onClick={() => handleEdit(s)}
                     >
                       <i className="fa fa-edit"></i>
-                      <span className="tooltiptext">Edit staff</span>
+                      <span className="tooltiptext">Edit Staff</span>
                     </span>
-                    {/* {s.inviteStatus === "accepted" && (
+
+                    {/* 🔥 View Progress */}
+                    {s.inviteStatus === "accepted" && (
                       <span
-                        className="snd-btn"
-                        style={{ marginLeft: "5px" }}
-                        onClick={() => toggleActive(s)}
+                        className="logout-btn"
+                        style={{ marginLeft: "8px" }}
+                        onClick={() =>
+                          navigate(`/dashboard/staff-progress/${s._id}`)
+                        }
                       >
-                        {s.active ? "Deactivate" : "Activate"}
+                        <i className="fa fa-chart-line"></i>
+                        <span className="tooltiptext">View Progress</span>
                       </span>
-                    )} */}
+                    )}
+
                   </div>
                 </td>
               </tr>

@@ -9,18 +9,16 @@ export default function OwnerRoles() {
   const [modules, setModules] = useState([]);
   const [form, setForm] = useState({
     name: "",
-    moduleKey: "",
     permissions: [],
   });
   const [editId, setEditId] = useState(null);
+  const [openPop, setOpenPop] = useState(false);
 
   const loadRoles = async () => {
     try {
-      // ✅ Destroy old DataTable before reload
       if ($.fn.DataTable.isDataTable("#rolesTable")) {
         $("#rolesTable").DataTable().destroy();
       }
-
       const res = await api.get("/roles");
       setRoles(res.data.roles || []);
     } catch (err) {
@@ -42,7 +40,6 @@ export default function OwnerRoles() {
     loadModules();
   }, []);
 
-  // ✅ Apply DataTable after render
   useEffect(() => {
     if (roles.length > 0) {
       setTimeout(() => {
@@ -50,10 +47,6 @@ export default function OwnerRoles() {
       }, 0);
     }
   }, [roles]);
-
-  const handleModuleChange = (moduleKey) => {
-    setForm((prev) => ({ ...prev, moduleKey, permissions: [] }));
-  };
 
   const togglePermission = (perm) => {
     setForm((prev) => ({
@@ -64,18 +57,60 @@ export default function OwnerRoles() {
     }));
   };
 
+  // ✅ GLOBAL SELECT ALL
+  const handleGlobalSelectAll = () => {
+    const allPermissions = [];
+
+    modules.forEach((module) => {
+      module.actions.forEach((action) => {
+        const perm = action.includes(":")
+          ? action
+          : `${module.key}:${action}`;
+        allPermissions.push(perm);
+      });
+    });
+
+    const isAllSelected =
+      form.permissions.length === allPermissions.length;
+
+    setForm((prev) => ({
+      ...prev,
+      permissions: isAllSelected ? [] : allPermissions,
+    }));
+  };
+
+  // ✅ MODULE SELECT ALL
+  const handleModuleSelectAll = (module) => {
+    const modulePerms = module.actions.map((action) =>
+      action.includes(":")
+        ? action
+        : `${module.key}:${action}`
+    );
+
+    const allSelected = modulePerms.every((perm) =>
+      form.permissions.includes(perm)
+    );
+
+    setForm((prev) => ({
+      ...prev,
+      permissions: allSelected
+        ? prev.permissions.filter(
+            (p) => !modulePerms.includes(p)
+          )
+        : [...new Set([...prev.permissions, ...modulePerms])],
+    }));
+  };
+
   const handleSubmit = async () => {
     try {
-      if (!form.name || !form.moduleKey || form.permissions.length === 0) {
+      if (!form.name || form.permissions.length === 0) {
         toastr.error("Please fill all fields.", "error");
         return;
       }
 
       const payload = {
         name: form.name,
-        permissions: form.permissions.map(
-          (p) => `${form.moduleKey}:${p}`
-        ),
+        permissions: form.permissions,
       };
 
       if (editId) {
@@ -87,6 +122,7 @@ export default function OwnerRoles() {
       }
 
       resetForm();
+      setOpenPop(false);
       loadRoles();
     } catch (err) {
       toastr.error("Failed to save role.", "error");
@@ -95,38 +131,66 @@ export default function OwnerRoles() {
 
   const handleEdit = (role) => {
     setEditId(role._id);
-    const moduleKey = role.permissions[0]?.split(":")[0] || "";
-    const perms = role.permissions.map((p) => p.split(":")[1]);
-    setForm({ name: role.name, moduleKey, permissions: perms });
+    setForm({
+      name: role.name,
+      permissions: role.permissions || [],
+    });
+    setOpenPop(true);
   };
 
-  const cancelEdit = () => resetForm();
-
   const resetForm = () => {
-    setForm({ name: "", moduleKey: "", permissions: [] });
+    setForm({ name: "", permissions: [] });
     setEditId(null);
   };
 
-  const currentModule = modules.find((m) => m.key === form.moduleKey);
-  const currentActions =
-    currentModule?.actions.map((a) =>
-      a.includes(":") ? a.split(":")[1] : a
-    ) || [];
+  const groupPermissions = (permissions) => {
+    if (permissions.includes("*")) return { all: ["All Permissions"] };
+
+    return permissions.reduce((acc, perm) => {
+      const [module, action] = perm.split(":");
+      if (!acc[module]) acc[module] = [];
+      acc[module].push(action);
+      return acc;
+    }, {});
+  };
 
   return (
     <div className="mx-wd">
       <div className="dash-tp">
         <h1 className="wlc-tl">ROLE'S</h1>
-        <p className="wlc-ms">
-          Please add the role's and take a look at your business.
-        </p>
       </div>
 
-      <div className="frm-cntr">
-        <Link className="logout-btn" to="/dashboard">
+      <div className="tp-sc">
+        <span
+          className="snd-btn"
+          onClick={() => {
+            resetForm();
+            setOpenPop(true);
+          }}
+        >
+          Add Role
+        </span>
+
+        <Link to="/dashboard" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
-        <h2 className="sc-tl">{editId ? "Edit Role" : "Add Role"}</h2>
+      </div>
+
+      {/* POPUP */}
+      <div className={`frm-cntr ${openPop ? "open" : ""}`}>
+        <span
+          className="logout-btn"
+          onClick={() => {
+            setOpenPop(false);
+            resetForm();
+          }}
+        >
+          <i className="fa-solid fa-close"></i>
+        </span>
+
+        <h2 className="sc-tl">
+          {editId ? "Edit Role" : "Add Role"}
+        </h2>
 
         <input
           className="login-ip"
@@ -137,52 +201,149 @@ export default function OwnerRoles() {
           }
         />
 
-        <select
-          className="login-ip"
-          value={form.moduleKey}
-          onChange={(e) => handleModuleChange(e.target.value)}
-        >
-          <option value="">Select Module</option>
-          {modules.map((m) => (
-            <option key={m._id} value={m.key}>
-              {m.name}
-            </option>
-          ))}
-        </select>
+        {/* ✅ PERMISSIONS SECTION */}
+        <div>
+          <h3 className="frm-tl">Select Permissions:</h3>
 
-        {currentActions.length > 0 && (
-          <div>
-            <h3 className="frm-tl">Select Permissions:</h3>
-            <div className="chk-wp">
-              {currentActions.map((a) => (
-                <label key={a}>
-                  <input
-                    type="checkbox"
-                    checked={form.permissions.includes(a)}
-                    onChange={() => togglePermission(a)}
-                  />
-                  {a}
-                </label>
-              ))}
-            </div>
+          {/* GLOBAL SELECT */}
+          <div style={{ marginBottom: "10px" }}>
+            <label style={{ fontWeight: "bold", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={
+                  modules.length > 0 &&
+                  form.permissions.length ===
+                    modules.reduce(
+                      (acc, m) => acc + m.actions.length,
+                      0
+                    )
+                }
+                onChange={handleGlobalSelectAll}
+                style={{ marginRight: "6px" }}
+              />
+              Select All Permissions
+            </label>
           </div>
-        )}
+
+          <div
+            style={{
+              maxHeight: "350px",
+              overflowY: "auto",
+              padding: "10px",
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              background: "#fafafa",
+            }}
+          >
+            {modules.map((module) => {
+              const modulePerms = module.actions.map(
+                (action) =>
+                  action.includes(":")
+                    ? action
+                    : `${module.key}:${action}`
+              );
+
+              const isModuleAllSelected =
+                modulePerms.every((perm) =>
+                  form.permissions.includes(perm)
+                );
+
+              return (
+                <div
+                  key={module.key}
+                  style={{ marginBottom: "20px" }}
+                >
+                  {/* MODULE HEADER */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "8px",
+                      borderBottom: "1px solid #eee",
+                      paddingBottom: "5px",
+                    }}
+                  >
+                    <strong
+                      style={{
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {module.name}
+                    </strong>
+
+                    <label
+                      style={{
+                        fontSize: "13px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isModuleAllSelected}
+                        onChange={() =>
+                          handleModuleSelectAll(module)
+                        }
+                        style={{ marginRight: "5px" }}
+                      />
+                      Select All
+                    </label>
+                  </div>
+
+                  {/* ACTION CHECKBOXES */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fill,minmax(160px,1fr))",
+                      gap: "8px 15px",
+                    }}
+                  >
+                    {module.actions.map((action) => {
+                      const perm = action.includes(":")
+                        ? action
+                        : `${module.key}:${action}`;
+
+                      const actionName =
+                        perm.split(":")[1];
+
+                      return (
+                        <label
+                          key={perm}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            cursor: "pointer",
+                            fontSize: "14px",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={form.permissions.includes(
+                              perm
+                            )}
+                            onChange={() =>
+                              togglePermission(perm)
+                            }
+                          />
+                          {actionName}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         <button className="snd-btn" onClick={handleSubmit}>
           {editId ? "Update" : "Add"}
         </button>
-
-        {editId && (
-          <button
-            className="snd-btn"
-            style={{ marginLeft: "10px" }}
-            onClick={cancelEdit}
-          >
-            Cancel
-          </button>
-        )}
       </div>
 
+      {/* TABLE (UNCHANGED) */}
       <table
         id="rolesTable"
         border="1"
@@ -192,25 +353,44 @@ export default function OwnerRoles() {
       >
         <thead>
           <tr>
-            <th>Sr No</th>
             <th>Role Name</th>
             <th>Permissions for assigned modules</th>
             <th>Actions</th>
           </tr>
         </thead>
+
         <tbody>
-          {roles.length === 0 ? (
-            <tr>
-              <td colSpan="4" style={{ textAlign: "center" }}>
-                No roles found
-              </td>
-            </tr>
-          ) : (
-            roles.map((r, index) => (
+          {roles.map((r) => {
+            const grouped = groupPermissions(r.permissions);
+            return (
               <tr key={r._id}>
-                <td>{index + 1}</td>
                 <td>{r.name}</td>
-                <td>{r.permissions.join(", ")}</td>
+                <td>
+                  <div style={{ display: "flex", flexWrap: "wrap" }}>
+                    {Object.entries(grouped).map(
+                      ([module, actions]) => (
+                        <div
+                          key={module}
+                          style={{
+                            marginBottom: "10px",
+                            width: "30%",
+                          }}
+                        >
+                          <strong
+                            style={{
+                              textTransform: "capitalize",
+                              fontWeight: "bolder",
+                              textDecoration: "underline",
+                            }}
+                          >
+                            {module}
+                          </strong>
+                          : {actions.join(", ")}
+                        </div>
+                      )
+                    )}
+                  </div>
+                </td>
                 <td>
                   {!r.builtin && (
                     <span
@@ -218,13 +398,12 @@ export default function OwnerRoles() {
                       onClick={() => handleEdit(r)}
                     >
                       <i className="fa fa-edit"></i>
-                      <span className="tooltiptext">Edit Role</span>
                     </span>
                   )}
                 </td>
               </tr>
-            ))
-          )}
+            );
+          })}
         </tbody>
       </table>
     </div>

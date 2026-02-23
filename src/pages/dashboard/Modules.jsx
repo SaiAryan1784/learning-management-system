@@ -8,6 +8,7 @@ export default function Modules() {
   const [modules, setModules] = useState([]);
   const [form, setForm] = useState({ key: "", name: "", actions: [] });
   const [editId, setEditId] = useState(null);
+  const [openPop, setOpenPop] = useState(false);
 
   // 🔥 Load Modules
   const loadModules = async () => {
@@ -65,6 +66,7 @@ export default function Modules() {
       }
 
       resetForm();
+      setOpenPop(false);
       loadModules();
     } catch (error) {
       console.error(error);
@@ -81,6 +83,8 @@ export default function Modules() {
         a.includes(":") ? a.split(":")[1] : a
       ),
     });
+      setOpenPop(true);
+
   };
 
   const cancelEdit = () => resetForm();
@@ -104,8 +108,26 @@ export default function Modules() {
           Please add main module's and take a look at your business.
         </p>
       </div>
-      <div className="frm-cntr">
-        <Link className="logout-btn" to="/dashboard"><i className="fa-solid fa-arrow-left"></i></Link>
+      <div className="tp-sc">
+        <span className="snd-btn" 
+        onClick={() => {
+          resetForm();
+          setOpenPop(true);
+        }}>Add Main Module</span>
+        <Link to="/dashboard" className="logout-btn">
+          <i className="fa-solid fa-arrow-left"></i>
+        </Link>
+      </div>
+      {/* Form */}
+      <div className={`frm-cntr ${openPop ? "open" : ""}`}>
+        <span className="logout-btn"
+          onClick={() => {
+            setOpenPop(false);
+            resetForm();
+          }}
+        >
+          <i className="fa-solid fa-close"></i>
+        </span>
         <h2 className="sc-tl">{editId ? "Edit Module" : "Add Module"}</h2>
 
         <input

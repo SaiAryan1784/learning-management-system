@@ -735,7 +735,7 @@ section,
   }
 }
 
-.hero .hero-tag {
+ .hero-tag {
   display: inline-flex;
   align-items: center;
   background-color: color-mix(in srgb, #228f71, transparent 90%);
@@ -744,12 +744,12 @@ section,
   margin-bottom: 1rem;
 }
 
-.hero .hero-tag i {
+ .hero-tag i {
   color: #228f71;
   margin-right: 0.5rem;
 }
 
-.hero .hero-tag span {
+ .hero-tag span {
   color: #228f71;
   font-weight: 600;
 }
@@ -1025,31 +1025,31 @@ section,
   line-height: 1.7;
 }
 
-.about .about-content-box .progress-item {
+ .progress-item {
   margin-bottom: 1.2rem;
 }
 
-.about .about-content-box .progress-item .progress-title {
+ .progress-item .progress-title {
   font-weight: 600;
-  color: var(--heading-color);
-  font-size: 1rem;
+  color: #111947;
+  font-size: 20px;
 }
 
-.about .about-content-box .progress-item .progress-percent {
+ .progress-item .progress-percent {
   font-weight: 700;
-  color: var(--accent-color);
+  color: #db767c;
 }
 
-.about .about-content-box .progress-item .progress {
+ .progress-item .progress {
   height: 8px;
   border-radius: 4px;
-  background-color: color-mix(in srgb, var(--accent-color), transparent 90%);
-  margin-top: 0.5rem;
+  background-color: color-mix(in srgb, #db767c, transparent 90%);
+  margin: 20px 0;
   overflow: hidden;
 }
 
-.about .about-content-box .progress-item .progress .progress-bar {
-  background-color: var(--accent-color);
+ .progress-item .progress .progress-bar {
+  background-color: #db767c;
   border-radius: 4px;
 }
 
@@ -1129,13 +1129,13 @@ section,
   z-index: 3;
 }
 
-.about .about-image-grid .experience-badge {
+ .experience-badge {
   position: absolute;
-  right: 10px;
-  bottom: 30px;
-  width: 120px;
-  height: 120px;
-  background: var(--accent-color);
+  right: 20px;
+  top: 10px;
+  width: 90px;
+  height: 90px;
+  background: #db767c;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
@@ -1146,14 +1146,14 @@ section,
   z-index: 4;
 }
 
-.about .about-image-grid .experience-badge .years {
-  font-size: 2.5rem;
+ .experience-badge .years {
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1;
   margin-bottom: 0.2rem;
 }
 
-.about .about-image-grid .experience-badge .text {
+ .experience-badge .text {
   font-size: 0.8rem;
   text-align: center;
   max-width: 90px;
@@ -1249,15 +1249,15 @@ section,
 --------------------------------------------------------------*/
 .stats .stats-overview {
   height: 100%;
-  padding: 30px;
 }
 
 .stats .stats-overview h3 {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   position: relative;
-  padding-bottom: 15px;
+  padding-bottom: 10px;
+  color:#111947;
 }
 
 .stats .stats-overview h3::after {
@@ -1266,7 +1266,7 @@ section,
   display: block;
   width: 60px;
   height: 4px;
-  background: var(--accent-color);
+  background: #228f71;
   bottom: 0;
   left: 0;
   right: 0;
@@ -1283,12 +1283,12 @@ section,
   font-size: 16px;
   color: color-mix(in srgb, var(--default-color), transparent 30%);
   line-height: 1.7;
-  margin-bottom: 0;
+  margin-bottom: 10px;
 }
 
 .stats .stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
 }
 
@@ -1313,7 +1313,7 @@ section,
   justify-content: center;
   width: 60px;
   height: 60px;
-  background: color-mix(in srgb, var(--accent-color), transparent 90%);
+  background: color-mix(in srgb, #db767c, transparent 90%);
   border-radius: 50%;
   margin-right: 15px;
   flex-shrink: 0;
@@ -1321,7 +1321,7 @@ section,
 
 .stats .stats-card .stats-icon i {
   font-size: 24px;
-  color: var(--accent-color);
+  color: #db767c;
 }
 
 .stats .stats-card .stats-content {
@@ -1331,6 +1331,7 @@ section,
 .stats .stats-card .stats-content .stats-number {
   display: flex;
   align-items: baseline;
+  color:#111947;
 }
 
 .stats .stats-card .stats-content .stats-number .purecounter {
@@ -1344,7 +1345,7 @@ section,
 .stats .stats-card .stats-content .stats-number .plus {
   font-size: 24px;
   font-weight: 700;
-  color: var(--accent-color);
+  color: #db767c;
   margin-left: 2px;
 }
 

@@ -8,6 +8,7 @@ export default function OwnerLocations() {
   const [locations, setLocations] = useState([]);
   const [form, setForm] = useState({ name: "", address: "", phone: "" });
   const [editId, setEditId] = useState(null);
+  const [openPop, setOpenPop] = useState(false);
 
   // ✅ Load Locations
   const loadLocations = async () => {
@@ -65,6 +66,7 @@ export default function OwnerLocations() {
       }
 
       resetForm();
+      setOpenPop(false);
       loadLocations();
     } catch (err) {
       toastr.error("Something went wrong. Try again.", "error");
@@ -72,9 +74,11 @@ export default function OwnerLocations() {
   };
 
   const handleEdit = (loc) => {
-    setEditId(loc._id);
-    setForm({ name: loc.name, address: loc.address, phone: loc.phone });
-  };
+  setEditId(loc._id);
+  setForm({ name: loc.name, address: loc.address, phone: loc.phone });
+  setOpenPop(true); // 🔥 OPEN FORM
+};
+
 
   const cancelEdit = () => resetForm();
 
@@ -91,12 +95,27 @@ export default function OwnerLocations() {
           Please add your location's and take a look at your business.
         </p>
       </div>
-
-      {/* Form */}
-      <div className="frm-cntr">
-        <Link className="logout-btn" to="/dashboard">
+      <div className="tp-sc">
+        <span className="snd-btn" 
+        onClick={() => {
+          resetForm();
+          setOpenPop(true);
+        }}>Add Location</span>
+        <Link to="/dashboard" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
+      </div>
+      {/* Form */}
+      <div className={`frm-cntr ${openPop ? "open" : ""}`}>
+        <span className="logout-btn"
+          onClick={() => {
+            setOpenPop(false);
+            resetForm();
+          }}
+        >
+          <i className="fa-solid fa-close"></i>
+        </span>
+
         <h2 className="sc-tl">{editId ? "Edit Location" : "Add Location"}</h2>
 
         <input
@@ -140,11 +159,10 @@ export default function OwnerLocations() {
         cellPadding="10"
         cellSpacing="0"
         width="100%"
-        className="stripe"
       >
         <thead>
           <tr>
-            <th>Sr No</th>
+            {/* <th>Sr No</th> */}
             <th>Name</th>
             <th>Address</th>
             <th>Phone</th>
@@ -161,7 +179,7 @@ export default function OwnerLocations() {
           ) : (
             locations.map((loc, index) => (
               <tr key={loc._id}>
-                <td>{index + 1}</td>
+                {/* <td>{index + 1}</td> */}
                 <td>{loc.name}</td>
                 <td>{loc.address}</td>
                 <td>{loc.phone}</td>

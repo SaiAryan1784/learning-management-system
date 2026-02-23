@@ -11,6 +11,7 @@ export default function CourseModules() {
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState(null);
+  const [openPop, setOpenPop] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -76,6 +77,7 @@ export default function CourseModules() {
       }
 
       resetForm();
+      setOpenPop(false);
       loadModules();
     } catch (err) {
       console.log(err);
@@ -91,7 +93,7 @@ export default function CourseModules() {
       description: m.description,
       order: m.order,
     });
-
+    setOpenPop(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -113,12 +115,27 @@ export default function CourseModules() {
           Please add your course module's and take a look at your business.
         </p>
       </div>
+      <div className="tp-sc">
+        <span className="snd-btn" 
+        onClick={() => {
+          resetForm();
+          setOpenPop(true);
+        }}>Add Course Module</span>
+        <Link to="/dashboard/courses" className="logout-btn">
+          <i className="fa-solid fa-arrow-left"></i>
+            <span className="tooltiptext">Back to courses</span>
 
-      {/* FORM */}
-      <div className="frm-cntr">
-        <Link className="logout-btn" to="/dashboard/courses">
-          <i className="fa-solid fa-arrow-left"></i> Courses
         </Link>
+      </div>
+      <div className={`frm-cntr ${openPop ? "open" : ""}`}>
+        <span className="logout-btn"
+          onClick={() => {
+            setOpenPop(false);
+            resetForm();
+          }}
+        >
+          <i className="fa-solid fa-close"></i>
+        </span>
 
         <h2 className="sc-tl">
           {editId ? "Edit Module" : "Add Module"}
@@ -186,7 +203,6 @@ export default function CourseModules() {
         >
           <thead>
             <tr>
-              <th>Sr No</th>
               <th>Title</th>
               <th>Description</th>
               <th>Order</th>
@@ -196,7 +212,6 @@ export default function CourseModules() {
           <tbody>
             {modules.map((m, i) => (
               <tr key={m._id}>
-                <td>{i + 1}</td>
                 <td>{m.title}</td>
                 <td>{m.description}</td>
                 <td>{m.order}</td>

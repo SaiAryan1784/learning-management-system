@@ -8,6 +8,7 @@ export default function CourseCategories() {
   const [categories, setCategories] = useState([]);
   const [form, setForm] = useState({ name: "", description: "" });
   const [editId, setEditId] = useState(null);
+  const [openPop, setOpenPop] = useState(false);
 
   // ✅ Load Categories
   const loadCategories = async () => {
@@ -57,6 +58,7 @@ export default function CourseCategories() {
       }
 
       resetForm();
+      setOpenPop(false);
       loadCategories();
     } catch (err) {
       toastr.error("Something went wrong", "error");
@@ -70,6 +72,8 @@ export default function CourseCategories() {
       description: cat.description,
     });
     setEditId(cat._id);
+      setOpenPop(true);
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -84,12 +88,26 @@ export default function CourseCategories() {
         <h1 className="wlc-tl">COURSE CATEGORIE'S</h1>
         <p className="wlc-ms">Please add the course categorie's and take a look at your business.</p>
       </div>
-
-      {/* Form */}
-      <div className="frm-cntr">
-        <Link className="logout-btn" to="/dashboard">
+      <div className="tp-sc">
+        <span className="snd-btn" 
+        onClick={() => {
+          resetForm();
+          setOpenPop(true);
+        }}>Add Course Category</span>
+        <Link to="/dashboard" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
+      </div>
+      {/* Form */}
+      <div className={`frm-cntr ${openPop ? "open" : ""}`}>
+        <span className="logout-btn"
+          onClick={() => {
+            setOpenPop(false);
+            resetForm();
+          }}
+        >
+          <i className="fa-solid fa-close"></i>
+        </span>
 
         <h2 className="sc-tl">
           {editId ? "Edit Category" : "Add Category"}
@@ -137,7 +155,6 @@ export default function CourseCategories() {
       >
         <thead>
           <tr>
-            <th>Sr No</th>
             <th>Name</th>
             <th>Description</th>
             <th>Status</th>
@@ -154,7 +171,6 @@ export default function CourseCategories() {
           ) : (
             categories.map((c, i) => (
               <tr key={`${c.id || c._id}-${i}`}>
-                <td>{i + 1}</td>
                 <td>{c.name}</td>
                 <td>{c.description}</td>
                 <td>{c.active ? "Active" : "Inactive"}</td>

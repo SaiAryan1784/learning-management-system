@@ -10,17 +10,19 @@ export default function CourseAssign() {
 
   const [staff, setStaff] = useState([]);
   const [selected, setSelected] = useState([]);
+  const [showPopup, setShowPopup] = useState(false);
+  const [dueDate, setDueDate] = useState("");
+  const [loading, setLoading] = useState(false); // ✅ added
 
   // ---------------- LOAD STAFF ----------------
   const loadStaff = async () => {
     try {
       if ($.fn.DataTable.isDataTable("#staffTable")) {
-        $("#staffTable").DataTable().destroy();
+        $("#staffTable").DataTable().clear().destroy();
       }
 
       const res = await api.get("/staff");
 
-      // ✅ only accepted staff
       const acceptedStaff =
         (res.data.staff || []).filter(
           (s) => s.inviteStatus === "accepted"
@@ -39,7 +41,10 @@ export default function CourseAssign() {
   useEffect(() => {
     if (staff.length > 0) {
       setTimeout(() => {
-        $("#staffTable").DataTable();
+        $("#staffTable").DataTable({
+          destroy: true,
+          pageLength: 10,
+        });
       }, 100);
     }
   }, [staff]);
@@ -57,19 +62,47 @@ export default function CourseAssign() {
     setSelected(checked ? staff.map((s) => s._id) : []);
   };
 
-  // ---------------- ASSIGN ----------------
-  const handleAssign = async () => {
+  // ---------------- OPEN POPUP ----------------
+  const openAssignPopup = () => {
     if (selected.length === 0)
       return toastr.error("Select at least one staff");
 
+    setShowPopup(true);
+  };
+
+  // ---------------- CONFIRM ASSIGN ----------------
+  const confirmAssign = async () => {
+    if (!dueDate)
+      return toastr.error("Please select due date");
+
     try {
+      setLoading(true); // ✅ prevent double click
+
       await api.post(`/courses/${courseId}/assign`, {
         staffIds: selected,
+        dueDate: new Date(dueDate).toISOString(),
       });
 
-      toastr.success("Staff assigned to course");
+      toastr.success("Course assigned successfully");
+
+      setShowPopup(false);
+      setSelected([]);
+      setDueDate("");
+
+      await loadStaff(); // ✅ refresh table
+
     } catch (err) {
-      toastr.error(err.response?.data?.error || "Assign failed");
+      if (err.response?.status === 409) {
+        toastr.warning(
+          "Some selected staff were already assigned. Due date updated."
+        );
+      } else {
+        toastr.error(
+          err.response?.data?.error || "Assign failed"
+        );
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,24 +111,27 @@ export default function CourseAssign() {
       <div className="dash-tp">
         <h1 className="wlc-tl">ASSIGN STAFF TO COURSE</h1>
         <p className="wlc-ms">
-          Please assign staff to course and take a look at your business.
+          Please assign staff to course.
         </p>
       </div>
 
       {/* TOP BUTTON */}
-      <div className="frm-cntr">
+      <div className="tp-sc">
+        <span
+          className="snd-btn"
+          onClick={openAssignPopup}
+          style={{
+            opacity: selected.length === 0 ? 0.6 : 1,
+            pointerEvents: selected.length === 0 ? "none" : "auto",
+          }}
+        >
+          Assign Course To Selected Staff
+        </span>
+
         <Link className="logout-btn" to="/dashboard/courses">
-          <i className="fa-solid fa-arrow-left"></i> Courses
+          <i className="fa-solid fa-arrow-left"></i>
+          <span className="tooltiptext">Back to courses</span>
         </Link>
-        <h2 className="sc-tl">Assign Staff To Course</h2>
-        <div style={{ margin: "20px auto",display:"block",width:"max-content" }}>
-            <span
-              className="snd-btn"
-              onClick={handleAssign}
-            >
-              Assign Course To Selected Staff
-            </span>
-          </div>
       </div>
 
       {/* TABLE */}
@@ -104,65 +140,139 @@ export default function CourseAssign() {
           <h3>No accepted staff available.</h3>
         </div>
       ) : (
-        <>
-          <table
-            id="staffTable"
-            border="1"
-            cellPadding="10"
-            cellSpacing="0"
-            width="100%"
-          >
-            <thead>
-              <tr>
-                <th>
+        <table
+          id="staffTable"
+          border="1"
+          cellPadding="10"
+          cellSpacing="0"
+          width="100%"
+        >
+          <thead>
+            <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  onChange={(e) =>
+                    handleSelectAll(e.target.checked)
+                  }
+                  checked={
+                    selected.length === staff.length &&
+                    staff.length > 0
+                  }
+                />
+              </th>
+              <th>Sr No</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Locations</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {staff.map((s, i) => (
+              <tr
+                key={s._id}
+                style={{
+                  background: selected.includes(s._id)
+                    ? "#f0f6ff"
+                    : "transparent",
+                }}
+              >
+                <td>
                   <input
                     type="checkbox"
-                    onChange={(e) =>
-                      handleSelectAll(e.target.checked)
-                    }
-                    checked={selected.length === staff.length}
+                    checked={selected.includes(s._id)}
+                    onChange={() => handleSelect(s._id)}
                   />
-                </th>
-                <th>Sr No</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Locations</th>
+                </td>
+                <td>{i + 1}</td>
+                <td>{s.user?.name || "—"}</td>
+                <td>{s.email}</td>
+                <td>{s.role?.name || "—"}</td>
+                <td>
+                  {s.locations?.length > 0
+                    ? s.locations.map((l) => l.name).join(", ")
+                    : "Org Wide"}
+                </td>
               </tr>
-            </thead>
-
-            <tbody>
-              {staff.map((s, i) => (
-                <tr
-                  key={s._id}
-                  style={{
-                    background: selected.includes(s._id)
-                      ? "#f0f6ff"
-                      : "transparent",
-                  }}
-                >
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(s._id)}
-                      onChange={() => handleSelect(s._id)}
-                    />
-                  </td>
-                  <td>{i + 1}</td>
-                  <td>{s.user?.name || "—"}</td>
-                  <td>{s.email}</td>
-                  <td>{s.role?.name || "—"}</td>
-                  <td>
-                    {s.locations?.length > 0
-                      ? s.locations.map((l) => l.name).join(", ")
-                      : "Org Wide"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
+            ))}
+          </tbody>
+        </table>
       )}
+
+      {/* ASSIGN POPUP */}
+      {showPopup && (
+        <div className="popup-overlay">
+          <div className="popup-box">
+            <h3>Assign Course</h3>
+
+            <p>
+              You selected <b>{selected.length}</b> staff.
+            </p>
+
+            <div style={{ margin: "15px 0" }}>
+              <label>Due Date</label>
+              <input
+                type="datetime-local"
+                value={dueDate}
+                onChange={(e) =>
+                  setDueDate(e.target.value)
+                }
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  marginTop: "5px",
+                }}
+              />
+            </div>
+
+            <div style={{ marginTop: "20px" }}>
+              <button
+                className="snd-btn"
+                onClick={confirmAssign}
+                disabled={loading}
+              >
+                {loading ? "Assigning..." : "Confirm Assign"}
+              </button>
+
+              <button
+                style={{
+                  marginLeft: "10px",
+                  padding: "8px 15px",
+                }}
+                onClick={() => setShowPopup(false)}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .popup-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0,0,0,0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 999;
+        }
+
+        .popup-box {
+          background: #fff;
+          padding: 25px;
+          border-radius: 8px;
+          width: 400px;
+          box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+      `}</style>
     </div>
   );
 }

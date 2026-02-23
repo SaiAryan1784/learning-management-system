@@ -21,11 +21,14 @@ export default function OSCourse() {
   });
 
   const [editId, setEditId] = useState(null);
+  const [openPop, setOpenPop] = useState(false);
 
   // ---------------- LOAD DATA ----------------
   const loadCategories = async () => {
     try {
-      const res = await api.get("/course-categories?active=true&page=1&limit=100");
+      const res = await api.get(
+        "/course-categories?active=true&page=1&limit=100"
+      );
       setCategories(res.data.categories || []);
     } catch {
       toastr.error("Error loading categories");
@@ -66,22 +69,30 @@ export default function OSCourse() {
         { data: "title" },
         {
           data: null,
-          render: (data) => {
-            const catId = data.categories?.[0];
-            const cat = categories.find((c) => c._id === catId);
-            return cat?.name || "";
-          },
+          render: (data) =>
+            data.categories?.map((cat) => cat.name).join(", ") || "",
         },
         { data: "status" },
         {
           data: null,
           orderable: false,
-          render: () => `
+          render: (data) => `
             <div class="act-btns">
               <span class="logout-btn edit-btn">
                 <i class="fa fa-edit"></i>
                 <span class="tooltiptext">Edit course</span>
               </span>
+
+              ${
+                data.status === "draft"
+                  ? `
+                <span class="logout-btn publish-btn" style="margin-left:8px;">
+                  <i class="fa fa-check"></i>
+                  <span class="tooltiptext">Publish</span>
+                </span>
+              `
+                  : ""
+              }
 
               <span class="logout-btn module-btn" style="margin-left:8px;">
                 <i class="fa fa-book"></i>
@@ -98,24 +109,52 @@ export default function OSCourse() {
       ],
     });
 
-    // -------- EDIT CLICK --------
+    // CLEAN OLD EVENTS
+    $(tableRef.current).off("click", ".edit-btn");
+    $(tableRef.current).off("click", ".module-btn");
+    $(tableRef.current).off("click", ".assign-btn");
+    $(tableRef.current).off("click", ".publish-btn");
+
+    // EDIT
     $(tableRef.current).on("click", ".edit-btn", function () {
-      const rowData = dtRef.current.row($(this).closest("tr")).data();
+      const rowData = dtRef.current
+        .row($(this).closest("tr"))
+        .data();
       handleEdit(rowData);
     });
 
-    // -------- MODULE CLICK --------
+    // MODULE
     $(tableRef.current).on("click", ".module-btn", function () {
-      const rowData = dtRef.current.row($(this).closest("tr")).data();
+      const rowData = dtRef.current
+        .row($(this).closest("tr"))
+        .data();
       window.location.href = `/dashboard/courses/${rowData._id}/modules`;
     });
 
-    // -------- ASSIGN STAFF CLICK --------
+    // ASSIGN
     $(tableRef.current).on("click", ".assign-btn", function () {
-      const rowData = dtRef.current.row($(this).closest("tr")).data();
+      const rowData = dtRef.current
+        .row($(this).closest("tr"))
+        .data();
       window.location.href = `/dashboard/courses/${rowData._id}/assign`;
     });
-  }, [courses, categories, activeTab]);
+
+    // PUBLISH (PATCH)
+    $(tableRef.current).on("click", ".publish-btn", async function () {
+      const rowData = dtRef.current
+        .row($(this).closest("tr"))
+        .data();
+
+      try {
+        await api.patch(`/courses/${rowData._id}/publish`);
+        toastr.success("Course published successfully");
+        loadCourses();
+      } catch {
+        toastr.error("Error publishing course");
+      }
+    });
+
+  }, [courses, activeTab]);
 
   // ---------------- FORM SUBMIT ----------------
   const handleSubmit = async () => {
@@ -129,17 +168,29 @@ export default function OSCourse() {
     };
 
     try {
-      if (editId) {
-        await api.put(`/courses/${editId}`, body);
-        toastr.success("Course updated");
+      let courseId = editId;
+
+      if (!editId) {
+        const res = await api.post("/courses", body);
+        courseId = res.data._id || res.data.id;
+        toastr.success("Course added successfully");
       } else {
-        await api.post("/courses", body);
-        toastr.success("Course added");
+        await api.put(`/courses/${editId}`, body);
+        toastr.success("Course updated successfully");
+      }
+
+      // Publish if selected
+      if (form.status === "published") {
+        await api.patch(`/courses/${courseId}/publish`);
+        toastr.success("Course published successfully");
       }
 
       resetForm();
+      setOpenPop(false);
       loadCourses();
-    } catch {
+
+    } catch (err) {
+      console.log(err);
       toastr.error("Error saving course");
     }
   };
@@ -153,7 +204,7 @@ export default function OSCourse() {
       categoryId: c.categories?.[0]?._id || "",
       status: c.status,
     });
-
+    setOpenPop(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -172,21 +223,48 @@ export default function OSCourse() {
       <div className="dash-tp">
         <h1 className="wlc-tl">COURSE'S</h1>
         <p className="wlc-ms">
-          Please add your courses's and take a look at your business.
+          Please add your courses and manage your business.
         </p>
       </div>
 
-      {/* FORM */}
-      <div className="frm-cntr">
-        <Link className="logout-btn" to="/dashboard"><i className="fa-solid fa-arrow-left"></i></Link>
+      <div className="tp-sc">
+        <span
+          className="snd-btn"
+          onClick={() => {
+            resetForm();
+            setOpenPop(true);
+          }}
+        >
+          Add Course
+        </span>
 
-        <h2 className="sc-tl">{editId ? "Edit Course" : "Add Course"}</h2>
+        <Link to="/dashboard" className="logout-btn">
+          <i className="fa-solid fa-arrow-left"></i>
+        </Link>
+      </div>
+
+      <div className={`frm-cntr ${openPop ? "open" : ""}`}>
+        <span
+          className="logout-btn"
+          onClick={() => {
+            setOpenPop(false);
+            resetForm();
+          }}
+        >
+          <i className="fa-solid fa-close"></i>
+        </span>
+
+        <h2 className="sc-tl">
+          {editId ? "Edit Course" : "Add Course"}
+        </h2>
 
         <input
           className="login-ip"
           placeholder="Course Title"
           value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, title: e.target.value })
+          }
         />
 
         <textarea
@@ -194,24 +272,32 @@ export default function OSCourse() {
           placeholder="Description"
           value={form.description}
           rows="6"
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, description: e.target.value })
+          }
         />
 
         <select
           className="login-ip"
           value={form.categoryId}
-          onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, categoryId: e.target.value })
+          }
         >
           <option value="">Select Category</option>
           {categories.map((cat) => (
-            <option key={cat._id} value={cat._id}>{cat.name}</option>
+            <option key={cat._id} value={cat._id}>
+              {cat.name}
+            </option>
           ))}
         </select>
 
         <select
           className="login-ip"
           value={form.status}
-          onChange={(e) => setForm({ ...form, status: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, status: e.target.value })
+          }
         >
           <option value="draft">Draft</option>
           <option value="published">Published</option>
@@ -232,23 +318,26 @@ export default function OSCourse() {
         )}
       </div>
 
-      {/* TABS */}
       <div className="pg-tabs">
         <span
-          className={`pg-tb ${activeTab === "draft" ? "active-tab" : ""}`}
+          className={`pg-tb ${
+            activeTab === "draft" ? "active-tab" : ""
+          }`}
           onClick={() => setActiveTab("draft")}
         >
           Draft
         </span>
+
         <span
-          className={`pg-tb ${activeTab === "published" ? "active-tab" : ""}`}
+          className={`pg-tb ${
+            activeTab === "published" ? "active-tab" : ""
+          }`}
           onClick={() => setActiveTab("published")}
         >
           Published
         </span>
       </div>
 
-      {/* TABLE */}
       <table
         ref={tableRef}
         border="1"

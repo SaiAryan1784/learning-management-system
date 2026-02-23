@@ -8,43 +8,61 @@ export const AuthProvider = ({ children }) => {
   const [access, setAccess] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 🔥 Restore auth from localStorage on app load
   useEffect(() => {
-    const storedUser = localStorage.getItem("lmsUser");
-    const storedRole = localStorage.getItem("lmsRole");
-    const storedAccess = localStorage.getItem("lmsAccess");
+    try {
+      const storedUser = localStorage.getItem("lmsUser");
+      const storedRole = localStorage.getItem("lmsRole");
+      const storedAccess = localStorage.getItem("lmsAccess");
 
-    if (storedUser) setUser(JSON.parse(storedUser));
-    if (storedRole) setRole(JSON.parse(storedRole));
-    if (storedAccess) setAccess(JSON.parse(storedAccess));
-
-    setLoading(false);
+      if (storedUser) setUser(JSON.parse(storedUser));
+      if (storedRole) setRole(JSON.parse(storedRole));
+      if (storedAccess) setAccess(JSON.parse(storedAccess));
+    } catch (error) {
+      console.error("Auth restore error:", error);
+      localStorage.clear();
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  // 🔐 Login function
   const login = (data) => {
-    localStorage.setItem("accessToken", data.accessToken.accessToken);
-    localStorage.setItem("lmsUser", JSON.stringify(data.user));
-    localStorage.setItem("lmsRole", JSON.stringify(data.role));
-    localStorage.setItem("lmsAccess", JSON.stringify(data.access));
+    try {
+      localStorage.setItem("accessToken", data.accessToken?.accessToken);
+      localStorage.setItem("lmsUser", JSON.stringify(data.user));
+      localStorage.setItem("lmsRole", JSON.stringify(data.role));
+      localStorage.setItem("lmsAccess", JSON.stringify(data.access));
 
-    // 🔥 Only owner has organization
-    if (data.organization?.id) {
-      localStorage.setItem("organizationId", data.organization.id);
-    } else {
-      localStorage.removeItem("organizationId");
+      // 🔥 Only owner/admin has organization
+      if (data.organization?.id) {
+        localStorage.setItem("organizationId", data.organization.id);
+      } else {
+        localStorage.removeItem("organizationId");
+      }
+
+      setUser(data.user);
+      setRole(data.role);
+      setAccess(data.access);
+    } catch (error) {
+      console.error("Login storage error:", error);
     }
-
-    setUser(data.user);
-    setRole(data.role);
-    setAccess(data.access);
   };
 
+  // 🚪 Logout function
   const logout = () => {
-    localStorage.clear();
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("lmsUser");
+    localStorage.removeItem("lmsRole");
+    localStorage.removeItem("lmsAccess");
+    localStorage.removeItem("organizationId");
+
     setUser(null);
     setRole(null);
     setAccess(null);
   };
 
+  // 👑 Super Admin check
   const isSuperAdmin = user?.isPlatformAdmin === true;
 
   return (
@@ -53,9 +71,9 @@ export const AuthProvider = ({ children }) => {
         user,
         role,
         access,
+        loading,
         login,
         logout,
-        loading,
         isSuperAdmin,
       }}
     >
@@ -64,4 +82,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// Custom Hook
 export const useAuth = () => useContext(AuthContext);
