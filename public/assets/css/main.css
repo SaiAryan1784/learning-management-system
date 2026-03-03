@@ -2108,7 +2108,7 @@ section,
 
 .faq .faq-list .faq-item .faq-content {
   padding: 15px;
-  display: none;
+  display: block;
 }
 
 .faq .faq-list .faq-item .faq-content p {
