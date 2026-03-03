@@ -1,34 +1,24 @@
-import { Outlet, useNavigate, NavLink, useLocation } from "react-router-dom";
+import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { useEffect } from "react";
+import { useState } from "react";
 
 export default function DashboardLayout() {
-  const { logout, isSuperAdmin, access } = useAuth();
+  const { logout, user, access, loading, hasPermission } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const isOwner = !isSuperAdmin && access?.orgWide;
-  const isStaff = !isSuperAdmin && !access?.orgWide;
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [profileOpen, setProfileOpen] = useState(false);
 
-//   useEffect(() => {
-//   if (!access) return;
+  if (loading) return null;
 
-//   if (location.pathname !== "/dashboard") return;
+  // ================= ROLE DETECTION =================
+  const isSuperAdmin = user?.isPlatformAdmin === true;
 
-//   let targetPath = null;
+  const isOwnerAdmin =
+    !isSuperAdmin && access?.orgWide === true;
 
-//   if (isSuperAdmin) {
-//     targetPath = "/dashboard/modules";
-//   } else if (isOwner) {
-//     targetPath = "/dashboard/manager";
-//   } else if (isStaff) {
-//     targetPath = "/dashboard/staff";
-//   }
-
-//   if (targetPath && location.pathname !== targetPath) {
-//     navigate(targetPath, { replace: true });
-//   }
-// }, [access]); // ✅ ONLY depend on access
+  const isStaff =
+    !isSuperAdmin && access?.orgWide !== true;
 
   const handleLogout = () => {
     logout();
@@ -41,11 +31,63 @@ export default function DashboardLayout() {
   const navGridClass = ({ isActive }) =>
     isActive ? "nav-item-grid active" : "nav-item-grid";
 
+  // ================= MENU CONFIG =================
+  const managementMenu = [
+    {
+      label: "Locations",
+      icon: "fa-location-dot",
+      path: "/dashboard/locations",
+      permission: "locations:read",
+    },
+    {
+      label: "Roles",
+      icon: "fa-user-gear",
+      path: "/dashboard/roles",
+      permission: "roles:read",
+    },
+    {
+      label: "Staff",
+      icon: "fa-users",
+      path: "/dashboard/staff",
+      permission: "staff:read",
+    },
+    {
+      label: "Categories",
+      icon: "fa-book-open-reader",
+      path: "/dashboard/course-categories",
+      permission: "course-categories:read",
+    },
+    {
+      label: "Courses",
+      icon: "fa-book",
+      path: "/dashboard/courses",
+      permission: "courses:read",
+    },
+    {
+      label: "Assessments",
+      icon: "fa-clipboard-check",
+      path: "/dashboard/assessments",
+      permission: "assessments:read",
+    },
+    {
+      label: "Certificates",
+      icon: "fa-certificate",
+      path: "/dashboard/certificates",
+      permission: "certificates:read",
+    },
+  ];
+
   return (
-    <div className="dash-cnt">
+    <div className={`dash-cnt ${sidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
+      
+      {/* ================= SIDEBAR ================= */}
       <nav className="sidebar">
         <div className="logo">
-          <img src="/images/lms-logo.png" className="nv-img" alt="Brand Logo" />
+          <img
+            src="/images/lms-logo.png"
+            className="nv-img"
+            alt="Brand Logo"
+          />
         </div>
 
         <NavLink to="/dashboard" end className={navFullClass}>
@@ -63,40 +105,17 @@ export default function DashboardLayout() {
           </div>
         )}
 
-        {/* OWNER / MANAGER */}
-        {(isOwner || isSuperAdmin) && (
+        {/* OWNER / ADMIN */}
+        {isOwnerAdmin && (
           <>
             <h3 className="menu-heading">MANAGEMENT</h3>
-
             <div className="nav-grid">
-              <NavLink to="/dashboard/locations" className={navGridClass}>
-                <i className="fa-solid fa-location-dot"></i>
-                <span>Locations</span>
-              </NavLink>
-
-              <NavLink to="/dashboard/roles" className={navGridClass}>
-                <i className="fa-solid fa-user-gear"></i>
-                <span>Roles</span>
-              </NavLink>
-
-              <NavLink to="/dashboard/staff" className={navGridClass}>
-                <i className="fa-solid fa-users"></i>
-                <span>Staff</span>
-              </NavLink>
-
-              {/* ✅ FIXED STAFF PROGRESS ROUTE */}
-              <NavLink
-                to="/dashboard/course-categories"
-                className={navGridClass}
-              >
-                <i className="fa-solid fa-book-open-reader"></i>
-                <span>Categories</span>
-              </NavLink>
-
-              <NavLink to="/dashboard/courses" className={navGridClass}>
-                <i className="fa-solid fa-book"></i>
-                <span>Courses</span>
-              </NavLink>
+              {managementMenu.map((item) => (
+                <NavLink key={item.path} to={item.path} className={navGridClass}>
+                  <i className={`fa-solid ${item.icon}`}></i>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
             </div>
           </>
         )}
@@ -104,21 +123,62 @@ export default function DashboardLayout() {
         {/* STAFF */}
         {isStaff && (
           <div className="nav-grid">
-            <NavLink to="/dashboard/staff" className={navGridClass}>
-              <i className="fa-solid fa-graduation-cap"></i>
-              <span>My Courses</span>
-            </NavLink>
+            {managementMenu
+              .filter((item) =>
+                hasPermission?.(item.permission)
+              )
+              .map((item) => (
+                <NavLink key={item.path} to={item.path} className={navGridClass}>
+                  <i className={`fa-solid ${item.icon}`}></i>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
           </div>
         )}
       </nav>
 
+      {/* ================= MAIN CONTENT ================= */}
       <div className="main-data">
         <div className="main-hdr">
           <div className="mx-wd">
             <div className="hdr-wp">
-              <span className="logout-btn" onClick={handleLogout}>
-                <i className="fa-solid fa-sign-out"></i>
+
+              {/* HAMBURGER */}
+              <span
+                className="hamburger-btn"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              >
+                <i className="fa-solid fa-bars"></i>
               </span>
+
+              {/* PROFILE DROPDOWN */}
+              <div
+                className="profile-section"
+                onClick={() => setProfileOpen(!profileOpen)}
+              >
+                {/* <img
+                  src={user?.profileImage || "/images/profile.png"}
+                  alt="Profile"
+                  className="profile-img"
+                /> */}
+                <span className="profile-name">
+                  {user?.name || "User"}
+                </span>
+                <i className="fa-solid fa-chevron-down"></i>
+
+                {profileOpen && (
+                  <div className="profile-dropdown">
+                    <div
+                      className="dropdown-item logout"
+                      onClick={handleLogout}
+                    >
+                      <i className="fa-solid fa-sign-out"></i>
+                      Logout
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         </div>

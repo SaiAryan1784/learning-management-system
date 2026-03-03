@@ -17,48 +17,53 @@ import CourseModules from "./pages/dashboard/CourseModules";
 import ModuleLessions from "./pages/dashboard/ModuleLessions";
 import CourseAssignStaff from "./pages/dashboard/CourseAssignStaff";
 
-import MyCourses from "./pages/dashboard/MyCourses";
 import StaffLessonView from "./pages/staff/StaffLessonView";
 import StaffDashboard from "./pages/staff/StaffDashboard";
-
+import CourseAssessments from "./pages/staff/CourseAssessments";
+import AssessmentAttempt from "./pages/staff/AssessmentAttempt";
 import ManagerStaffDetails from "./pages/dashboard/ManagerStaffDetails";
 import ManagerDashboard from "./pages/dashboard/ManagerDashboard";
-
+import OSAssessment from "./pages/assessments/OSAssessment";
+import StaffCertificates from "./pages/staff/StaffCertificates";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 
-// ================= SUPER ADMIN ROUTE =================
+// ================= PERMISSION ROUTE =================
+const PermissionRoute = ({ permission, children }) => {
+  const { user, access, loading, hasPermission } = useAuth();
+
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+
+  const isSuperAdmin = user?.isPlatformAdmin === true;
+  const isOwnerAdmin = !isSuperAdmin && access?.orgWide === true;
+  const isStaff = !isSuperAdmin && access?.orgWide !== true;
+
+  // Super Admin → full access
+  if (isSuperAdmin) return children;
+
+  // Owner/Admin → org wide access
+  if (isOwnerAdmin) return children;
+
+  // Staff → permission required
+  if (isStaff && permission && !hasPermission(permission)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
+
+// ================= SUPER ADMIN ONLY =================
 const SuperAdminRoute = ({ children }) => {
-  const { user, isSuperAdmin, loading } = useAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
-  return isSuperAdmin ? children : <Navigate to="/dashboard" replace />;
-};
+  const { user, loading } = useAuth();
 
-
-// ================= OWNER / MANAGER ROUTE =================
-const OwnerRoute = ({ children }) => {
-  const { user, role, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
 
-  if (user?.isPlatformAdmin === true) return children;
-  if (role?.name === "Owner" || role?.name === "Admin") return children;
-
-  return <Navigate to="/dashboard" replace />;
-};
-
-
-// ================= STAFF ROUTE =================
-const StaffRoute = ({ children }) => {
-  const { user, role, isSuperAdmin, loading } = useAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
-
-  if (isSuperAdmin) return <Navigate to="/dashboard" replace />;
-  if (role?.name !== "Owner" && role?.name !== "Admin") return children;
-
-  return <Navigate to="/dashboard" replace />;
+  return user?.isPlatformAdmin === true
+    ? children
+    : <Navigate to="/dashboard" replace />;
 };
 
 
@@ -82,11 +87,9 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-
-            {/* Default Dashboard */}
             <Route index element={<Admin />} />
 
-            {/* ================= SUPER ADMIN ================= */}
+            {/* SUPER ADMIN */}
             <Route
               path="modules"
               element={
@@ -96,125 +99,149 @@ export default function App() {
               }
             />
 
-            {/* ================= OWNER / MANAGER ================= */}
+            {/* OWNER / ADMIN (ORG-WIDE) + STAFF (PERMISSION BASED) */}
 
-            {/* Manager Dashboard */}
             <Route
               path="manager"
               element={
-                <OwnerRoute>
+                <PermissionRoute permission="reports:read">
                   <ManagerDashboard />
-                </OwnerRoute>
+                </PermissionRoute>
               }
             />
 
-            {/* Staff Progress Details */}
             <Route
               path="staff-progress/:staffId"
               element={
-                <OwnerRoute>
+                <PermissionRoute permission="progress:read">
                   <ManagerStaffDetails />
-                </OwnerRoute>
+                </PermissionRoute>
               }
             />
 
-            {/* Owner Staff List */}
             <Route
               path="staff"
               element={
-                <OwnerRoute>
+                <PermissionRoute permission="staff:read">
                   <OwnerStaff />
-                </OwnerRoute>
+                </PermissionRoute>
               }
             />
-
+            <Route
+              path="certificates"
+              element={
+                <PermissionRoute permission="certificates:read">
+                  <StaffCertificates />
+                </PermissionRoute>
+              }
+            />
             <Route
               path="locations"
               element={
-                <OwnerRoute>
+                <PermissionRoute permission="locations:read">
                   <OwnerLocations />
-                </OwnerRoute>
+                </PermissionRoute>
               }
             />
 
             <Route
               path="roles"
               element={
-                <OwnerRoute>
+                <PermissionRoute permission="roles:read">
                   <OwnerRoles />
-                </OwnerRoute>
+                </PermissionRoute>
               }
             />
 
             <Route
               path="course-categories"
               element={
-                <OwnerRoute>
+                <PermissionRoute permission="course-categories:read">
                   <CourseCategories />
-                </OwnerRoute>
+                </PermissionRoute>
               }
             />
 
             <Route
               path="courses"
               element={
-                <OwnerRoute>
+                <PermissionRoute permission="courses:read">
                   <OSCourses />
-                </OwnerRoute>
+                </PermissionRoute>
               }
             />
-
+            <Route
+              path="assessments"
+              element={
+                <PermissionRoute permission="assessments:read">
+                  <OSAssessment />
+                </PermissionRoute>
+              }
+            />
             <Route
               path="courses/:courseId/modules"
               element={
-                <OwnerRoute>
+                <PermissionRoute permission="course-modules:read">
                   <CourseModules />
-                </OwnerRoute>
+                </PermissionRoute>
               }
             />
 
             <Route
               path="courses/:courseId/modules/:moduleId/lessons"
               element={
-                <OwnerRoute>
+                <PermissionRoute permission="lessons:read">
                   <ModuleLessions />
-                </OwnerRoute>
+                </PermissionRoute>
               }
             />
 
             <Route
               path="courses/:courseId/assign"
               element={
-                <OwnerRoute>
+                <PermissionRoute permission="courses:assign">
                   <CourseAssignStaff />
-                </OwnerRoute>
+                </PermissionRoute>
               }
             />
+          
+            {/* STAFF DASHBOARD */}
 
-            {/* ================= STAFF ================= */}
-
-            {/* Staff Personal Dashboard */}
             <Route
               path="my-dashboard"
               element={
-                <StaffRoute>
+                <PermissionRoute permission="progress:read">
                   <StaffDashboard />
-                </StaffRoute>
+                </PermissionRoute>
               }
             />
 
-            {/* Staff Lesson View */}
             <Route
               path="staff/course/:courseId/lesson/:lessonId"
               element={
-                <StaffRoute>
+                <PermissionRoute permission="lessons:read">
                   <StaffLessonView />
-                </StaffRoute>
+                </PermissionRoute>
               }
             />
-
+            <Route
+              path="staff/course/:courseId/assessments"
+              element={
+                <PermissionRoute permission="progress:read">
+                  <CourseAssessments />
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="/dashboard/staff/assessment/:assessmentId/:courseId"
+              element={
+                <PermissionRoute permission="progress:read">
+                  <AssessmentAttempt />
+                </PermissionRoute>
+              }
+            />
           </Route>
-
+          
         </Routes>
       </BrowserRouter>
     </AuthProvider>

@@ -98,11 +98,10 @@ export default function ManagerDashboard() {
                   <i className="bi bi-people-fill"></i>
                 </div>
                 <div className="stats-content">
+                  <p>Total Staff</p>
                   <div className="stats-number">
                     {totalStaff}
-                    <span className="plus">+</span>
                   </div>
-                  <p>Total Staff</p>
                 </div>
               </div>
 
@@ -112,11 +111,11 @@ export default function ManagerDashboard() {
                   <i className="bi bi-graph-up"></i>
                 </div>
                 <div className="stats-content">
+                  <p>Average Completion</p>
                   <div className="stats-number">
                     {avgProgress}
                     <span className="plus">%</span>
                   </div>
-                  <p>Average Completion</p>
                 </div>
               </div>
 
@@ -126,11 +125,11 @@ export default function ManagerDashboard() {
                   <i className="bi bi-exclamation-circle"></i>
                 </div>
                 <div className="stats-content">
+                  <p>Overdue Courses</p>
+
                   <div className="stats-number">
                     {totalOverdue}
-                    <span className="plus">+</span>
                   </div>
-                  <p>Overdue Courses</p>
                 </div>
               </div>
 

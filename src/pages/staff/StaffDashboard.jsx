@@ -67,12 +67,12 @@ export default function StaffDashboard() {
 
   const getButtonText = (course) => {
     if (course.totalLessons === 0)
-      return "No Lessons Available";
+      return "No Lessons";
     if (course.progressPercent === 100)
-      return "Review Course";
+      return "Review";
     if (course.progressPercent > 0)
-      return "Resume Course";
-    return "Start Course";
+      return "Resume";
+    return "Start";
   };
 
   if (loading)
@@ -132,24 +132,22 @@ export default function StaffDashboard() {
                     <i className="bi bi-journal-bookmark-fill"></i>
                   </div>
                   <div className="stats-content">
+                    <p>Total Courses</p>
                     <div className="stats-number">
                       {summary.totalAssignedCourses}
-                      <span className="plus">+</span>
                     </div>
-                    <p>Total Courses</p>
                   </div>
                 </div>
 
-                <div className="stats-card">
+                <div className="stats-card comp">
                   <div className="stats-icon">
                     <i className="bi bi-check-circle-fill"></i>
                   </div>
                   <div className="stats-content">
+                    <p>Completed</p>
                     <div className="stats-number">
                       {summary.completedCourses}
-                      <span className="plus">+</span>
                     </div>
-                    <p>Completed</p>
                   </div>
                 </div>
 
@@ -158,11 +156,10 @@ export default function StaffDashboard() {
                     <i className="bi bi-clock-fill"></i>
                   </div>
                   <div className="stats-content">
+                    <p>In Progress</p>
                     <div className="stats-number">
                       {summary.inProgressCourses}
-                      <span className="plus">+</span>
                     </div>
-                    <p>In Progress</p>
                   </div>
                 </div>
 
@@ -171,11 +168,10 @@ export default function StaffDashboard() {
                     <i className="bi bi-pause-circle-fill"></i>
                   </div>
                   <div className="stats-content">
+                    <p>Not Started</p>
                     <div className="stats-number">
                       {summary.notStartedCourses}
-                      <span className="plus">+</span>
                     </div>
-                    <p>Not Started</p>
                   </div>
                 </div>
 
@@ -210,11 +206,13 @@ export default function StaffDashboard() {
                       <span className="progress-title">
                         {course.title}
                       </span>
-                      <span className="progress-percent">
-                        {course.progressPercent}%
-                      </span>
                     </div>
-
+                    <div className="prg-cm">
+                        <p>Progress Completed</p>
+                        <span className="progress-percent">
+                          {course.progressPercent}%
+                        </span>
+                      </div>
                     <div className="progress">
                       <div
                         className="progress-bar"
@@ -237,8 +235,9 @@ export default function StaffDashboard() {
                       )}
                     </small>
 
-                    <button
-                      className="snd-btn mt-2"
+                    <div className="btn-fx">
+                      <button
+                      className="rev-btn"
                       disabled={
                         course.totalLessons === 0
                       }
@@ -248,7 +247,17 @@ export default function StaffDashboard() {
                     >
                       {getButtonText(course)}
                     </button>
-
+                    {course.progressPercent === 100 && (
+                      <button
+                        className="rev-btn"
+                        onClick={() =>
+                          navigate(`/dashboard/staff/course/${course.courseId}/assessments`)
+                        }
+                      >
+                        Assessments
+                      </button>
+                    )}
+                    </div>
                   </div>
                 ))}
 

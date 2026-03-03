@@ -131,7 +131,7 @@ export default function StaffLessonView() {
     return <div className="mx-wd py-5">Lesson not found</div>;
 
   return (
-    <div className="mx-wd">
+    <div className="mx-wd les-vw">
 
       {/* ================= HEADER ================= */}
       <div className="about-image-grid dash-tp">
@@ -157,7 +157,7 @@ export default function StaffLessonView() {
       {/* ================= LESSON GRID ================= */}
       <section className="stats section mt-4">
         <div className="mx-wd">
-          <h3 className="st-tl mb-4">
+          <h3 className="st-tl">
             All Lessons
           </h3>
 
