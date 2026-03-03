@@ -463,13 +463,18 @@ div.dt-container .dt-paging .dt-paging-button:hover{color:#111947!important;}
     color: #111947;
     line-height: 20px;
     text-transform: capitalize}
-.progress-item{width: 31.97%;background:#fff;box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);padding: 20px;border-radius: 12px; transition: all .5s;}
+.progress-item{width: 31.97%;background:#fff;box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);padding: 20px 20px 45px;border-radius: 12px; transition: all .5s;position: relative;}
 .progress-item:hover{transform:translateY(-5px)!important;box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);transition: all .5s;}
 .saas-container {
   display: flex;
   justify-content: center;
 }
-.btn-fx{display: flex;align-items: center;gap:20px;justify-content: center;}
+.btn-fx{display: flex;align-items: center;gap:7px;justify-content: center;position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    bottom: 11px;
+    width: 100%;padding:0 10px;}
 .rev-btn{    width: 100%;
     background-color: #059669;
     color: #fff;
