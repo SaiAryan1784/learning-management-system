@@ -27,6 +27,18 @@ import OSAssessment from "./pages/assessments/OSAssessment";
 import StaffCertificates from "./pages/staff/StaffCertificates";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+/* ================= PHASE 5 PAGES ================= */
+
+import ComplianceSettings from "./pages/compliance/ComplianceSettings";
+import CompliancePolicies from "./pages/compliance/CompliancePolicies";
+import RunAssignments from "./pages/compliance/RunAssignments";
+
+import ComplianceOverview from "./pages/reports/ComplianceOverview";
+import StaffComplianceReports from "./pages/reports/StaffComplianceReports";
+// import CertificateExpiryReport from "./pages/reports/CertificateExpiryReport";
+// import NotificationLogs from "./pages/reports/NotificationLogs";
+// import AuditTrail from "./pages/reports/AuditTrail";
+
 
 // ================= PERMISSION ROUTE =================
 const PermissionRoute = ({ permission, children }) => {
@@ -87,9 +99,11 @@ export default function App() {
               </ProtectedRoute>
             }
           >
+
             <Route index element={<Admin />} />
 
-            {/* SUPER ADMIN */}
+            {/* ================= SUPER ADMIN ================= */}
+
             <Route
               path="modules"
               element={
@@ -99,7 +113,7 @@ export default function App() {
               }
             />
 
-            {/* OWNER / ADMIN (ORG-WIDE) + STAFF (PERMISSION BASED) */}
+            {/* ================= MANAGER DASHBOARD ================= */}
 
             <Route
               path="manager"
@@ -119,6 +133,8 @@ export default function App() {
               }
             />
 
+            {/* ================= STAFF MANAGEMENT ================= */}
+
             <Route
               path="staff"
               element={
@@ -127,6 +143,7 @@ export default function App() {
                 </PermissionRoute>
               }
             />
+
             <Route
               path="certificates"
               element={
@@ -135,6 +152,7 @@ export default function App() {
                 </PermissionRoute>
               }
             />
+
             <Route
               path="locations"
               element={
@@ -153,6 +171,8 @@ export default function App() {
               }
             />
 
+            {/* ================= COURSES ================= */}
+
             <Route
               path="course-categories"
               element={
@@ -170,6 +190,7 @@ export default function App() {
                 </PermissionRoute>
               }
             />
+
             <Route
               path="assessments"
               element={
@@ -178,6 +199,7 @@ export default function App() {
                 </PermissionRoute>
               }
             />
+
             <Route
               path="courses/:courseId/modules"
               element={
@@ -204,8 +226,8 @@ export default function App() {
                 </PermissionRoute>
               }
             />
-          
-            {/* STAFF DASHBOARD */}
+
+            {/* ================= STAFF DASHBOARD ================= */}
 
             <Route
               path="my-dashboard"
@@ -224,6 +246,7 @@ export default function App() {
                 </PermissionRoute>
               }
             />
+
             <Route
               path="staff/course/:courseId/assessments"
               element={
@@ -232,6 +255,7 @@ export default function App() {
                 </PermissionRoute>
               }
             />
+
             <Route
               path="/dashboard/staff/assessment/:assessmentId/:courseId"
               element={
@@ -240,8 +264,83 @@ export default function App() {
                 </PermissionRoute>
               }
             />
+
+            {/* ================= PHASE 5 : COMPLIANCE ================= */}
+
+            <Route
+              path="compliance/settings"
+              element={
+                <PermissionRoute permission="settings:read">
+                  <ComplianceSettings />
+                </PermissionRoute>
+              }
+            />
+
+             <Route
+              path="compliance/policies"
+              element={
+                <PermissionRoute permission="settings:read">
+                  <CompliancePolicies />
+                </PermissionRoute>
+              }
+            />
+
+            <Route
+              path="compliance/run-assignments"
+              element={
+                <PermissionRoute permission="settings:update">
+                  <RunAssignments />
+                </PermissionRoute>
+              }
+            />
+
+            <Route
+              path="reports/compliance"
+              element={
+                <PermissionRoute permission="reports:read">
+                  <ComplianceOverview />
+                </PermissionRoute>
+              }
+            />
+
+            <Route
+              path="reports/staff-compliance"
+              element={
+                <PermissionRoute permission="reports:read">
+                  <StaffComplianceReports />
+                </PermissionRoute>
+              }
+            />
+
+           {/* <Route
+              path="reports/certificates-expiry"
+              element={
+                <PermissionRoute permission="reports:read">
+                  <CertificateExpiryReport />
+                </PermissionRoute>
+              }
+            />
+
+            <Route
+              path="reports/notification-logs"
+              element={
+                <PermissionRoute permission="reports:read">
+                  <NotificationLogs />
+                </PermissionRoute>
+              }
+            />
+
+            <Route
+              path="reports/audit-trail"
+              element={
+                <PermissionRoute permission="reports:read">
+                  <AuditTrail />
+                </PermissionRoute>
+              }
+            /> */}
+
           </Route>
-          
+
         </Routes>
       </BrowserRouter>
     </AuthProvider>

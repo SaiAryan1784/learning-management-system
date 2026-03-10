@@ -9,12 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
     "aos": "^2.3.4",
     "axios": "^1.6.0",
     "datatables.net": "^2.3.7",
     "datatables.net-dt": "^2.3.7",
     "jquery": "^4.0.0",
     "react": "^18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.2.0",
     "react-quill": "^2.0.0",
     "react-quill-new": "^3.8.3",

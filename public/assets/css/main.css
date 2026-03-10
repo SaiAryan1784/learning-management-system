@@ -1033,6 +1033,8 @@ section,
   font-weight: 600;
   color: #111947;
   font-size: 18px;
+  height: 40px;
+  overflow: hidden;
 }
 
  .progress-item .progress-percent {

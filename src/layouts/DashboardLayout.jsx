@@ -13,12 +13,8 @@ export default function DashboardLayout() {
 
   // ================= ROLE DETECTION =================
   const isSuperAdmin = user?.isPlatformAdmin === true;
-
-  const isOwnerAdmin =
-    !isSuperAdmin && access?.orgWide === true;
-
-  const isStaff =
-    !isSuperAdmin && access?.orgWide !== true;
+  const isOwnerAdmin = !isSuperAdmin && access?.orgWide === true;
+  const isStaff = !isSuperAdmin && access?.orgWide !== true;
 
   const handleLogout = () => {
     logout();
@@ -31,7 +27,7 @@ export default function DashboardLayout() {
   const navGridClass = ({ isActive }) =>
     isActive ? "nav-item-grid active" : "nav-item-grid";
 
-  // ================= MENU CONFIG =================
+  // ================= MANAGEMENT MENU =================
   const managementMenu = [
     {
       label: "Locations",
@@ -77,9 +73,68 @@ export default function DashboardLayout() {
     },
   ];
 
+  // ================= COMPLIANCE MENU =================
+  const complianceMenu = [
+    {
+      label: "Compliance Settings",
+      icon: "fa-sliders",
+      path: "/dashboard/compliance/settings",
+      permission: "settings:read",
+    },
+    {
+      label: "Policies",
+      icon: "fa-shield-halved",
+      path: "/dashboard/compliance/policies",
+      permission: "settings:read",
+    },
+    {
+      label: "Run Assignments",
+      icon: "fa-play",
+      path: "/dashboard/compliance/run-assignments",
+      permission: "settings:update",
+    },
+  ];
+
+  // ================= REPORTS MENU =================
+  const reportsMenu = [
+    {
+      label: "Compliance Overview",
+      icon: "fa-chart-line",
+      path: "/dashboard/reports/compliance",
+      permission: "reports:read",
+    },
+    {
+      label: "Staff Compliance",
+      icon: "fa-user-check",
+      path: "/dashboard/reports/staff-compliance",
+      permission: "reports:read",
+    },
+    {
+      label: "Certificate Expiry",
+      icon: "fa-clock",
+      path: "/dashboard/reports/certificates-expiry",
+      permission: "reports:read",
+    },
+    {
+      label: "Notification Logs",
+      icon: "fa-bell",
+      path: "/dashboard/reports/notification-logs",
+      permission: "reports:read",
+    },
+    {
+      label: "Audit Trail",
+      icon: "fa-list",
+      path: "/dashboard/reports/audit-trail",
+      permission: "reports:read",
+    },
+  ];
+
   return (
-    <div className={`dash-cnt ${sidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
-      
+    <div
+      className={`dash-cnt ${
+        sidebarOpen ? "sidebar-open" : "sidebar-collapsed"
+      }`}
+    >
       {/* ================= SIDEBAR ================= */}
       <nav className="sidebar">
         <div className="logo">
@@ -90,6 +145,7 @@ export default function DashboardLayout() {
           />
         </div>
 
+        {/* DASHBOARD */}
         <NavLink to="/dashboard" end className={navFullClass}>
           <i className="fa-solid fa-house"></i>
           <span>Dashboard</span>
@@ -108,9 +164,32 @@ export default function DashboardLayout() {
         {/* OWNER / ADMIN */}
         {isOwnerAdmin && (
           <>
+            {/* MANAGEMENT */}
             <h3 className="menu-heading">MANAGEMENT</h3>
             <div className="nav-grid">
               {managementMenu.map((item) => (
+                <NavLink key={item.path} to={item.path} className={navGridClass}>
+                  <i className={`fa-solid ${item.icon}`}></i>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+
+            {/* COMPLIANCE */}
+            <h3 className="menu-heading">COMPLIANCE</h3>
+            <div className="nav-grid">
+              {complianceMenu.map((item) => (
+                <NavLink key={item.path} to={item.path} className={navGridClass}>
+                  <i className={`fa-solid ${item.icon}`}></i>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+
+            {/* REPORTS */}
+            <h3 className="menu-heading">REPORTS</h3>
+            <div className="nav-grid">
+              {reportsMenu.map((item) => (
                 <NavLink key={item.path} to={item.path} className={navGridClass}>
                   <i className={`fa-solid ${item.icon}`}></i>
                   <span>{item.label}</span>
@@ -124,9 +203,7 @@ export default function DashboardLayout() {
         {isStaff && (
           <div className="nav-grid">
             {managementMenu
-              .filter((item) =>
-                hasPermission?.(item.permission)
-              )
+              .filter((item) => hasPermission?.(item.permission))
               .map((item) => (
                 <NavLink key={item.path} to={item.path} className={navGridClass}>
                   <i className={`fa-solid ${item.icon}`}></i>
@@ -151,16 +228,16 @@ export default function DashboardLayout() {
                 <i className="fa-solid fa-bars"></i>
               </span>
 
-              {/* PROFILE DROPDOWN */}
+              {/* NOTIFICATION BELL */}
+              <div className="notification-bell mx-3">
+                <i className="fa-solid fa-bell"></i>
+              </div>
+
+              {/* PROFILE */}
               <div
                 className="profile-section"
                 onClick={() => setProfileOpen(!profileOpen)}
               >
-                {/* <img
-                  src={user?.profileImage || "/images/profile.png"}
-                  alt="Profile"
-                  className="profile-img"
-                /> */}
                 <span className="profile-name">
                   {user?.name || "User"}
                 </span>
@@ -183,6 +260,7 @@ export default function DashboardLayout() {
           </div>
         </div>
 
+        {/* PAGE CONTENT */}
         <Outlet />
       </div>
     </div>

@@ -1094,6 +1094,136 @@ div.dt-container .dt-paging .dt-paging-button:hover{color:#111947!important;}
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
     border: 1px solid rgb(238, 238, 238);}
     .les-vw span{font-weight: 500;}
+    .builder-wrapper{
+display:flex;
+gap:30px;
+padding:20px;
+}
+
+.builder-sidebar{
+width:250px;
+background:#f8f8f8;
+border:1px solid #ddd;
+padding:15px;
+}
+
+.drag-item{
+padding:10px;
+margin-bottom:10px;
+background:white;
+border:1px solid #ccc;
+cursor:grab;
+}
+
+.builder-canvas{
+flex:1;
+border:2px dashed #ccc;
+padding:20px;
+min-height:400px;
+}
+
+.canvas-field{
+background:white;
+border:1px solid #ddd;
+padding:15px;
+margin-bottom:15px;
+}
+
+.field-header{
+display:flex;
+justify-content:space-between;
+margin-bottom:10px;
+font-weight:600;
+}
+
+.remove-btn{
+background:red;
+color:white;
+border:none;
+padding:4px 8px;
+cursor:pointer;
+}
+
+.form-group{
+margin-bottom:15px;
+}
+
+.submit-btn{
+margin-top:20px;
+padding:10px 20px;
+background:#4CAF50;
+color:white;
+border:none;
+cursor:pointer;
+}
+.les-typ{transition: all .5s;}
+.les-typ:hover{border-color:#059669;color:#059669;transform: scale(1.02);transition: all .5s;font-weight: 500;}
+.file-drop-area{
+border:2px dashed #d1d5db;
+border-radius:10px;
+padding:25px;
+text-align:center;
+cursor:pointer;
+transition:0.2s;
+background:#fafafa;
+}
+
+.file-drop-area:hover{
+border-color:#059669;
+background:#f8faff;
+}
+
+.upload-icon{
+font-size:28px;
+color:#059669;
+margin-bottom:10px;
+}
+
+.upload-title{
+font-size:14px;
+font-weight:600;
+margin:5px 0;
+}
+
+.upload-sub{
+font-size:12px;
+color:#777;
+}
+
+.uploaded-file{
+margin-top:10px;
+font-size:13px;
+display:flex;
+gap:8px;
+justify-content:center;
+align-items:center;
+}
+
+.upload-progress{
+height:6px;
+background:#e5e7eb;
+border-radius:10px;
+margin-top:10px;
+overflow:hidden;
+}
+
+.upload-progress-bar{
+height:100%;
+background:#059669;
+transition:0.3s;
+}
+.notification-bell i{cursor: pointer;}
+.form-group textarea {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    font-size: 14px;
+    transition: 0.2s;}
+.form-group textarea:focus {
+    border-color: #111947;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
 @media(max-width:769px){
   .main-hdr{padding:10px 0;}
   .hdr-wp{flex-direction: row-reverse;}
