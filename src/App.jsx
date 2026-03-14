@@ -2,6 +2,12 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 
 import Landing from "./pages/Landing";
+import EmployeeLearningCloud from "./pages/EmployeeLearningCloud";
+import AboutUs from "./pages/AboutUs";
+import Blogs from "./pages/Blogs";
+import HelpCenter from "./pages/HelpCenter";
+import Resources from "./pages/Resources";
+import ContactUs from "./pages/ContactUs";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Admin from "./pages/Admin";
@@ -89,6 +95,12 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/about-us" element={<AboutUs />} />
+          <Route path="/blogs" element={<Blogs />} />
+          <Route path="/help-center" element={<HelpCenter />} />
+          <Route path="/resources" element={<Resources />} />
+          <Route path="/contact-us" element={<ContactUs />} />
+          <Route path="/employee-learning-cloud" element={<EmployeeLearningCloud />} />
 
           {/* ================= DASHBOARD ================= */}
           <Route

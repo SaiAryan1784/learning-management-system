@@ -105,90 +105,57 @@ export default function StaffCertificates() {
 
       <div className="certificate-premium">
 
-        {/* Watermark */}
-        <div className="cert-watermark">
-          <img
-            src="/images/lms-logo.png"
-            className=""
-            alt="Brand Logo"
-          />
-        </div>
-
         {/* Header */}
-        <div className="cert-header">
-          {/* <img
-            src="/images/lms-logo.png"
-            className="cert-main-logo"
-            alt="Brand Logo"
-          /> */}
-          <h1 className="org-name">LEARNING OPTS</h1>
+      <img src="/images/triangle.png" alt="seal" className="tri-right" />
+      <img src="/images/triangle.png" alt="seal" className="tri-left" />
+        <div className="cert-divider"></div>
+
+        <div className="cert-heading">
+          <img
+              src="/images/title-img.png"
+              alt="seal"
+              className="seal-img"
+            />
         </div>
-
-        <h2 className="cert-heading">
-          Certificate of Completion
-        </h2>
-
-        <p className="cert-presented">
-          This Certificate is proudly presented to
-        </p>
 
         <h3 className="cert-student">
           {selectedCert.staff?.name}
         </h3>
-
-        <p className="cert-description">
-          For successfully completing the professional course
-        </p>
-
         <h3 className="cert-course-name">
           {selectedCert.course?.title}
         </h3>
 
         <div className="cert-divider"></div>
-
-        {/* Footer Info */}
-        <div className="cert-footer-row">
-          <div>
-            <p className="meta-title">Certificate No</p>
-            <p>{selectedCert.certificateNo}</p>
-          </div>
-
-          <div>
-            <p className="meta-title">Verification Code</p>
-            <p>{selectedCert.verificationCode}</p>
-          </div>
-
-          <div>
-            <p className="meta-title">Issued On</p>
-            <p>
+         <p className="cert-description">
+          Congratulations! This is to certify that you have successfully completed the OWNER'S ONBOARDING TRAINING
+        </p>
+        <div className="mt-3">
+            <p>DATE:  <span>
               {new Date(
                 selectedCert.issuedAt
               ).toLocaleDateString()}
-            </p>
+            </span></p>
           </div>
-        </div>
-
-        {/* Signature + Seal */}
-        <div className="cert-sign-seal">
-          <div className="signature-block">
-            <img
-              src="/signature.png"
-              alt="signature"
-              className="signature-img"
-            />
-            <p className="sign-line"></p>
-            <p className="sign-name">Authorized Signatory</p>
+        {/* Footer Info */}
+        <div className="cert-footer-row">
+          <div>
+            <p>CEO</p>
+            <p className="meta-title">Nick Beghtol</p>
           </div>
-
-          <div className="seal-block">
-            <img
-              src="/images/stmp.png"
+            <div>
+              <img
+              src="/images/stamp.png"
               alt="seal"
-              className="seal-img"
+              className="stamp"
             />
+            </div>
+          <div>
+            <p>Co-Founder</p>
+            <p className="meta-title">Bailey Ames</p>
           </div>
         </div>
-
+        <div className="cert-div"></div>
+        
       </div>
     </div>
   </div>

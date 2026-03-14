@@ -87,7 +87,7 @@ AOS.init({
         <div className="sc-in">
           <div className="login-container" data-aos="fade-up">
           <img
-          src="/images/lms-logo.png"
+          src="/images/lms.png"
           className="brand-img"
           alt="Brand Logo"
         />

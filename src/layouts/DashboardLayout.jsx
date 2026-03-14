@@ -139,7 +139,7 @@ export default function DashboardLayout() {
       <nav className="sidebar">
         <div className="logo">
           <img
-            src="/images/lms-logo.png"
+            src="/images/lms-white.png"
             className="nv-img"
             alt="Brand Logo"
           />

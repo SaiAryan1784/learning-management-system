@@ -1,7 +1,8 @@
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { HashLink as Link } from 'react-router-hash-link';
 import AOS from "aos";
 import "aos/dist/aos.css";
 
@@ -28,36 +29,33 @@ export default function Landing() {
             <nav id="navbar">
                 <div className="nav-container">
                     <div className="logo"><img
-                            src="/images/lms-logo.png"
+                            src="/images/lms.png"
                             className="nv-img"
                             alt="Brand Logo"
                             /> </div>
                     <ul className={`nav-menu ${menuOpen ? "open" : ""}`}>
                         <li className="nv-menu cls" onClick={(e) => {e.preventDefault();setMenuOpen(false);}}><span className="nav-link">&times;</span></li>
                         <li className="nav-item">
-                            <Link href="#" className="nav-link dropdown-toggle">Products</Link>
+                            <Link to="#" className="nav-link dropdown-toggle">Products</Link>
                             <ul className="dropdown-menu">
-                                <li className="dropdown-item"><Link href="#" className="dropdown-link"><i className="fa-solid fa-building-user fa-2x"></i><p>Employee Learning Cloud <span>Develop & retain top talent through learning</span></p></Link></li>
-                                <li className="dropdown-item"><Link href="#" className="dropdown-link"><i className="fa-solid fa-users fa-2x"></i> <p>Customer Learning Cloud <span>Boost retention & brnad loyalty through education</span></p></Link></li>
-                                <li className="dropdown-item"><Link href="#" className="dropdown-link"><i className="fa-solid fa-cloud fa-2x"></i> <p>Embedded Learning Cloud<span>Embed on-brand traning experiencesin your HR platform</span></p></Link></li>
+                                <li className="dropdown-item"><Link to="/employee-learning-cloud" className="dropdown-link"><i className="fa-solid fa-building-user fa-2x"></i><p>Employee Learning Cloud <span>Develop & retain top talent through learning</span></p></Link></li>
+                                {/* <li className="dropdown-item"><Link to="#" className="dropdown-link"><i className="fa-solid fa-users fa-2x"></i> <p>Customer Learning Cloud <span>Boost retention & brnad loyalty through education</span></p></Link></li>
+                                <li className="dropdown-item"><Link to="#" className="dropdown-link"><i className="fa-solid fa-cloud fa-2x"></i> <p>Embedded Learning Cloud<span>Embed on-brand traning experiencesin your HR platform</span></p></Link></li> */}
                             </ul>
                         </li>
                         <li className="nav-item">
-                            <Link href="#" className="nav-link">Customers</Link> 
+                            <Link to="/#clients" className="nav-link">Customers</Link> 
                         </li>
                         <li className="nav-item">
-                            <Link href="#" className="nav-link">Pricing</Link> 
+                            <Link smooth to="/#pricing" className="nav-link">Pricing</Link> 
                         </li>
                         <li className="nav-item">
-                            <Link href="#" className="nav-link dropdown-toggle">Company</Link>
+                            <Link to="#" className="nav-link dropdown-toggle">Company</Link>
                             <ul className="dropdown-menu">
-                                <li className="dropdown-item"><Link href="#" className="dropdown-link"><i className="fa-solid fa-building fa-2x"></i><p>About <span>Learn about our team, mission & vision</span></p></Link></li>
-                                <li className="dropdown-item"><Link href="#" className="dropdown-link"><i className="fa-solid fa-blog fa-2x"></i><p>Blog <span>Read up on industry trends, insights and pro-tips</span></p></Link></li>
-                                <li className="dropdown-item"><Link href="#" className="dropdown-link"><i className="fa-brands fa-sourcetree fa-2x"></i><p>Resources <span>Catchup on webinars,podcasts,episodes and more</span></p></Link></li>
-                                <li className="dropdown-item"><Link href="#" className="dropdown-link"><i className="fa-brands fa-hire-a-helper fa-2x"></i><p>Help center <span>Access 24/7 support resources</span></p></Link></li>
-                                <li className="dropdown-item"><Link href="#" className="dropdown-link"><i className="fa-solid fa-medal fa-2x"></i><p>Academy <span>Learn about our team, mission & vision</span></p></Link></li>
-                                <li className="dropdown-item"><Link href="#" className="dropdown-link"><i className="fa-brands fa-slack fa-2x"></i><p>Slack community <span>Connect with fellow learning opts users</span></p></Link></li>
-                                <li className="dropdown-item"><Link href="#" className="dropdown-link"><i className="fa-solid fa-handshake-angle fa-2x"></i><p>Partners <span>Join our certified partners program</span></p></Link></li>
+                                <li className="dropdown-item"><Link to="/about-us" className="dropdown-link"><i className="fa-solid fa-building fa-2x"></i><p>About <span>Learn about our team, mission & vision</span></p></Link></li>
+                                <li className="dropdown-item"><Link to="/blogs" className="dropdown-link"><i className="fa-solid fa-blog fa-2x"></i><p>Blog <span>Read up on industry trends, insights and pro-tips</span></p></Link></li>
+                                <li className="dropdown-item"><Link to="/resources" className="dropdown-link"><i className="fa-brands fa-sourcetree fa-2x"></i><p>Resources <span>Catchup on webinars,podcasts,episodes and more</span></p></Link></li>
+                                <li className="dropdown-item"><Link to="/help-center" className="dropdown-link"><i className="fa-brands fa-hire-a-helper fa-2x"></i><p>Help center <span>Access 24/7 support resources</span></p></Link></li>
                                 
                             </ul>
                         </li>
@@ -70,7 +68,7 @@ export default function Landing() {
                                         <Link className="nav-link" to="/login">Login</Link>
                                     )}
                         </li>
-                        <li className="nv-item"><Link className="nav-link" to="/login">Contact us</Link></li>
+                        <li className="nv-item"><Link className="nav-link" to="/contact-us">Contact us</Link></li>
 
                     </ul>
                     <div className="hamburg" onClick={() => setMenuOpen(true)}>
@@ -105,7 +103,7 @@ export default function Landing() {
                   <li><i className="bi bi-check-circle"></i> Real-Time Progress & Performance Tracking</li>
                 </ul>
                 <div className="hero-cta">
-                  <Link href="#services" className="btn btn-primary">
+                  <Link to="#services" className="btn btn-primary">
                     Explore LMS Features
                   </Link>
                 </div>
@@ -241,13 +239,13 @@ export default function Landing() {
                             <i className="bi bi-cash-stack"></i>
                           </div>
                           <div className="service-info">
-                            <h3><Link href="#">Course & Batch Management</Link></h3>
+                            <h3><Link to="#">Course & Batch Management</Link></h3>
                             <p>
                               Create, organize, and manage courses, batches, trainers,
                               and learners with complete administrative control.
                             </p>
                             <div className="service-action">
-                              <Link href="service-details.html" className="read-more-btn">
+                              <Link to="service-details.html" className="read-more-btn">
                                 Details <i className="bi bi-arrow-right"></i>
                               </Link>
                             </div>
@@ -262,13 +260,13 @@ export default function Landing() {
                             <i className="bi bi-list-check"></i>
                           </div>
                           <div className="service-info">
-                            <h3><Link href="#">Online Assessments</Link></h3>
+                            <h3><Link to="#">Online Assessments</Link></h3>
                             <p>
                               Conduct secure online exams, quizzes, and assignments
                               with automated evaluation and instant result generation.
                             </p>
                             <div className="service-action">
-                              <Link href="service-details.html" className="read-more-btn">
+                              <Link to="service-details.html" className="read-more-btn">
                                 View More <i className="bi bi-arrow-right"></i>
                               </Link>
                             </div>
@@ -283,13 +281,13 @@ export default function Landing() {
                             <i className="bi bi-bar-chart"></i>
                           </div>
                           <div className="service-info">
-                            <h3><Link href="#">Progress & Performance Tracking</Link></h3>
+                            <h3><Link to="#">Progress & Performance Tracking</Link></h3>
                             <p>
                               Monitor learner progress, attendance, and performance
                               through detailed dashboards and real-time analytics.
                             </p>
                             <div className="service-action">
-                              <Link href="service-details.html" className="read-more-btn">
+                              <Link to="service-details.html" className="read-more-btn">
                                 Read More <i className="bi bi-arrow-right"></i>
                               </Link>
                             </div>
@@ -304,13 +302,13 @@ export default function Landing() {
                             <i className="bi bi-pie-chart"></i>
                           </div>
                           <div className="service-info">
-                            <h3><Link href="#">Certification & Reporting</Link></h3>
+                            <h3><Link to="#">Certification & Reporting</Link></h3>
                             <p>
                               Generate automated certificates and export detailed
                               reports to evaluate training effectiveness and compliance.
                             </p>
                             <div className="service-action">
-                              <Link href="service-details.html" className="read-more-btn">
+                              <Link to="service-details.html" className="read-more-btn">
                                 Learn More <i className="bi bi-arrow-right"></i>
                               </Link>
                             </div>
@@ -327,7 +325,7 @@ export default function Landing() {
       </section>
       <section id="clients" className="clients section">
         <div className="container section-title" data-aos="fade-up" data-aos-delay="100">
-            <h2>Clients</h2>
+            <h2>Customers</h2>
             <p>Trusted by educational institutions, corporate organizations, and government skill development programs to deliver scalable and effective digital learning solutions.</p>
         </div>
       <div className="container-fluid">
@@ -440,7 +438,7 @@ export default function Landing() {
 
       </div>
      </section>
-     <section id="pricing" className="services section">
+     <section id="pricing" className="services pricin">
       <div className="container section-title" data-aos="fade-up">
         <h2>Pricing</h2>
         <p>
@@ -448,127 +446,69 @@ export default function Landing() {
           government skill development programs.
         </p>
       </div>
-
       <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-        <div className="services-row">
           <div className="row">
-            {/* RIGHT SIDE PRICING CARDS */}
-            <div className="col-lg-12">
-              <div className="services-grid">
-                <div className="row gy-4">
-
-                  {/* Starter */}
-                  <div className="col-md-3" data-aos="fade-up" data-aos-delay="100">
-                    <div className="service-card text-center">
-                      <div className="service-content">
-                        <div className="service-icon">
-                          <i className="bi bi-mortarboard"></i>
-                        </div>
-                        <div className="service-info">
-                          <h3><Link href="#">Starter Plan</Link></h3>
-                          <h4 className="mt-2">₹9,999 / Year</h4>
-                          <p>
-                            ✔ Up to 200 Learners <br/>
-                            ✔ Course Management <br/>
-                            ✔ Basic Assessments <br/>
-                            ✔ Standard Reports
-                          </p>
-                          <div className="service-action">
-                            <Link href="#" className="read-more-btn">
-                              Get Started <i className="bi bi-arrow-right"></i>
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Professional */}
-                  <div className="col-md-3" data-aos="fade-up" data-aos-delay="200">
-                    <div className="service-card text-center position-relative">
-                      <div className="service-content">
-                        <div className="service-icon">
-                          <i className="bi bi-building"></i>
-                        </div>
-                        <div className="service-info">
-                          <h3><Link href="#">Professional Plan</Link></h3>
-                          <h4 className="mt-2">₹24,999 / Year</h4>
-                          <p>
-                            ✔ Up to 1,000 Learners <br/>
-                            ✔ Advanced Assessments <br/>
-                            ✔ Certification System <br/>
-                            ✔ Detailed Analytics
-                          </p>
-                          <div className="service-action">
-                            <Link href="#" className="read-more-btn">
-                              Choose Plan <i className="bi bi-arrow-right"></i>
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Enterprise */}
-                  <div className="col-md-3" data-aos="fade-up" data-aos-delay="300">
-                    <div className="service-card text-center">
-                      <div className="service-content">
-                        <div className="service-icon">
-                          <i className="bi bi-globe2"></i>
-                        </div>
-                        <div className="service-info">
-                          <h3><Link href="#">Enterprise Plan</Link></h3>
-                          <h4 className="mt-2">Custom Pricing</h4>
-                          <p>
-                            ✔ Unlimited Learners <br/>
-                            ✔ Government Skill Modules <br/>
-                            ✔ Dedicated Support <br/>
-                            ✔ Custom Integrations
-                          </p>
-                          <div className="service-action">
-                            <Link href="#" className="read-more-btn">
-                              Contact Sales <i className="bi bi-arrow-right"></i>
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Add-On Plan (Extra card to balance grid) */}
-                  <div className="col-md-3" data-aos="fade-up" data-aos-delay="400">
-                    <div className="service-card text-center">
-                      <div className="service-content">
-                        <div className="service-icon">
-                          <i className="bi bi-puzzle"></i>
-                        </div>
-                        <div className="service-info">
-                          <h3><Link href="#">Add-On Modules</Link></h3>
-                          <h4 className="mt-2">Optional</h4>
-                          <p>
-                            ✔ Custom Integrations <br/>
-                            ✔ API Access <br/>
-                            ✔ White Labeling <br/>
-                            ✔ Advanced Reporting
-                          </p>
-                          <div className="service-action">
-                            <Link href="#" className="read-more-btn">
-                              Learn More <i className="bi bi-arrow-right"></i>
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
+            <div className="col-md-3 col-12">
+              <div className="card-wrap">
+                <div className="card-header">
+                  <h1>Basic</h1>
+                </div>
+                <div className="card-content">
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option false">Lorem ipsum dolor</p>
+                  <p className="card-content-option false">Lorem ipsum dolor</p>
+                  <p className="card-content-option false">Lorem ipsum dolor</p>
+                  <p className="card-content-option false">Lorem ipsum dolor</p>
                 </div>
               </div>
             </div>
-
+            <div className="col-md-3 col-12">
+              <div className="card-wrap">
+                <div className="card-header">
+                  <h1>Professional</h1>
+                </div>
+                <div className="card-content">
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option false">Lorem ipsum dolor</p>
+                  <p className="card-content-option false">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option false">Lorem ipsum dolor</p>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-3 col-12">
+              <div className="card-wrap">
+                <div className="card-header">
+                  <h1>Enterprise</h1>
+                </div>
+                <div className="card-content">
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-3 col-12">
+              <div className="card-wrap">
+                <div className="card-header">
+                  <h1>Enterprise & Addons</h1>
+                </div>
+                <div className="card-content">
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                  <p className="card-content-option true">Lorem ipsum dolor</p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-
       </div>
     </section>
      <section id="faq" className="faq section">
@@ -648,7 +588,7 @@ export default function Landing() {
             </div>
             <div className="faq-cta text-center mt-5" data-aos="fade-up" data-aos-delay="300">
               <p>Still have questions? We're here to help!</p>
-              <Link href="#" className="btn btn-primary">Contact Support</Link>
+              <Link to="/contact-us" className="btn btn-primary">Contact Support</Link>
             </div>
           </div>
         </div>
@@ -667,7 +607,7 @@ export default function Landing() {
               efficiency, and measurable results.
             </p>
             <div className="cta-buttons">
-              <Link href="#" className="btn btn-primary">
+              <Link to="#" className="btn btn-primary">
                 Get Started Today
               </Link>
             </div>
@@ -687,8 +627,8 @@ export default function Landing() {
       <div className="container-fluid footer-top">
         <div className="row">
           <div className="col-lg-12 col-md-12 text-center">
-            <Link href="" className="logo d-flex align-items-center justify-content-center">
-              <img src="/images/lms-logo.png" className="nv-img" alt="Learning Opts Logo"/> 
+            <Link to="" className="logo d-flex align-items-center justify-content-center">
+              <img src="/images/lms.png" className="nv-img" alt="Learning Opts Logo"/> 
             </Link>
             <div className="footer-contact pt-3">
               <p>Digital Learning Solutions</p>
@@ -701,10 +641,10 @@ export default function Landing() {
               </p>
             </div>
             <div className="social-links mt-3 d-flex align-items-center justify-content-center">
-              <Link href="#"><i className="bi bi-twitter-x"></i></Link>
-              <Link href="#"><i className="bi bi-facebook"></i></Link>
-              <Link href="#"><i className="bi bi-instagram"></i></Link>
-              <Link href="#"><i className="bi bi-linkedin"></i></Link>
+              <Link to="#"><i className="bi bi-twitter-x"></i></Link>
+              <Link to="#"><i className="bi bi-facebook"></i></Link>
+              <Link to="#"><i className="bi bi-instagram"></i></Link>
+              <Link to="#"><i className="bi bi-linkedin"></i></Link>
             </div>
           </div>
         </div>
@@ -722,7 +662,7 @@ export default function Landing() {
       </div>
 
     </footer>
-  <Link href="#" id="scroll-top" className="scroll-top d-flex align-items-center justify-content-center"><i className="bi bi-arrow-up-short"></i></Link>
+  <Link to="#" id="scroll-top" className="scroll-top d-flex align-items-center justify-content-center"><i className="bi bi-arrow-up-short"></i></Link>
     </>
   );
 }
