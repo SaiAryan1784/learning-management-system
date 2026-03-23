@@ -113,7 +113,6 @@ export default function ManagerStaffDetails() {
                   <div className="stats-content">
                     <div className="stats-number">
                       {courseProgress.length}
-                      <span className="plus">+</span>
                     </div>
                     <p>Total Courses</p>
                   </div>
@@ -127,7 +126,6 @@ export default function ManagerStaffDetails() {
                   <div className="stats-content">
                     <div className="stats-number">
                       {completedCourses}
-                      <span className="plus">+</span>
                     </div>
                     <p>Completed Courses</p>
                   </div>
@@ -141,7 +139,6 @@ export default function ManagerStaffDetails() {
                   <div className="stats-content">
                     <div className="stats-number">
                       {overdueCourses}
-                      <span className="plus">+</span>
                     </div>
                     <p>Overdue Courses</p>
                   </div>

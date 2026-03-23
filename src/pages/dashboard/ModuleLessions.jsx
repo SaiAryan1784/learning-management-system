@@ -1,688 +1,618 @@
-import React, { useEffect, useState, useRef, Suspense } from "react";
+// src/pages/dashboard/ModuleLessons.jsx
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../../api/api";
 import toastr from "toastr";
-import $ from "jquery";
-import "datatables.net";
 
 import {
-DndContext,
-closestCenter,
-PointerSensor,
-useSensor,
-useSensors
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors
 } from "@dnd-kit/core";
 
 import {
-SortableContext,
-useSortable,
-verticalListSortingStrategy
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy
 } from "@dnd-kit/sortable";
 
 import { CSS } from "@dnd-kit/utilities";
 
-const ReactQuill = React.lazy(() => import("react-quill"));
+import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
-/* ================= SORTABLE ITEM (MOVED OUTSIDE) ================= */
+const BASE_URL = api.defaults.baseURL;
 
-function SortableItem({ id, renderField }) {
-
-const {
-attributes,
-listeners,
-setNodeRef,
-setActivatorNodeRef,
-transform,
-transition
-} = useSortable({ id });
-
-const style = {
-transform: CSS.Transform.toString(transform),
-transition,
-border: "1px solid #ddd",
-padding: "15px",
-marginBottom: "15px",
-background: "#fff"
+/* ================= HELPER ================= */
+const getFileUrl = (block) => {
+  if (!block) return "";
+  if (block.sourceType === "external_url") return block.contentUrl || "";
+  if (block.storageKey) return `${BASE_URL}/${block.storageKey}`;
+  return "";
 };
 
-return (
-<div ref={setNodeRef} style={style}>
+/* ================= SORTABLE ITEM ================= */
+function SortableItem({ id, renderField, onRemove }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } =
+    useSortable({ id });
 
-<div
-ref={setActivatorNodeRef}
-{...attributes}
-{...listeners}
-style={{
-cursor: "grab",
-background: "#f5f5f5",
-padding: "6px 10px",
-marginBottom: "10px",
-display: "inline-block",
-borderRadius: "4px",
-fontSize: "13px"
-}}
->
-☰ Drag Field
-</div>
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    border: "1px solid #ddd",
+    padding: "15px",
+    marginBottom: "15px",
+    background: "#fff",
+    position: "relative"
+  };
 
-{renderField(id)}
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        style={{
+          cursor: "grab",
+          border: "1px solid #f5f5f5",
+          padding: "6px 10px",
+          marginBottom: "10px",
+          display: "inline-block",
+          borderRadius: "4px",
+          fontSize: "13px"
+        }}
+      >
+        ☰
+      </div>
 
-</div>
-);
+      <button
+        type="button"
+        onClick={() => onRemove(id)}
+        style={{
+          position: "absolute",
+          top: 5,
+          right: 5,
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          fontSize: "16px",
+          color: "#c00"
+        }}
+      >
+        ×
+      </button>
 
+      {renderField(id)}
+    </div>
+  );
 }
 
 /* ================= MAIN COMPONENT ================= */
+export default function ModuleLessons() {
+  const { courseId, moduleId } = useParams();
+  const [blocks, setBlocks] = useState([]);
+  const [lessons, setLessons] = useState([]);
+  const [editId, setEditId] = useState(null);
 
-export default function ModuleLessons(){
+  const [selectedType, setSelectedType] = useState("");
 
-const { courseId, moduleId } = useParams();
-const tableRef = useRef();
+  const [form, setForm] = useState({
+    title: "",
+    summary: "",
+    type: "",
+    sourceType: "external_url",
+    contentUrl: "",
+    textContent: "",
+    order: 1,
+    storageKey: "",
+    fileName: "",
+    mimeType: "",
+    fileSize: 0
+  });
 
-/* ================= STATES ================= */
+  const [filePreview, setFilePreview] = useState("");
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const [uploading, setUploading] = useState(false);
 
-const [lessons,setLessons]=useState([]);
-const [editId,setEditId]=useState(null);
+  const [activeTab, setActiveTab] = useState("addLesson");
+  const [loading, setLoading] = useState(false);
+  const [canvasFields, setCanvasFields] = useState([]);
 
-const [form,setForm]=useState({
-title:"",
-type:"video",
-sourceType:"external_url",
-contentUrl:"",
-textContent:"",
-order:1
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  /* ================= SIDEBAR UPDATED ================= */
+  const sidebarFields = [
+    { id: "title", label: "Lesson Title" },
+    { id: "video", label: "Add Video" },
+    { id: "image", label: "Add Image" },
+    { id: "pdf", label: "Add PDF" },
+    { id: "text", label: "Add Text" },
+    { id: "order", label: "Display Order" }
+  ];
+function handleDragEnd(event) {
+  const { active, over } = event;
+  if (!over || active.id === over.id) return;
+
+  const oldIndex = canvasFields.indexOf(active.id);
+  const newIndex = canvasFields.indexOf(over.id);
+
+  const items = [...canvasFields];
+  items.splice(oldIndex, 1);
+  items.splice(newIndex, 0, active.id);
+
+  setCanvasFields(items);
+}
+  /* ================= LOAD ================= */
+  const loadLessons = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get(
+        `/courses/${courseId}/modules/${moduleId}/lessons?active=true&page=1&limit=100`
+      );
+      setLessons(res.data.lessons || []);
+    } catch {
+      toastr.error("Failed to load lessons");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLessons();
+  }, []);
+
+  /* ================= CHANGE ================= */
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  /* ================= FILE UPLOAD ================= */
+  const uploadFile = async file => {
+  if (!file) return;
+
+  setFilePreview(URL.createObjectURL(file));
+  setUploading(true);
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await api.post(`/uploads/lessons/file/${form.type}`, formData);
+
+    const newBlock = {
+      type: form.type,
+      sourceType: "stored_file",
+      contentUrl: res.data.fileUrl,
+      storageKey: res.data.storageKey || "",   // ✅ FIX
+      fileName: res.data.fileName || file.name,
+      mimeType: res.data.mimeType || file.type,
+      fileSize: res.data.fileSize || file.size
+    };
+
+    setBlocks(prev => {
+  const others = prev.filter(b => b.type !== form.type);
+  return [...others, newBlock];
 });
 
-const [uploading,setUploading]=useState(false);
-const [uploadProgress,setUploadProgress]=useState(0);
-const [uploadedFileName,setUploadedFileName]=useState("");
+    setForm(prev => ({
+      ...prev,
+      contentUrl: res.data.fileUrl,
+      sourceType: "file",
+      storageKey: newBlock.storageKey,
+      fileName: newBlock.fileName,
+      mimeType: newBlock.mimeType,
+      fileSize: newBlock.fileSize
+    }));
 
-const [activeTab,setActiveTab]=useState("addLesson");
-const [loading,setLoading]=useState(false);
-
-/* ================= DRAG SENSOR ================= */
-
-const sensors = useSensors(
-useSensor(PointerSensor,{
-activationConstraint:{ distance:8 }
-})
-);
-
-/* ================= BUILDER ================= */
-
-const sidebarFields=[
-{id:"title",label:"Lesson Title"},
-{id:"type",label:"Lesson Type"},
-{id:"sourceType",label:"Source Type"},
-{id:"contentUrl",label:"Content URL"},
-{id:"file",label:"Upload File"},
-{id:"textContent",label:"Text Editor"},
-{id:"order",label:"Display Order"}
-];
-
-const [canvasFields,setCanvasFields]=useState([]);
-
-function addField(id){
-if(canvasFields.includes(id)) return;
-setCanvasFields([...canvasFields,id]);
-}
-
-/* ================= LOAD LESSONS ================= */
-
-const loadLessons=async()=>{
-try{
-setLoading(true);
-
-const res=await api.get(
-`/courses/${courseId}/modules/${moduleId}/lessons?active=true&page=1&limit=100`
-);
-
-setLessons(res.data.lessons || []);
-
-}catch(err){
-toastr.error("Failed to load lessons");
-}
-finally{
-setLoading(false);
-}
+    setUploadedFileName(file.name);
+    toastr.success("Uploaded");
+  } catch {
+    toastr.error("Upload failed");
+  } finally {
+    setUploading(false);
+  }
 };
 
-useEffect(()=>{ loadLessons(); },[]);
+  /* ================= SUBMIT ================= */
+  const handleSubmit = async e => {
+  e.preventDefault();
 
-/* ================= DATATABLE ================= */
+  if (blocks.length === 0) {
+    return toastr.warning("Add at least one block");
+  }
 
-useEffect(()=>{
+  const payload = {
+    title: form.title,
+    order: Number(form.order),
+    blocks: blocks.map((b, index) => ({
+      ...b,
+      order: index + 1
+    })),
+    active: true
+  };
 
-if(activeTab==="lessonList" && lessons.length>0 && !loading){
+  try {
+    if (editId) {
+      await api.put(`/courses/${courseId}/modules/${moduleId}/lessons/${editId}`, payload);
+      toastr.success("Updated");
+    } else {
+      await api.post(`/courses/${courseId}/modules/${moduleId}/lessons`, payload);
+      toastr.success("Created");
+    }
 
-if($.fn.DataTable.isDataTable("#lessonsTable")){
-$("#lessonsTable").DataTable().destroy();
-}
+    // reset
+    setForm({
+      title: "",
+      type: "",
+      contentUrl: "",
+      textContent: "",
+      order: 1
+    });
 
-setTimeout(()=>{
-$("#lessonsTable").DataTable({
-pageLength:5,
-lengthMenu:[5,10,25]
-});
-},0);
+    setBlocks([]);
+    setCanvasFields([]);
+    setFilePreview("");
+    setSelectedType("");
 
-}
-
-},[activeTab,lessons,loading]);
-
-/* ================= FORM CHANGE ================= */
-
-const handleChange=(e)=>{
-const {name,value}=e.target;
-setForm(prev=>({...prev,[name]:value}));
+    loadLessons();
+    setActiveTab("lessonList");
+  } catch (err) {
+    toastr.error(err.response?.data?.error || "Save failed");
+  }
 };
 
-/* ================= FILE UPLOAD ================= */
+ /* ✅ FIXED EDIT (text handling) */
+  const handleEdit = lesson => {
+    setEditId(lesson._id);
 
-const uploadFile=async(file)=>{
+    const blocksData = lesson.blocks || [];
 
-if(!file) return;
+    setBlocks(blocksData);
 
-try{
-
-setUploading(true);
-setUploadProgress(0);
-
-const formData=new FormData();
-formData.append("file",file);
-
-const uploadRes=await api.post(
-`/uploads/lessons/file/${form.type}`,
-formData,
-{
-headers:{ "Content-Type":"multipart/form-data" },
-onUploadProgress:(event)=>{
-if(event.lengthComputable){
-const percent=Math.round((event.loaded/event.total)*100);
-setUploadProgress(percent);
-}
-}
-}
-);
-
-setUploading(false);
-setUploadedFileName(file.name);
-
-setForm(prev=>({
-...prev,
-contentUrl:uploadRes.data.fileUrl,
-sourceType:"file"
-}));
-
-toastr.success("Upload successful");
-
-}catch(err){
-
-setUploading(false);
-toastr.error("Upload error");
-
-}
-
-};
-
-/* ================= YOUTUBE EMBED ================= */
-
-const getYouTubeEmbed=(url)=>{
-if(!url) return "";
-const reg=/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/;
-const match=url.match(reg);
-return match ? `https://www.youtube.com/embed/${match[1]}` : "";
-};
-
-/* ================= SUBMIT ================= */
-
-const handleSubmit=async(e)=>{
-
-e.preventDefault();
-
-if(uploading) return toastr.warning("Wait for upload");
-
-const payload={
-title:form.title,
-type:form.type,
-order:Number(form.order),
-sourceType:form.sourceType
-};
-
-if(form.type==="text"){
-payload.contentText=form.textContent;
-}else{
-payload.contentUrl=form.contentUrl;
-}
-
-try{
-
-if(editId){
-
-await api.put(
-`/courses/${courseId}/modules/${moduleId}/lessons/${editId}`,
-payload
-);
-
-toastr.success("Lesson updated");
-
-}else{
-
-await api.post(
-`/courses/${courseId}/modules/${moduleId}/lessons`,
-payload
-);
-
-toastr.success("Lesson added");
-
-}
-
-setEditId(null);
+   const firstMedia = blocksData.find(b => b.type !== "text");
 
 setForm({
-title:"",
-type:"video",
-sourceType:"external_url",
-contentUrl:"",
-textContent:"",
-order:1
+  title: lesson.title,
+  textContent: blocksData.find(b => b.type === "text")?.contentText || "",
+  contentUrl:
+    firstMedia?.sourceType === "external_url"
+      ? firstMedia.contentUrl
+      : "",
+  order: lesson.order
 });
 
-setCanvasFields([]);
+    setCanvasFields([
+      "title",
+      ...blocksData.map(b => b.type),
+      "order"
+    ]);
 
-loadLessons();
-setActiveTab("lessonList");
+    setActiveTab("addLesson");
+  };
 
-}catch(err){
+  const handleDelete = async id => {
+    if (!window.confirm("Delete?")) return;
+    await api.delete(`/courses/${courseId}/modules/${moduleId}/lessons/${id}`);
+    loadLessons();
+  };
 
-console.error(err.response?.data || err);
-toastr.error(err.response?.data?.message || "Save failed");
+  /* ================= RENDER FIELD ================= */
+  function renderField(id) {
+    switch (id) {
+      case "title":
+        return (
+          <div className="form-group">
+            <label>Lesson Title</label>
+            <input name="title" value={form.title} onChange={handleChange} />
+          </div>
+        );
 
-}
+      case "video":
+        return (
+            <>
+            <h3 className="not-tl">Add Video</h3>
+            <div className="form-group">
+            <label>Content URL</label>
+            <input
+                type="text"
+                name="contentUrl"
+                value={form.contentUrl}
+                onChange={e => {
+  const url = e.target.value;
 
-};
+  setSelectedType(id);
 
-/* ================= EDIT ================= */
+  const newBlock = {
+    type: id,
+    sourceType: "external_url",
+    contentUrl: url
+  };
 
-const handleEdit = (lesson) => {
+  setBlocks(prev => {
+    const others = prev.filter(b => b.type !== id);
+    return [...others, newBlock];
+  });
 
-setEditId(lesson._id);
-
-const newForm = {
-title: lesson.title || "",
-type: lesson.type || "video",
-sourceType: lesson.sourceType || "external_url",
-contentUrl: lesson.contentUrl || "",
-textContent: lesson.contentText || "",
-order: lesson.order || 1
-};
-
-setForm(newForm);
-
-const fields=["title","type","sourceType"];
-
-if (lesson.type==="text") fields.push("textContent");
-else fields.push("contentUrl");
-
-fields.push("order");
-
-if (lesson.sourceType==="file") fields.push("file");
-
-setCanvasFields(fields);
-
-setActiveTab("addLesson");
-
-};
-
-/* ================= DRAG ================= */
-
-function handleDragEnd(event){
-
-const {active,over}=event;
-
-if(!over) return;
-
-if(active.id!==over.id){
-
-const oldIndex=canvasFields.indexOf(active.id);
-const newIndex=canvasFields.indexOf(over.id);
-
-const items=[...canvasFields];
-
-items.splice(oldIndex,1);
-items.splice(newIndex,0,active.id);
-
-setCanvasFields(items);
-
-}
-
-}
-
-/* ================= FIELD RENDER ================= */
-
-function renderField(id){
-
-switch(id){
-
-case "title":
-return(
-<div className="form-group">
-<label>Lesson Title</label>
-<input type="text" name="title" value={form.title} onChange={handleChange}/>
-</div>
-);
-
-case "type":
-return(
-<div className="form-group">
-<label>Lesson Type</label>
-<select name="type" value={form.type} onChange={handleChange}>
-<option value="video">Video</option>
-<option value="pdf">PDF</option>
-<option value="image">Image</option>
-<option value="text">Text</option>
-</select>
-</div>
-);
-
-case "sourceType":
-return(
-<div className="form-group">
-<label>Source Type</label>
-<select name="sourceType" value={form.sourceType} onChange={handleChange}>
-<option value="external_url">External URL</option>
-<option value="file">Upload File</option>
-</select>
-</div>
-);
-
-case "contentUrl":
-return(
-<div className="form-group">
-<label>Content URL</label>
-<input type="text" name="contentUrl" value={form.contentUrl} onChange={handleChange}/>
-</div>
-);
-
-case "file":
-return(
-<div className="form-group">
-
-<label>Upload File</label>
-
-<div
-className="file-drop-area"
-onDragOver={(e)=>e.preventDefault()}
-onDrop={(e)=>{
-e.preventDefault();
-const file = e.dataTransfer.files[0];
-if(file) uploadFile(file);
+  setForm(prev => ({
+    ...prev,
+    type: id,
+    contentUrl: url,
+    sourceType: "external_url"
+  }));
 }}
->
+            />
+        </div>
+          <div className="form-group">
+            
+           <label>Upload File</label>
+            <input
+              type="file"
+              onChange={e => {
+                setSelectedType(id);
+                setForm(prev => ({ ...prev, type: id }));
+                uploadFile(e.target.files[0]);
+              }}
+            />
+          </div>
+          </>
+        );
+    case "image":
+        return (
+            <>
+            <h3 className="not-tl">Add Image</h3>
+            <div className="form-group">
+            <label>Content URL</label>
+            <input
+                type="text"
+                name="contentUrl"
+                value={form.contentUrl}
+                onChange={e => {
+  const url = e.target.value;
 
-<input
-type="file"
-id="lessonFileUpload"
-style={{display:"none"}}
-onChange={(e)=>uploadFile(e.target.files[0])}
-/>
+  setSelectedType(id);
 
-<div
-className="upload-ui"
-onClick={()=>document.getElementById("lessonFileUpload").click()}
->
+  const newBlock = {
+    type: id,
+    sourceType: "external_url",
+    contentUrl: url
+  };
 
-<i className="fa-solid fa-cloud-arrow-up upload-icon"></i>
+  setBlocks(prev => {
+    const others = prev.filter(b => b.type !== id);
+    return [...others, newBlock];
+  });
 
-<p className="upload-title">
-Drag & Drop file here
-</p>
-
-<p className="upload-sub">
-or click to browse
-</p>
-
-{uploadedFileName && (
-<div className="uploaded-file">
-<i className="fa-solid fa-file"></i>
-<span>{uploadedFileName}</span>
-</div>
-)}
-
-{uploading && (
-<div className="upload-progress">
-<div
-className="upload-progress-bar"
-style={{width:`${uploadProgress}%`}}
-></div>
-</div>
-)}
-
-</div>
-
-</div>
-
-</div>
-);
-
-case "textContent":
-return(
-<div className="form-group">
-<label>Lesson Content</label>
-<Suspense fallback={<p>Loading editor...</p>}>
-<ReactQuill
-value={form.textContent}
-onChange={(value)=>setForm(prev=>({...prev,textContent:value}))}
-/>
-</Suspense>
-</div>
-);
-
-case "order":
-return(
-<div className="form-group">
-<label>Display Order</label>
-<input type="number" name="order" value={form.order} onChange={handleChange}/>
-</div>
-);
-
-default:
-return null;
-
-}
-
-}
-
-/* ================= UI ================= */
-
-return(
-
-<div className="mx-wd">
-
-<div className="dash-tp">
-<h1 className="wlc-tl">LESSON</h1>
-<p className="wlc-ms">Please add your lesson's and take a look at lessons.</p>
-</div>
-
-<div className="pg-tabs">
-
-<span
-className={`pg-tb ${activeTab==="addLesson"?"active-tab":""}`}
-onClick={()=>setActiveTab("addLesson")}
->
-Add Lesson
-</span>
-
-<span
-className={`pg-tb ${activeTab==="lessonList"?"active-tab":""}`}
-onClick={()=>setActiveTab("lessonList")}
->
-Lesson List
-</span>
-
-</div>
-
-<div className="tab-content">
-
-{activeTab==="addLesson" && (
-
-<div className="tab-cnnt">
-
-<div style={{display:"flex",gap:"30px"}}>
-
-<div style={{flex:1,border:"1px solid #ddd",padding:"20px 20px 58px 20px",position:"relative",borderRadius:"8px"}}>
-
-<form onSubmit={handleSubmit}>
-
-<DndContext
-sensors={sensors}
-collisionDetection={closestCenter}
-onDragEnd={handleDragEnd}
->
-
-<SortableContext
-items={canvasFields}
-strategy={verticalListSortingStrategy}
->
-
-{canvasFields.map(id=>(
-<SortableItem
-key={id}
-id={id}
-renderField={renderField}
-/>
-))}
-
-</SortableContext>
-
-</DndContext>
-
-<button type="submit" className="snd-btn" disabled={uploading}
-style={{position:"absolute",bottom:"20px",left:"0",right:"0",margin:"0 auto",display:"table"}}
->
-{editId ? "Update Lesson" : "Create Lesson"}
-</button>
-
-</form>
-
-</div>
-
-<div style={{width:"250px",border:"1px solid #ddd",padding:"15px",borderRadius:"8px"}}>
-<h4 style={{fontSize:"12px",fontWeight:"500",marginBottom:"10px"}}>
-Please click on below options to add lesson
-</h4>
-
-{sidebarFields.map(field=>(
-<div
-className="les-typ"
-key={field.id}
-onClick={()=>addField(field.id)}
-style={{
-padding:"10px",
-border:"1px solid #ccc",
-marginBottom:"10px",
-cursor:"pointer",
-borderRadius:"8px",
-display:"flex",
-alignItems:"center",
-gap:"10px",
-fontSize:"14px"
+  setForm(prev => ({
+    ...prev,
+    type: id,
+    contentUrl: url,
+    sourceType: "external_url"
+  }));
 }}
->
-<i className="fa-solid fa-grip-vertical"></i> {field.label}
-</div>
-))}
+            />
+        </div>
+          <div className="form-group">
+            
+           <label>Upload File</label>
+            <input
+              type="file"
+              onChange={e => {
+                setSelectedType(id);
+                setForm(prev => ({ ...prev, type: id }));
+                uploadFile(e.target.files[0]);
+              }}
+            />
+          </div>
+          </>
+        );
+        case "pdf":
+        return (
+            <>
+            <h3 className="not-tl">Add PDF</h3>
+            <div className="form-group">
+            <label>Content URL</label>
+            <input
+                type="text"
+                name="contentUrl"
+                value={form.contentUrl}
+                onChange={e => {
+  const url = e.target.value;
 
-</div>
+  setSelectedType(id);
 
-</div>
+  const newBlock = {
+    type: id,
+    sourceType: "external_url",
+    contentUrl: url
+  };
 
-</div>
-)}
+  setBlocks(prev => {
+    const others = prev.filter(b => b.type !== id);
+    return [...others, newBlock];
+  });
 
-{/* LESSON LIST */}
+  setForm(prev => ({
+    ...prev,
+    type: id,
+    contentUrl: url,
+    sourceType: "external_url"
+  }));
+}}
+            />
+        </div>
+          <div className="form-group">
+            
+           <label>Upload File</label>
+            <input
+              type="file"
+              onChange={e => {
+                setSelectedType(id);
+                setForm(prev => ({ ...prev, type: id }));
+                uploadFile(e.target.files[0]);
+              }}
+            />
+          </div>
+          </>
+        );
+      case "text":
+        return (
+            <>
+            <h3 className="not-tl">Add Description</h3>
+          <div className="form-group">
+            <label>Lesson Content</label>
+            <ReactQuill
+              value={form.textContent}
+              onChange={val => {
+                setSelectedType("text");
 
-{activeTab==="lessonList" && (
+                const newBlock = {
+                    type: "text",
+                    sourceType: "inline",
+                    contentText: val
+                };
 
-<div className="ls-tbl">
+                setBlocks(prev => {
+                    const others = prev.filter(b => b.type !== "text");
+                    return [...others, newBlock];
+                });
 
-{loading ? (
-<p>Loading lessons...</p>
-) : (
+                setForm(prev => ({ ...prev, textContent: val, type: "text" }));
+                }}
+            />
+          </div>
+          </>
+        );
 
-<table id="lessonsTable" className="dataTable" ref={tableRef}>
+      case "order":
+        return (
+          <div className="form-group">
+            <label>Display Order</label>
+            <input name="order" value={form.order} onChange={handleChange} />
+          </div>
+        );
 
-<thead>
-<tr>
-<th>Title</th>
-<th>Type</th>
-<th>Preview</th>
-<th>Order</th>
-<th>Action</th>
-</tr>
-</thead>
+      default:
+        return null;
+    }
+  }
 
-<tbody>
+  /* ================= RENDER ================= */
+  return (
+    <div className="mx-wd">
+      <div className="dash-tp">
+        <h1 className="wlc-tl">LESSON</h1>
+        <p className="wlc-ms">Please add your lesson's and take a look at lessons.</p>
+      </div>
 
-{lessons.length===0 &&
-<tr><td colSpan="5">No Lessons created</td></tr>
-}
+      <div className="pg-tabs">
+        <span className={`pg-tb ${activeTab === "addLesson" ? "active-tab" : ""}`} onClick={() => setActiveTab("addLesson")}>
+          {editId ? "Update Lesson" : "Add Lesson"}
+        </span>
+        <span className={`pg-tb ${activeTab === "lessonList" ? "active-tab" : ""}`} onClick={() => setActiveTab("lessonList")}>
+          Lesson List
+        </span>
+      </div>
 
-{lessons.map((lesson)=>(
-<tr key={lesson._id}>
+      <div className="tab-content">
+        {activeTab === "addLesson" && (
+          <div className="tab-cnnt">
+            <div style={{ display: "flex", gap: "30px" }}>
+              <div style={{ flex: 1, border: "1px solid #ddd", padding: "20px", position: "relative" }}>
+                <form onSubmit={handleSubmit}>
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={canvasFields} strategy={verticalListSortingStrategy}>
+                      {canvasFields.map(id => (
+                        <SortableItem key={id} id={id} renderField={renderField} onRemove={f => setCanvasFields(prev => prev.filter(x => x !== f))} />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
 
-<td>{lesson.title}</td>
-<td>{lesson.type}</td>
+                  <button type="submit" className="snd-btn">
+                    {editId ? "Update Lesson" : "Create Lesson"}
+                  </button>
+                </form>
+              </div>
 
-<td>
+              <div style={{ width: "300px", border: "1px solid #ddd", padding: "15px" }}>
+                <p className="no-not mb-2">Please click on below option to add lesson</p>
+                {sidebarFields.map(field => (
+                  <div
+                    className="les-typ"
+                    key={field.id}
+                    onClick={() => {
+                      if (!canvasFields.includes(field.id)) {
+                        setCanvasFields(prev => [...prev, field.id]);
+                        if (["video", "image", "pdf", "text"].includes(field.id)) {
+                          setSelectedType(field.id);
+                          setForm(prev => ({ ...prev, type: field.id }));
+                        }
+                      }
+                    }}
+                  >
+                    <i className="fa-solid fa-grip-vertical"></i> {field.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
-{lesson.type==="video" && lesson.sourceType==="external_url" ? (
-<iframe width="200" height="120" src={getYouTubeEmbed(lesson.contentUrl)} />
-) : lesson.type==="video" ? (
-<video width="200" controls>
-<source src={lesson.contentUrl}/>
-</video>
-) : lesson.type==="image" ? (
-<img src={lesson.contentUrl} width="150" alt=""/>
-) : lesson.type==="pdf" ? (
-<a href={lesson.contentUrl} target="_blank" rel="noreferrer">
-View PDF
-</a>
-) : (
-<div dangerouslySetInnerHTML={{__html:lesson.contentText}} />
-)}
+        {activeTab === "lessonList" && (
+          <div className="ls-tbl">
+            <table className="dataTable">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Type</th>
+                  <th>Preview</th>
+                  <th>Order</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lessons.map(lesson => {
+                  const block = lesson.blocks?.[0] || {};
+                  const fileUrl = getFileUrl(block);
 
-</td>
-
-<td>{lesson.order}</td>
-
-<td>
-<button
-className="logout-btn"
-onClick={()=>handleEdit(lesson)}
->
-<i className="fa fa-edit"></i>
-</button>
-</td>
-
-</tr>
-))}
-
-</tbody>
-
-</table>
-
-)}
-
-</div>
-
-)}
-
-</div>
-
-</div>
-
-);
-
+                  return (
+                    <tr key={lesson._id}>
+                      <td>{lesson.title}</td>
+                      <td>{block.type}</td>
+                      <td>
+                        {block.type === "video" ? (
+                          <video width="200" controls>
+                            <source src={fileUrl} />
+                          </video>
+                        ) : block.type === "image" ? (
+                          <img src={fileUrl} width="150" alt="" />
+                        ) : block.type === "pdf" ? (
+                          <iframe src={fileUrl} width="200" height="120" />
+                        ) : (
+                          <div dangerouslySetInnerHTML={{ __html: block.contentText }} />
+                        )}
+                      </td>
+                      <td>{lesson.order}</td>
+                      <td>
+                        <div className="act-btns">
+                            <span className="logout-btn" onClick={() => handleEdit(lesson)}>
+                            <i className="fa fa-edit"></i>
+                            </span>
+                            <span className="logout-btn" onClick={() => handleDelete(lesson._id)}>
+                            <i className="fa fa-trash"></i>
+                            </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

@@ -109,7 +109,7 @@ export default function CourseAssign() {
   return (
     <div className="mx-wd">
       <div className="dash-tp">
-        <h1 className="wlc-tl">ASSIGN STAFF TO COURSE</h1>
+        <h1 className="wlc-tl">ASSIGN COURSE TO STAFF</h1>
         <p className="wlc-ms">
           Please assign staff to course.
         </p>
@@ -118,19 +118,19 @@ export default function CourseAssign() {
       {/* TOP BUTTON */}
       <div className="tp-sc">
         <span
-          className="snd-btn"
+          className="logout-btn"
           onClick={openAssignPopup}
           style={{
             opacity: selected.length === 0 ? 0.6 : 1,
             pointerEvents: selected.length === 0 ? "none" : "auto",
           }}
         >
-          Assign Course To Selected Staff
+          <i className="fa-solid fa-plus"></i>
+          <span className="tooltiptext">Assign Course</span>
         </span>
 
         <Link className="logout-btn" to="/dashboard/courses">
           <i className="fa-solid fa-arrow-left"></i>
-          <span className="tooltiptext">Back to courses</span>
         </Link>
       </div>
 
@@ -214,7 +214,7 @@ export default function CourseAssign() {
             <div style={{ margin: "15px 0" }}>
               <label>Due Date</label>
               <input
-                type="datetime-local"
+                type="date"
                 value={dueDate}
                 onChange={(e) =>
                   setDueDate(e.target.value)
@@ -233,10 +233,10 @@ export default function CourseAssign() {
                 onClick={confirmAssign}
                 disabled={loading}
               >
-                {loading ? "Assigning..." : "Confirm Assign"}
+                {loading ? "Assigning..." : "Assign"}
               </button>
 
-              <button
+              <button className="snd-btn"
                 style={{
                   marginLeft: "10px",
                   padding: "8px 15px",

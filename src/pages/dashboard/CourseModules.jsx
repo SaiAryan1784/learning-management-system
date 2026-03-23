@@ -110,17 +110,18 @@ export default function CourseModules() {
   return (
     <div className="mx-wd">
       <div className="dash-tp">
-        <h1 className="wlc-tl">COURSE MODULE'S </h1>
+        <h1 className="wlc-tl">COURSE MODULE </h1>
         <p className="wlc-ms">
           Please add your course module's and take a look at your business.
         </p>
       </div>
       <div className="tp-sc">
-        <span className="snd-btn" 
+        <span className="logout-btn" 
         onClick={() => {
           resetForm();
           setOpenPop(true);
-        }}>Add Course Module</span>
+        }}><i className="fa-solid fa-plus"></i>
+          <span className="tooltiptext">Add Course Module</span></span>
         <Link to="/dashboard/courses" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
             <span className="tooltiptext">Back to courses</span>

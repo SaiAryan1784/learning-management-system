@@ -31,27 +31,32 @@ export const AuthProvider = ({ children }) => {
 
   // 🔐 Login function
   const login = (data) => {
-    try {
-      const perms = data.role?.permissions || [];
+  try {
+    const userData = {
+      ...data.user,
+      role: data.role, // 👈 IMPORTANT FIX
+    };
 
-      localStorage.setItem("accessToken", data.accessToken?.accessToken);
-      localStorage.setItem("lmsUser", JSON.stringify(data.user));
-      localStorage.setItem("lmsPermissions", JSON.stringify(perms));
-      localStorage.setItem("lmsAccess", JSON.stringify(data.access));
+    const perms = data.role?.permissions || [];
 
-      if (data.organization?.id) {
-        localStorage.setItem("organizationId", data.organization.id);
-      } else {
-        localStorage.removeItem("organizationId");
-      }
+    localStorage.setItem("accessToken", data.accessToken?.accessToken);
+    localStorage.setItem("lmsUser", JSON.stringify(userData));
+    localStorage.setItem("lmsPermissions", JSON.stringify(perms));
+    localStorage.setItem("lmsAccess", JSON.stringify(data.access));
 
-      setUser(data.user);
-      setPermissions(perms);
-      setAccess(data.access);
-    } catch (error) {
-      console.error("Login storage error:", error);
+    if (data.organization?.id) {
+      localStorage.setItem("organizationId", data.organization.id);
+    } else {
+      localStorage.removeItem("organizationId");
     }
-  };
+
+    setUser(userData); // 👈 use updated user
+    setPermissions(perms);
+    setAccess(data.access);
+  } catch (error) {
+    console.error("Login storage error:", error);
+  }
+};
 
   // 🚪 Logout function
   const logout = () => {

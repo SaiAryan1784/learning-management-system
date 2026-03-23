@@ -722,7 +722,7 @@ section,
 # Hero Section
 --------------------------------------------------------------*/
 .hero {
-  padding: 40px 0;
+  padding: 20px 0;
 }
 
 .hero .hero-content {
@@ -1300,6 +1300,7 @@ section,
   padding: 10px;
   display: flex;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  align-items: center;
 }
 
 .stats .stats-card:hover {
@@ -1565,7 +1566,7 @@ section,
 --------------------------------------------------------------*/
 .clients {
   overflow-x: hidden;
-  padding: 40px 0;
+  padding: 20px 0;
   /* Responsive adjustments */
 }
 
@@ -1847,13 +1848,15 @@ section,
 .how-we-work .steps-wrapper {
   position: relative;
   padding: 20px 0;
+  width: 60%;
+  margin:0 auto;
 }
 
 .how-we-work .steps-wrapper::before {
   content: "";
   position: absolute;
   width: 2px;
-  background-color: color-mix(in srgb, var(--accent-color), transparent 85%);
+  background-color: color-mix(in srgb, #059669, transparent 85%);
   top: 0;
   bottom: 0;
   left: 50%;
@@ -1877,13 +1880,13 @@ section,
 .how-we-work .step-content {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: 10px;
 }
 
 .how-we-work .step-icon {
   flex-shrink: 0;
-  width: 80px;
-  height: 80px;
+  width: 50px;
+  height: 50px;
   background-color: var(--surface-color);
   border-radius: 50%;
   display: flex;
@@ -1892,20 +1895,19 @@ section,
   position: relative;
   z-index: 1;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-  border: 2px solid color-mix(in srgb, var(--accent-color), transparent 85%);
   transition: all 0.3s ease-in-out;
 }
 
 .how-we-work .step-icon i {
-  font-size: 32px;
-  color: var(--accent-color);
+  font-size: 22px;
+  color: #059669;
   transition: transform 0.3s ease-in-out;
 }
 
 .how-we-work .step-info {
   flex: 1;
   background-color: var(--surface-color);
-  padding: 30px;
+  padding: 20px;
   border-radius: 8px;
   box-shadow: 0 5px 25px rgba(0, 0, 0, 0.05);
   transition: transform 0.3s ease-in-out;
@@ -1917,26 +1919,25 @@ section,
 
 .how-we-work .step-number {
   display: inline-block;
-  font-family: var(--heading-font);
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--accent-color);
+  color: #059669;
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 10px;
 }
 
 .how-we-work h3 {
-  font-size: 1.3rem;
-  margin-bottom: 15px;
+  font-size: 16px;
+  margin-bottom: 10px;
   font-weight: 600;
-  color: var(--heading-color);
+  color: #111947;
 }
 
 .how-we-work p {
-  color: color-mix(in srgb, var(--default-color), transparent 20%);
-  font-size: 1rem;
-  line-height: 1.6;
+  color: #111947;
+  font-size: 14px;
+  line-height: 20px;
   margin-bottom: 0;
 }
 
@@ -1997,7 +1998,7 @@ section,
 /*--------------------------------------------------------------
 # Faq Section
 --------------------------------------------------------------*/
-.faq{background-color: #fff;padding:40px 0;}
+.faq{background-color: #fff;padding:20px 0;}
 .faq .faq-tabs .nav-pills {
   display: inline-flex;
   padding: 8px;
@@ -2192,7 +2193,7 @@ section,
 /*--------------------------------------------------------------
 # Call To Action Section
 --------------------------------------------------------------*/
-.call-to-action{padding:40px 0;}
+.call-to-action{padding:20px 0;}
 .call-to-action .cta-wrapper {
   display: flex;
   align-items: center;

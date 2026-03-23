@@ -85,15 +85,16 @@ export default function CourseCategories() {
   return (
     <div className="mx-wd">
       <div className="dash-tp">
-        <h1 className="wlc-tl">COURSE CATEGORIE'S</h1>
+        <h1 className="wlc-tl">COURSE CATEGORY</h1>
         <p className="wlc-ms">Please add the course categorie's and take a look at your business.</p>
       </div>
       <div className="tp-sc">
-        <span className="snd-btn" 
+        <span className="logout-btn" 
         onClick={() => {
           resetForm();
           setOpenPop(true);
-        }}>Add Course Category</span>
+        }}><i className="fa-solid fa-plus"></i>
+          <span className="tooltiptext">Add Course Category</span></span>
         <Link to="/dashboard" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
@@ -110,7 +111,7 @@ export default function CourseCategories() {
         </span>
 
         <h2 className="sc-tl">
-          {editId ? "Edit Category" : "Add Category"}
+          {editId ? "Edit Course Category" : "Add Course Category"}
         </h2>
 
         <input

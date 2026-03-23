@@ -142,17 +142,18 @@ export default function OwnerStaff() {
   return (
     <div className="mx-wd">
       <div className="dash-tp">
-        <h1 className="wlc-tl">STAFF'S</h1>
+        <h1 className="wlc-tl">STAFF</h1>
         <p className="wlc-ms">
           Please add the staff's and take a look at your business.
         </p>
       </div>
 
      <div className="tp-sc">
-        <span className="snd-btn" 
+        <span className="logout-btn" 
         onClick={() => {
           setOpenPop(true);
-        }}>Add Staff</span>
+        }}><i className="fa-solid fa-plus"></i>
+          <span className="tooltiptext">Add Role</span></span>
         <Link to="/dashboard" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
         </Link>

@@ -103,17 +103,18 @@ export default function Modules() {
   return (
     <div className="mx-wd">
       <div className="dash-tp">
-        <h1 className="wlc-tl">MAIN MODULE'S</h1>
+        <h1 className="wlc-tl">MAIN MODULE</h1>
         <p className="wlc-ms">
           Please add main module's and take a look at your business.
         </p>
       </div>
       <div className="tp-sc">
-        <span className="snd-btn" 
+        <span className="logout-btn" 
         onClick={() => {
           resetForm();
           setOpenPop(true);
-        }}>Add Main Module</span>
+        }}><i className="fa-solid fa-plus"></i>
+          <span className="tooltiptext">Add Main Module</span></span>
         <Link to="/dashboard" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
         </Link>

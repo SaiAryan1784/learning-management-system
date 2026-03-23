@@ -59,7 +59,6 @@ export default function StaffComplianceReport() {
         }
       },
       columns: [
-        { data: null, render: (data, type, row, meta) => meta.row + 1 },
         { data: "staffName" },
         { data: "staffEmail" },
         { data: "mandatoryCourses" },
@@ -147,7 +146,6 @@ export default function StaffComplianceReport() {
       >
         <thead>
           <tr>
-            <th>Sr No</th>
             <th>Staff Name</th>
             <th>Email</th>
             <th>Mandatory Courses</th>

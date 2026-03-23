@@ -157,18 +157,19 @@ export default function OwnerRoles() {
   return (
     <div className="mx-wd">
       <div className="dash-tp">
-        <h1 className="wlc-tl">ROLE'S</h1>
+        <h1 className="wlc-tl">ROLE</h1>
       </div>
 
       <div className="tp-sc">
         <span
-          className="snd-btn"
+          className="logout-btn"
           onClick={() => {
             resetForm();
             setOpenPop(true);
           }}
         >
-          Add Role
+          <i className="fa-solid fa-plus"></i>
+          <span className="tooltiptext">Add Role</span>
         </span>
 
         <Link to="/dashboard" className="logout-btn">

@@ -18,6 +18,7 @@ import OwnerRoles from "./pages/dashboard/OwnerRoles";
 import OwnerStaff from "./pages/dashboard/OwnerStaff";
 import DashboardLayout from "./layouts/DashboardLayout";
 import OSCourses from "./pages/dashboard/OSCourses";
+import CourseAdd from "./pages/dashboard/CourseAdd";
 import CourseCategories from "./pages/dashboard/CourseCategories";
 import CourseModules from "./pages/dashboard/CourseModules";
 import ModuleLessions from "./pages/dashboard/ModuleLessions";
@@ -41,36 +42,39 @@ import RunAssignments from "./pages/compliance/RunAssignments";
 
 import ComplianceOverview from "./pages/reports/ComplianceOverview";
 import StaffComplianceReports from "./pages/reports/StaffComplianceReports";
-// import CertificateExpiryReport from "./pages/reports/CertificateExpiryReport";
-// import NotificationLogs from "./pages/reports/NotificationLogs";
-// import AuditTrail from "./pages/reports/AuditTrail";
+import AuditTrail from "./pages/reports/AuditTrail";
+import NotificationLogs from "./pages/reports/NotificationLogs";
+import CertificateExpiry from "./pages/reports/CertificateExpiry";
 
-
-// ================= PERMISSION ROUTE =================
-const PermissionRoute = ({ permission, children }) => {
-  const { user, access, loading, hasPermission } = useAuth();
+// ================= ROLE BASED ROUTE =================
+const PermissionRoute = ({ children }) => {
+  const { user, loading } = useAuth();
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
 
+  const roleName = user?.role?.name?.trim().toLowerCase();
   const isSuperAdmin = user?.isPlatformAdmin === true;
-  const isOwnerAdmin = !isSuperAdmin && access?.orgWide === true;
-  const isStaff = !isSuperAdmin && access?.orgWide !== true;
+
+  const isOwnerAdmin =
+    !isSuperAdmin && (roleName === "admin" || roleName === "owner");
+
+  const isStaff =
+    !isSuperAdmin && roleName !== "admin" && roleName !== "owner";
 
   // Super Admin → full access
   if (isSuperAdmin) return children;
 
-  // Owner/Admin → org wide access
+  // Owner/Admin → full access
   if (isOwnerAdmin) return children;
 
-  // Staff → permission required
-  if (isStaff && permission && !hasPermission(permission)) {
+  // Staff → restrict access (redirect to dashboard)
+  if (isStaff) {
     return <Navigate to="/dashboard" replace />;
   }
 
   return children;
 };
-
 
 // ================= SUPER ADMIN ONLY =================
 const SuperAdminRoute = ({ children }) => {
@@ -83,7 +87,6 @@ const SuperAdminRoute = ({ children }) => {
     ? children
     : <Navigate to="/dashboard" replace />;
 };
-
 
 export default function App() {
   return (
@@ -115,7 +118,6 @@ export default function App() {
             <Route index element={<Admin />} />
 
             {/* ================= SUPER ADMIN ================= */}
-
             <Route
               path="modules"
               element={
@@ -125,232 +127,43 @@ export default function App() {
               }
             />
 
-            {/* ================= MANAGER DASHBOARD ================= */}
+            {/* ================= ALL BELOW → ROLE BASED ================= */}
 
-            <Route
-              path="manager"
-              element={
-                <PermissionRoute permission="reports:read">
-                  <ManagerDashboard />
-                </PermissionRoute>
-              }
-            />
+            <Route path="manager" element={<PermissionRoute><ManagerDashboard /></PermissionRoute>} />
+            <Route path="staff-progress/:staffId" element={<PermissionRoute><ManagerStaffDetails /></PermissionRoute>} />
 
-            <Route
-              path="staff-progress/:staffId"
-              element={
-                <PermissionRoute permission="progress:read">
-                  <ManagerStaffDetails />
-                </PermissionRoute>
-              }
-            />
+            <Route path="staff" element={<PermissionRoute><OwnerStaff /></PermissionRoute>} />
+            <Route path="certificates" element={<PermissionRoute><StaffCertificates /></PermissionRoute>} />
+            <Route path="locations" element={<PermissionRoute><OwnerLocations /></PermissionRoute>} />
+            <Route path="roles" element={<PermissionRoute><OwnerRoles /></PermissionRoute>} />
 
-            {/* ================= STAFF MANAGEMENT ================= */}
+            <Route path="course-categories" element={<PermissionRoute><CourseCategories /></PermissionRoute>} />
+            <Route path="courses" element={<PermissionRoute><OSCourses /></PermissionRoute>} />
+            <Route path="course-add/:courseId?" element={<PermissionRoute><CourseAdd /></PermissionRoute>} />
+            <Route path="assessments" element={<PermissionRoute><OSAssessment /></PermissionRoute>} />
 
-            <Route
-              path="staff"
-              element={
-                <PermissionRoute permission="staff:read">
-                  <OwnerStaff />
-                </PermissionRoute>
-              }
-            />
+            <Route path="courses/:courseId/modules" element={<PermissionRoute><CourseModules /></PermissionRoute>} />
+            <Route path="courses/:courseId/modules/:moduleId/lessons" element={<PermissionRoute><ModuleLessions /></PermissionRoute>} />
+            <Route path="courses/:courseId/assign" element={<PermissionRoute><CourseAssignStaff /></PermissionRoute>} />
 
-            <Route
-              path="certificates"
-              element={
-                <PermissionRoute permission="certificates:read">
-                  <StaffCertificates />
-                </PermissionRoute>
-              }
-            />
+            {/* ================= STAFF ================= */}
+            <Route path="my-dashboard" element={<PermissionRoute><StaffDashboard /></PermissionRoute>} />
+            <Route path="staff/course/:courseId/lesson/:lessonId" element={<PermissionRoute><StaffLessonView /></PermissionRoute>} />
+            <Route path="staff/course/:courseId/assessments" element={<PermissionRoute><CourseAssessments /></PermissionRoute>} />
+            <Route path="staff/assessment/:assessmentId/:courseId" element={<PermissionRoute><AssessmentAttempt /></PermissionRoute>} />
 
-            <Route
-              path="locations"
-              element={
-                <PermissionRoute permission="locations:read">
-                  <OwnerLocations />
-                </PermissionRoute>
-              }
-            />
+            {/* ================= COMPLIANCE ================= */}
+            <Route path="compliance/settings" element={<PermissionRoute><ComplianceSettings /></PermissionRoute>} />
+            <Route path="compliance/policies" element={<PermissionRoute><CompliancePolicies /></PermissionRoute>} />
+            <Route path="compliance/run-assignments" element={<PermissionRoute><RunAssignments /></PermissionRoute>} />
 
-            <Route
-              path="roles"
-              element={
-                <PermissionRoute permission="roles:read">
-                  <OwnerRoles />
-                </PermissionRoute>
-              }
-            />
-
-            {/* ================= COURSES ================= */}
-
-            <Route
-              path="course-categories"
-              element={
-                <PermissionRoute permission="course-categories:read">
-                  <CourseCategories />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="courses"
-              element={
-                <PermissionRoute permission="courses:read">
-                  <OSCourses />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="assessments"
-              element={
-                <PermissionRoute permission="assessments:read">
-                  <OSAssessment />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="courses/:courseId/modules"
-              element={
-                <PermissionRoute permission="course-modules:read">
-                  <CourseModules />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="courses/:courseId/modules/:moduleId/lessons"
-              element={
-                <PermissionRoute permission="lessons:read">
-                  <ModuleLessions />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="courses/:courseId/assign"
-              element={
-                <PermissionRoute permission="courses:assign">
-                  <CourseAssignStaff />
-                </PermissionRoute>
-              }
-            />
-
-            {/* ================= STAFF DASHBOARD ================= */}
-
-            <Route
-              path="my-dashboard"
-              element={
-                <PermissionRoute permission="progress:read">
-                  <StaffDashboard />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="staff/course/:courseId/lesson/:lessonId"
-              element={
-                <PermissionRoute permission="lessons:read">
-                  <StaffLessonView />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="staff/course/:courseId/assessments"
-              element={
-                <PermissionRoute permission="progress:read">
-                  <CourseAssessments />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="/dashboard/staff/assessment/:assessmentId/:courseId"
-              element={
-                <PermissionRoute permission="progress:read">
-                  <AssessmentAttempt />
-                </PermissionRoute>
-              }
-            />
-
-            {/* ================= PHASE 5 : COMPLIANCE ================= */}
-
-            <Route
-              path="compliance/settings"
-              element={
-                <PermissionRoute permission="settings:read">
-                  <ComplianceSettings />
-                </PermissionRoute>
-              }
-            />
-
-             <Route
-              path="compliance/policies"
-              element={
-                <PermissionRoute permission="settings:read">
-                  <CompliancePolicies />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="compliance/run-assignments"
-              element={
-                <PermissionRoute permission="settings:update">
-                  <RunAssignments />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="reports/compliance"
-              element={
-                <PermissionRoute permission="reports:read">
-                  <ComplianceOverview />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="reports/staff-compliance"
-              element={
-                <PermissionRoute permission="reports:read">
-                  <StaffComplianceReports />
-                </PermissionRoute>
-              }
-            />
-
-           {/* <Route
-              path="reports/certificates-expiry"
-              element={
-                <PermissionRoute permission="reports:read">
-                  <CertificateExpiryReport />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="reports/notification-logs"
-              element={
-                <PermissionRoute permission="reports:read">
-                  <NotificationLogs />
-                </PermissionRoute>
-              }
-            />
-
-            <Route
-              path="reports/audit-trail"
-              element={
-                <PermissionRoute permission="reports:read">
-                  <AuditTrail />
-                </PermissionRoute>
-              }
-            /> */}
-
+            {/* ================= REPORTS ================= */}
+            <Route path="reports/compliance" element={<PermissionRoute><ComplianceOverview /></PermissionRoute>} />
+            <Route path="reports/staff-compliance" element={<PermissionRoute><StaffComplianceReports /></PermissionRoute>} />
+            <Route path="reports/audit-trail" element={<PermissionRoute><AuditTrail /></PermissionRoute>} />
+            <Route path="reports/notification-logs" element={<PermissionRoute><NotificationLogs /></PermissionRoute>} />
+            <Route path="reports/certificate-expiry" element={<PermissionRoute><CertificateExpiry/></PermissionRoute>} />
+            
           </Route>
 
         </Routes>

@@ -90,17 +90,19 @@ export default function OwnerLocations() {
   return (
     <div className="mx-wd">
       <div className="dash-tp">
-        <h1 className="wlc-tl">LOCATION'S</h1>
+        <h1 className="wlc-tl">LOCATION</h1>
         <p className="wlc-ms">
           Please add your location's and take a look at your business.
         </p>
       </div>
       <div className="tp-sc">
-        <span className="snd-btn" 
+        <span className="logout-btn" 
         onClick={() => {
           resetForm();
           setOpenPop(true);
-        }}>Add Location</span>
+        }}><i className="fa-solid fa-plus"></i>
+          <span className="tooltiptext">Add location</span>
+        </span>
         <Link to="/dashboard" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
         </Link>

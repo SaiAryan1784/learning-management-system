@@ -1,20 +1,100 @@
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 export default function DashboardLayout() {
-  const { logout, user, access, loading, hasPermission } = useAuth();
+  const { logout, user, access, loading } = useAuth();
   const navigate = useNavigate();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [coursesOpen, setCoursesOpen] = useState(false);
 
+  const dropdownRef = useRef();
+
+  const API = import.meta.env.VITE_API_URL;
+
+  useEffect(() => {
+    fetchNotifications();
+
+    // close dropdown on outside click
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  // ================= FETCH =================
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch(
+        `${API}/notifications/me?channel=in_app&page=1&limit=10`,
+        {
+          headers: {
+            Authorization: "Bearer " + localStorage.getItem("accessToken"),
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      setNotifications(data.notifications || []);
+      setUnreadCount(data.unreadCount || 0);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    }
+  };
+
+  // ================= MARK SINGLE =================
+  const markAsRead = async (id) => {
+    try {
+      await fetch(`${API}/notifications/${id}/read`, {
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("accessToken"),
+        },
+      });
+
+      fetchNotifications(); // refresh
+    } catch (err) {
+      console.error("Error marking notification:", err);
+    }
+  };
+
+  // ================= MARK ALL =================
+  const markAllAsRead = async () => {
+    try {
+      await fetch(`${API}/notifications/me/read-all`, {
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("accessToken"),
+        },
+      });
+
+      fetchNotifications();
+    } catch (err) {
+      console.error("Error marking all:", err);
+    }
+  };
   if (loading) return null;
 
-  // ================= ROLE DETECTION =================
+  // ================= ROLE DETECTION (FIXED) =================
+  const roleName = user?.role?.name?.trim().toLowerCase();
+
   const isSuperAdmin = user?.isPlatformAdmin === true;
-  const isOwnerAdmin = !isSuperAdmin && access?.orgWide === true;
-  const isStaff = !isSuperAdmin && access?.orgWide !== true;
+
+  const isOwnerAdmin =
+    !isSuperAdmin && (roleName === "admin" || roleName === "owner");
+
+  const isStaff =
+    !isSuperAdmin && roleName !== "admin" && roleName !== "owner";
 
   const handleLogout = () => {
     logout();
@@ -33,43 +113,31 @@ export default function DashboardLayout() {
       label: "Locations",
       icon: "fa-location-dot",
       path: "/dashboard/locations",
-      permission: "locations:read",
-    },
-    {
-      label: "Roles",
-      icon: "fa-user-gear",
-      path: "/dashboard/roles",
-      permission: "roles:read",
     },
     {
       label: "Staff",
       icon: "fa-users",
       path: "/dashboard/staff",
-      permission: "staff:read",
     },
     {
-      label: "Categories",
+      label: "Course Category",
       icon: "fa-book-open-reader",
       path: "/dashboard/course-categories",
-      permission: "course-categories:read",
     },
     {
-      label: "Courses",
+      label: "Add Course",
+      icon: "fa-plus",
+      path: "/dashboard/course-add",
+    },
+    {
+      label: "Course List",
       icon: "fa-book",
       path: "/dashboard/courses",
-      permission: "courses:read",
-    },
-    {
-      label: "Assessments",
-      icon: "fa-clipboard-check",
-      path: "/dashboard/assessments",
-      permission: "assessments:read",
     },
     {
       label: "Certificates",
       icon: "fa-certificate",
       path: "/dashboard/certificates",
-      permission: "certificates:read",
     },
   ];
 
@@ -79,20 +147,17 @@ export default function DashboardLayout() {
       label: "Compliance Settings",
       icon: "fa-sliders",
       path: "/dashboard/compliance/settings",
-      permission: "settings:read",
     },
     {
       label: "Policies",
       icon: "fa-shield-halved",
       path: "/dashboard/compliance/policies",
-      permission: "settings:read",
     },
-    {
-      label: "Run Assignments",
-      icon: "fa-play",
-      path: "/dashboard/compliance/run-assignments",
-      permission: "settings:update",
-    },
+    // {
+    //   label: "Run Assignments",
+    //   icon: "fa-play",
+    //   path: "/dashboard/compliance/run-assignments",
+    // },
   ];
 
   // ================= REPORTS MENU =================
@@ -101,31 +166,26 @@ export default function DashboardLayout() {
       label: "Compliance Overview",
       icon: "fa-chart-line",
       path: "/dashboard/reports/compliance",
-      permission: "reports:read",
     },
     {
       label: "Staff Compliance",
       icon: "fa-user-check",
       path: "/dashboard/reports/staff-compliance",
-      permission: "reports:read",
     },
     {
       label: "Certificate Expiry",
       icon: "fa-clock",
-      path: "/dashboard/reports/certificates-expiry",
-      permission: "reports:read",
+      path: "/dashboard/reports/certificate-expiry",
     },
     {
       label: "Notification Logs",
       icon: "fa-bell",
       path: "/dashboard/reports/notification-logs",
-      permission: "reports:read",
     },
     {
       label: "Audit Trail",
       icon: "fa-list",
       path: "/dashboard/reports/audit-trail",
-      permission: "reports:read",
     },
   ];
 
@@ -202,14 +262,12 @@ export default function DashboardLayout() {
         {/* STAFF */}
         {isStaff && (
           <div className="nav-grid">
-            {managementMenu
-              .filter((item) => hasPermission?.(item.permission))
-              .map((item) => (
-                <NavLink key={item.path} to={item.path} className={navGridClass}>
-                  <i className={`fa-solid ${item.icon}`}></i>
-                  <span>{item.label}</span>
-                </NavLink>
-              ))}
+            {managementMenu.map((item) => (
+              <NavLink key={item.path} to={item.path} className={navGridClass}>
+                <i className={`fa-solid ${item.icon}`}></i>
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
           </div>
         )}
       </nav>
@@ -228,9 +286,99 @@ export default function DashboardLayout() {
                 <i className="fa-solid fa-bars"></i>
               </span>
 
-              {/* NOTIFICATION BELL */}
-              <div className="notification-bell mx-3">
-                <i className="fa-solid fa-bell"></i>
+              {/* NOTIFICATION */}
+              <div className="nav-item dropdown notification-wrapper" ref={dropdownRef}>
+  
+                {/* 🔔 Bell Trigger */}
+                <span
+                  className="notification-bell dropdown-toggle position-relative d-block mx-3"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setOpen(!open);
+                  }}
+                >
+                  <i className="fa-solid fa-bell"></i>
+
+                  {/* 🔴 Count Badge */}
+                  {unreadCount > 0 && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "2px",
+                        right: "3px",
+                        background: "#db767c",
+                        color: "#fff",
+                        borderRadius: "50%",
+                        fontSize: "10px",
+                        padding: "5px",
+                        fontWeight: "bold",
+                        width: "20px",
+                        height: "20px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
+                </span>
+
+                {/* 📩 Dropdown */}
+                {open && (
+                  <ul
+                    className="dropdown-menu show"
+                    style={{
+                      width: "auto",
+                      maxHeight: "500px",
+                      overflowY: "auto",
+                      right: 0,
+                      left: "auto",
+                    }}
+                  >
+                    {/* Header */}
+                    <li className="dropdown-item d-flex justify-content-between align-items-center">
+                      <p className="not-tl">Notifications</p>
+
+                      {notifications.length > 0 && (
+                        <button style={{color:"#059669"}}
+                          className="btn btn-sm"
+                          onClick={markAllAsRead}
+                        >
+                          Mark all
+                        </button>
+                      )} 
+                    </li>
+
+                    <li><hr className="dropdown-divider" /></li>
+
+                    {/* No Notifications */}
+                    {notifications.length === 0 && (
+                      <li className="dropdown-item text-center">
+                       <p className="no-not"> No new notifications</p>
+                      </li>
+                    )}
+
+                    {/* Notification List */}
+                    {notifications.map((n) => (
+                      <li
+                        key={n._id}
+                        className="dropdown-item"
+                        onClick={() => markAsRead(n._id)}
+                      >
+                        <div className="dropdown-link">
+                          <p>
+                          {n.title}
+                          <span>{n.message}</span>
+                          <span style={{ fontSize: "11px", color: "#999" }}>
+                            {new Date(n.createdAt).toLocaleString()}
+                          </span>
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {/* PROFILE */}
@@ -241,6 +389,8 @@ export default function DashboardLayout() {
                 <span className="profile-name">
                   {user?.name || "User"}
                 </span>
+                  {/* {roleName} */}
+
                 <i className="fa-solid fa-chevron-down"></i>
 
                 {profileOpen && (
