@@ -10,32 +10,52 @@ export default function StaffCertificates() {
   const [selectedCert, setSelectedCert] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const loadCertificates = async () => {
-    try {
-      const certRes = await api.get("/certificates/me");
-      const certs = certRes.data.certificates || [];
+ const loadCertificates = async () => {
+  try {
+    const certRes = await api.get("/certificates/me");
+    const certs = certRes.data.certificates || [];
 
-      const unique = [];
-      const seen = new Set();
+    const dashRes = await api.get("/progress/me/dashboard");
+    const courses = dashRes.data.courses || [];
 
-      certs.forEach((c) => {
-        if (!seen.has(c.course?._id)) {
-          seen.add(c.course?._id);
-          unique.push(c);
+    // 🔥 NEW: fetch assessments per course
+    const enriched = await Promise.all(
+      certs.map(async (cert) => {
+        try {
+          const res = await api.get(
+            `/assessments?course=${cert.course?._id}`
+          );
+
+          const assessments = res.data.assessments || [];
+
+          const results = await Promise.all(
+            assessments.map((a) =>
+              api.get(`/assessments/${a._id}/results/me`)
+            )
+          );
+
+          // check if ANY assessment passed
+          const hasPassed = results.some((r) => {
+            const attempts = r.data.attempts || [];
+            return attempts.some((a) => a.status === "passed");
+          });
+
+          return { ...cert, hasPassed };
+        } catch {
+          return { ...cert, hasPassed: false };
         }
-      });
+      })
+    );
 
-      setCertificates(unique);
+    setCertificates(enriched);
+    setCoursesProgress(courses);
 
-      const dashRes = await api.get("/progress/me/dashboard");
-      setCoursesProgress(dashRes.data.courses || []);
-
-    } catch (err) {
-      toastr.error("Failed to load certificates");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch {
+    toastr.error("Failed to load certificates");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     loadCertificates();
@@ -48,7 +68,7 @@ export default function StaffCertificates() {
       (c) => c.courseId === cert.course?._id
     );
 
-    return course && course.progressPercent === 100;
+    return ( course && course.progressPercent === 100 && cert.hasPassed );
   });
 
   if (!eligibleCertificates.length)

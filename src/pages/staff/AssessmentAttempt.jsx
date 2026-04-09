@@ -45,37 +45,76 @@ export default function AssessmentAttempt() {
 
   useEffect(() => {
     const initialize = async () => {
-      try {
-        const listRes = await api.get(
-          `/assessments?course=${courseId}`
-        );
+  try {
+    // 🔥 FETCH BOTH
+   const [assessmentRes, courseRes] = await Promise.all([
+  api.get(`/assessments?course=${courseId}`),
+  api.get("/courses") // ✅ FIXED
+]);
 
-        const found = listRes.data.assessments.find(
-          (a) => a._id === assessmentId
-        );
+const separate = assessmentRes.data.assessments || [];
 
-        setAssessment(found);
+const course = courseRes.data.courses.find(
+  (c) => c._id === courseId
+);
 
-        const res = await api.get(
-          `/assessments/${assessmentId}/results/me`,
-          { params: { t: Date.now() } }
-        );
+const courseBased = course?.assessments || [];
 
-        const latest = res.data.attempts.sort(
-          (a, b) => b.attemptNo - a.attemptNo
-        )[0];
+    // 🔥 FIND IN API FIRST
+    let found = separate.find((a) => a._id === assessmentId);
 
-        if (latest && latest.status === "started") {
-          setAttempt(latest);
-        }
+    // 🔥 IF NOT FOUND → CHECK COURSE EMBEDDED
+    let isEmbedded = false;
 
-      } catch (err) {
-        console.error(err);
-        toastr.error("Error loading assessment");
-      } finally {
-        setLoading(false);
+    if (!found) {
+      const index = courseBased.findIndex(
+        (_, i) => `course-${i + 1000}` === assessmentId
+      );
+
+      if (index !== -1) {
+        found = {
+          ...courseBased[index],
+          _id: assessmentId,
+          isCourseEmbedded: true
+        };
+        isEmbedded = true;
       }
-    };
+    }
+
+    // ❌ NOT FOUND ANYWHERE
+    if (!found) {
+      toastr.error("Assessment not found");
+      return;
+    }
+
+    setAssessment(found);
+
+    // ❌ STOP HERE for embedded
+    if (isEmbedded) {
+      return;
+    }
+
+    // ✅ ONLY FOR REAL API ASSESSMENTS
+    const res = await api.get(
+      `/assessments/${assessmentId}/results/me`,
+      { params: { t: Date.now() } }
+    );
+
+    const latest = res.data.attempts.sort(
+      (a, b) => b.attemptNo - a.attemptNo
+    )[0];
+
+    if (latest && latest.status === "started") {
+      setAttempt(latest);
+    }
+
+  } catch (err) {
+    console.error(err);
+    toastr.error("Error loading assessment");
+  } finally {
+    setLoading(false);
+  }
+};
 
     initialize();
   }, []);
@@ -128,13 +167,21 @@ export default function AssessmentAttempt() {
 
   if (loading) return <div>Loading...</div>;
   if (!assessment) return <div>No assessment found</div>;
-
+  if (assessment?.isCourseEmbedded) {
+  return (
+    <div className="mx-wd py-5">
+      <h3>This assessment is not available for attempt yet.</h3>
+      <p>Please contact admin.</p>
+    </div>
+  );
+}
   if (!attempt)
     return (
     < div className="mx-wd">
       <div className="dash-tp"><h1 className="wlc-tl">Start Assessment</h1></div>
-      <div className="progress-item mt-4">
-        <h2 className="progress-title mb-4">{assessment.title}</h2>
+      <div className="progress-item mt-4 p-4">
+        <h2 className="progress-title">{assessment.title}</h2>
+        <p className="mb-2">{assessment.description}</p>
         <button className="rev-btn" onClick={startAttempt}>
           ▶ Start Assessment
         </button>

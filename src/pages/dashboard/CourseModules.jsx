@@ -124,8 +124,6 @@ export default function CourseModules() {
           <span className="tooltiptext">Add Course Module</span></span>
         <Link to="/dashboard/courses" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
-            <span className="tooltiptext">Back to courses</span>
-
         </Link>
       </div>
       <div className={`frm-cntr ${openPop ? "open" : ""}`}>

@@ -131,7 +131,7 @@ div.dt-container .dt-input:focus{border-color: #111947;outline: 0;box-shadow: in
 .datcard:hover:before {transform: scale(100);}
 .datcard:hover{transform: translateY(-10px);transition: .8s all;}
 .datcard:hover p {transition: all 0.5s ease-out;color: rgb(255, 255, 255);}
-.main-data .row{--bs-gutter-x: 0.5rem;padding:0 70px;}
+/* .main-data .row{--bs-gutter-x: 0.5rem;padding:0 70px;} */
 .ls-tbl{
     background-color: #fff;
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
@@ -140,6 +140,10 @@ div.dt-container .dt-input:focus{border-color: #111947;outline: 0;box-shadow: in
     width: 100%;
     margin: 0 auto;
     display: block;}
+    .quiz-question{position: relative;}
+.add-form{padding: 20px;background-color: #fff;box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);border-radius: 12px;position: relative;width: 100%;margin:0 auto;display:block;}
+.assessment-header{display: flex;align-items: center;justify-content: space-between;}
+.opt-btn{position: absolute;right: -60px;top:7px;}
 .mn-ic{color:#db767c;margin: 0 auto 10px;display: table;}
 .datcard:hover .mn-ic{color:#fff;transition: all 0.5s ease-out;}
 .dash-tp{box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);background: #059669;padding: 20px 20px 20px 20px;margin: 20px 0 0 0;border-radius: 12px;}

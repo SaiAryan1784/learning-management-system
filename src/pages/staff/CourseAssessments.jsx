@@ -17,11 +17,61 @@ export default function CourseAssessments() {
     try {
       setLoading(true);
 
-      const res = await api.get(`/assessments?course=${courseId}`);
-      const data = res.data.assessments || [];
+      const [assessmentRes, courseRes] = await Promise.all([
+        api.get(`/assessments?course=${courseId}`),
+        api.get("/courses")
+      ]);
 
+      const separate = assessmentRes.data.assessments || [];
+
+      const course = courseRes.data.courses.find(
+        (c) => c._id === courseId
+      );
+
+      const courseBased = course?.assessments || [];
+
+      /* 🔥 NORMALIZE */
+      const normalize = (a, index, source) => ({
+        _id: a._id || `${source}-${index}`,
+        type: a.type,
+        title: a.title,
+        description: a.description,
+        questions: a.questions || [],
+        practicalInstructions: a.practicalInstructions || "",
+        maxAttempts: a.maxAttempts || 3,
+        passPercent: a.passPercent || 70,
+        isCourseEmbedded: !a._id,
+        source // 👈 IMPORTANT
+      });
+
+      const merged = [
+        ...separate.map((a, i) => normalize(a, i, "api")),
+        ...courseBased.map((a, i) => normalize(a, i, "course"))
+      ];
+
+      /* ❌ REMOVE DUPLICATES */
+      const uniqueMap = new Map();
+
+      merged.forEach((a) => {
+        const key = `${a._id}-${a.source}`;
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, a);
+        }
+      });
+
+      const uniqueAssessments = Array.from(uniqueMap.values());
+
+      /* 🔥 ENRICH */
       const enriched = await Promise.all(
-        data.map(async (assessment) => {
+        uniqueAssessments.map(async (assessment) => {
+          if (assessment.isCourseEmbedded) {
+            return {
+              ...assessment,
+              attempts: [],
+              certificateUrl: null
+            };
+          }
+
           try {
             const resultRes = await api.get(
               `/assessments/${assessment._id}/results/me`,
@@ -44,7 +94,6 @@ export default function CourseAssessments() {
       );
 
       setAssessments(enriched);
-
     } catch (err) {
       console.error("Assessment load failed", err);
     } finally {
@@ -57,7 +106,7 @@ export default function CourseAssessments() {
     fetchAssessments();
   }, [fetchAssessments]);
 
-  /* ================= STATUS LOGIC ================= */
+  /* ================= STATUS ================= */
 
   const getAssessmentMeta = (assessment) => {
     const attempts = assessment.attempts || [];
@@ -67,7 +116,8 @@ export default function CourseAssessments() {
         status: "not-started",
         label: "Not Started",
         score: null,
-        lastDate: null
+        lastDate: null,
+        isPassed: false
       };
     }
 
@@ -75,18 +125,24 @@ export default function CourseAssessments() {
       (a, b) => b.attemptNo - a.attemptNo
     )[0];
 
+    /* 🔥 FIX PASS LOGIC */
+    const isPassed =
+      latest.status === "passed" ||
+      (latest.score !== null &&
+        latest.score >= assessment.passPercent);
+
     return {
-      status: latest.status,
-      label:
-        latest.status === "passed"
-          ? "Passed"
-          : latest.status === "failed"
-          ? "Failed"
-          : latest.status === "started"
-          ? "In Progress"
-          : "Not Started",
+      status: isPassed ? "passed" : latest.status,
+      label: isPassed
+        ? "Passed"
+        : latest.status === "failed"
+        ? "Failed"
+        : latest.status === "started"
+        ? "In Progress"
+        : "Not Started",
       score: latest.score ?? null,
-      lastDate: latest.completedAt || latest.updatedAt || null
+      lastDate: latest.completedAt || latest.updatedAt || null,
+      isPassed
     };
   };
 
@@ -110,7 +166,6 @@ export default function CourseAssessments() {
   return (
     <div className="mx-wd">
 
-      {/* HEADER */}
       <div className="about-image-grid dash-tp">
         <div className="prof">
           <h3 className="prof-name">
@@ -122,105 +177,84 @@ export default function CourseAssessments() {
         </div>
       </div>
 
-      {/* CARDS */}
       {assessments.length > 0 && (
-      <div className="align-items-center about-showcase">
-        <div className="mx-wd col-lg-12 order-lg-1">
-          <div className="about-content-box">
+        <div className="align-items-center about-showcase">
+          <div className="mx-wd col-lg-12 order-lg-1">
+            <div className="about-content-box">
 
-            <div className="prog-rw">
+              <div className="prog-rw">
 
-              {assessments.map((assessment) => {
-                const meta = getAssessmentMeta(assessment);
+                {assessments.map((assessment) => {
+                  const meta = getAssessmentMeta(assessment);
 
-                return (
-                  <div
-                    key={assessment._id}
-                    className="progress-item"
-                    data-aos="fade-up"
-                  >
+                  return (
+                    <div
+                      key={`${assessment._id}-${assessment.source}`}
+                      className="progress-item py-4"
+                      data-aos="fade-up"
+                    >
 
-                    <div className="d-flex justify-content-between align-items-center">
-                      <span className="progress-title">
-                        {assessment.title}
-                      </span>
-
-                      <span className={getStatusClass(meta.status)}>
-                        {meta.label}
-                      </span>
-                    </div>
-
-                    <small className="text-muted d-block mb-2">
-                      Type: {assessment.type.toUpperCase()}
-                    </small>
-
-                    {meta.score !== null && (
-                      <div className="prg-cm">
-                        <p>Latest Score</p>
-                        <span className="progress-percent">
-                          {meta.score}%
-                        </span>
+                      <div className="d-flex justify-content-between">
+                        <span className="progress-title">{assessment.title}</span>
+                        <small className={getStatusClass(meta.status)}>
+                          {meta.label}
+                        </small>
                       </div>
-                    )}
 
-                    {meta.lastDate && (
-                      <small className="text-muted d-block mb-2">
-                        Last Attempt:{" "}
-                        {new Date(meta.lastDate).toLocaleDateString()}
+                      <small className="text-muted d-block">
+                        Type: {assessment.type.toUpperCase()}
                       </small>
-                    )}
 
-                    <small className="text-muted d-block mb-3">
-                      Attempts Used:{" "}
-                      {assessment.attempts.length} /{" "}
-                      {assessment.maxAttempts}
-                    </small>
+                      {meta.score !== null && (
+                        <p className="text-muted d-block">Score: {meta.score}%</p>
+                      )}
 
-                    <div className="btn-fx">
+                      <small className="text-muted d-block my-2">
+                        Attempts: {assessment.attempts.length} /{" "}
+                        {assessment.maxAttempts}
+                      </small>
 
-                      {meta.status !== "passed" &&
-                        assessment.attempts.length <
-                          assessment.maxAttempts && (
-                          <button
-                            className="rev-btn"
-                            onClick={() =>
-                              navigate(`/dashboard/staff/assessment/${assessment._id}/${courseId}`)
-                            }
-                          >
-                            {meta.status === "started"
-                              ? "Resume"
-                              : meta.status === "failed"
-                              ? "Retry"
-                              : "Start"}
-                          </button>
+                      <div>
+
+                        {!assessment.isCourseEmbedded &&
+                          meta.status !== "passed" &&
+                          assessment.attempts.length <
+                            assessment.maxAttempts && (
+                            <button className="rev-btn"
+                              onClick={() =>
+                                navigate(
+                                  `/dashboard/staff/assessment/${assessment._id}/${courseId}`
+                                )
+                              }
+                            >
+                              Start
+                            </button>
                         )}
 
-                      {meta.status === "passed" &&
-                        assessment.certificateUrl && (
-                          <button
-                            className="rev-btn"
-                            onClick={() =>
-                              window.open(
-                                assessment.certificateUrl,
-                                "_blank"
-                              )
-                            }
-                          >
-                            Download Certificate
-                          </button>
+                        {meta.status === "passed" &&
+                          assessment.certificateUrl && (
+                            <button className="rev-btn"
+                              onClick={() =>
+                                window.open(
+                                  assessment.certificateUrl,
+                                  "_blank"
+                                )
+                              }
+                            >
+                              Download Certificate
+                            </button>
                         )}
 
+                      </div>
                     </div>
+                  );
+                })}
 
-                  </div>
-                );
-              })}
-
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
     </div>
   );
 }

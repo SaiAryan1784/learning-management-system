@@ -28,8 +28,16 @@ const BASE_URL = api.defaults.baseURL;
 /* ================= HELPER ================= */
 const getFileUrl = (block) => {
   if (!block) return "";
-  if (block.sourceType === "external_url") return block.contentUrl || "";
+
+  // ✅ always prefer publicUrl
+  if (block.publicUrl) return block.publicUrl;
+
+  // ✅ fallback for stored file
   if (block.storageKey) return `${BASE_URL}/${block.storageKey}`;
+
+  // ✅ external URL fallback
+  if (block.sourceType === "external_url") return block.publicUrl || "";
+
   return "";
 };
 
@@ -103,7 +111,7 @@ export default function ModuleLessons() {
     summary: "",
     type: "",
     sourceType: "external_url",
-    contentUrl: "",
+    publicUrl: "",
     textContent: "",
     order: 1,
     storageKey: "",
@@ -170,8 +178,13 @@ function handleDragEnd(event) {
   };
 
   /* ================= FILE UPLOAD ================= */
-  const uploadFile = async file => {
-  if (!file) return;
+ const uploadFile = async (file, type) => {
+  const finalType = type || form.type;
+
+  if (!file || !finalType) {
+    toastr.error("Invalid file type");
+    return;
+  }
 
   setFilePreview(URL.createObjectURL(file));
   setUploading(true);
@@ -180,37 +193,37 @@ function handleDragEnd(event) {
   formData.append("file", file);
 
   try {
-    const res = await api.post(`/uploads/lessons/file/${form.type}`, formData);
+    const res = await api.post(`/uploads/lessons/file/${finalType}`, formData);
 
     const newBlock = {
-      type: form.type,
+      type: finalType,
       sourceType: "stored_file",
-      contentUrl: res.data.fileUrl,
-      storageKey: res.data.storageKey || "",   // ✅ FIX
-      fileName: res.data.fileName || file.name,
-      mimeType: res.data.mimeType || file.type,
-      fileSize: res.data.fileSize || file.size
+      publicUrl: res.data.publicUrl,   // ✅ MUST STORE THIS
+      storageKey: res.data.storageKey,
+      fileName: res.data.fileName,
+      mimeType: res.data.mimeType,
+      fileSize: res.data.fileSize
     };
 
     setBlocks(prev => {
-  const others = prev.filter(b => b.type !== form.type);
-  return [...others, newBlock];
-});
+      const others = prev.filter(b => b.type !== finalType);
+      return [...others, newBlock];
+    });
 
     setForm(prev => ({
       ...prev,
-      contentUrl: res.data.fileUrl,
-      sourceType: "file",
-      storageKey: newBlock.storageKey,
-      fileName: newBlock.fileName,
-      mimeType: newBlock.mimeType,
-      fileSize: newBlock.fileSize
+      type: finalType,
+      publicUrl: res.data.publicUrl,  // ✅ KEEP THIS
+      storageKey: res.data.storageKey,
+      fileName: res.data.fileName,
+      mimeType: res.data.mimeType,
+      fileSize: res.data.fileSize
     }));
 
-    setUploadedFileName(file.name);
+    setUploadedFileName(res.data.fileName);
     toastr.success("Uploaded");
-  } catch {
-    toastr.error("Upload failed");
+  } catch (err) {
+    toastr.error(err.response?.data?.error || "Upload failed");
   } finally {
     setUploading(false);
   }
@@ -228,9 +241,23 @@ function handleDragEnd(event) {
     title: form.title,
     order: Number(form.order),
     blocks: blocks.map((b, index) => ({
-      ...b,
-      order: index + 1
-    })),
+  type: b.type,
+  order: index + 1,
+  sourceType: b.sourceType,
+
+  // ✅ TEXT
+  contentText: b.contentText || "",
+
+  // ✅ EXTERNAL
+  contentUrl: b.sourceType === "external_url" ? b.publicUrl : undefined,
+
+  // ✅ STORED FILE (MAIN FIX)
+  publicUrl: b.sourceType === "stored_file" ? b.publicUrl : undefined,
+  storageKey: b.storageKey || "",
+  fileName: b.fileName || "",
+  mimeType: b.mimeType || "",
+  fileSize: b.fileSize || 0
+})),
     active: true
   };
 
@@ -242,12 +269,12 @@ function handleDragEnd(event) {
       await api.post(`/courses/${courseId}/modules/${moduleId}/lessons`, payload);
       toastr.success("Created");
     }
-
+setEditId(null);
     // reset
     setForm({
       title: "",
       type: "",
-      contentUrl: "",
+      publicUrl: "",
       textContent: "",
       order: 1
     });
@@ -266,32 +293,32 @@ function handleDragEnd(event) {
 
  /* ✅ FIXED EDIT (text handling) */
   const handleEdit = lesson => {
-    setEditId(lesson._id);
+  setEditId(lesson._id);
 
-    const blocksData = lesson.blocks || [];
+  const blocksData = lesson.blocks || [];
 
-    setBlocks(blocksData);
+  setBlocks(blocksData);
 
-   const firstMedia = blocksData.find(b => b.type !== "text");
+  const firstMedia = blocksData.find(b => b.type !== "text");
 
-setForm({
+ setForm({
   title: lesson.title,
   textContent: blocksData.find(b => b.type === "text")?.contentText || "",
-  contentUrl:
-    firstMedia?.sourceType === "external_url"
-      ? firstMedia.contentUrl
-      : "",
+  publicUrl: firstMedia?.publicUrl || "",
+  type: firstMedia?.type || "",   // ✅ FIX
   order: lesson.order
 });
 
-    setCanvasFields([
-      "title",
-      ...blocksData.map(b => b.type),
-      "order"
-    ]);
+setSelectedType(firstMedia?.type || ""); // ✅ FIX
 
-    setActiveTab("addLesson");
-  };
+  setCanvasFields([
+    "title",
+    ...blocksData.map(b => b.type),
+    "order"
+  ]);
+
+  setActiveTab("addLesson");
+};
 
   const handleDelete = async id => {
     if (!window.confirm("Delete?")) return;
@@ -318,8 +345,8 @@ setForm({
             <label>Content URL</label>
             <input
                 type="text"
-                name="contentUrl"
-                value={form.contentUrl}
+                name="publicUrl"
+                value={form.publicUrl}
                 onChange={e => {
   const url = e.target.value;
 
@@ -328,7 +355,7 @@ setForm({
   const newBlock = {
     type: id,
     sourceType: "external_url",
-    contentUrl: url
+    publicUrl: url
   };
 
   setBlocks(prev => {
@@ -339,7 +366,7 @@ setForm({
   setForm(prev => ({
     ...prev,
     type: id,
-    contentUrl: url,
+    publicUrl: url,
     sourceType: "external_url"
   }));
 }}
@@ -353,9 +380,14 @@ setForm({
               onChange={e => {
                 setSelectedType(id);
                 setForm(prev => ({ ...prev, type: id }));
-                uploadFile(e.target.files[0]);
+                uploadFile(e.target.files[0], id);
               }}
             />
+            {filePreview && selectedType === "video" && (
+              <div style={{ marginTop: "10px" }}>
+                <video width="100%" controls src={filePreview} />
+              </div>
+            )}
           </div>
           </>
         );
@@ -367,8 +399,8 @@ setForm({
             <label>Content URL</label>
             <input
                 type="text"
-                name="contentUrl"
-                value={form.contentUrl}
+                name="publicUrl"
+                value={form.publicUrl}
                 onChange={e => {
   const url = e.target.value;
 
@@ -377,7 +409,7 @@ setForm({
   const newBlock = {
     type: id,
     sourceType: "external_url",
-    contentUrl: url
+    publicUrl: url
   };
 
   setBlocks(prev => {
@@ -388,7 +420,7 @@ setForm({
   setForm(prev => ({
     ...prev,
     type: id,
-    contentUrl: url,
+    publicUrl: url,
     sourceType: "external_url"
   }));
 }}
@@ -402,61 +434,107 @@ setForm({
               onChange={e => {
                 setSelectedType(id);
                 setForm(prev => ({ ...prev, type: id }));
-                uploadFile(e.target.files[0]);
+                uploadFile(e.target.files[0], id);
               }}
             />
+            {filePreview && selectedType === "image" && (
+              <div style={{ marginTop: "10px" }}>
+                <img width="100%" src={filePreview} />
+              </div>
+            )}
           </div>
           </>
         );
         case "pdf":
-        return (
-            <>
-            <h3 className="not-tl">Add PDF</h3>
-            <div className="form-group">
-            <label>Content URL</label>
-            <input
-                type="text"
-                name="contentUrl"
-                value={form.contentUrl}
-                onChange={e => {
-  const url = e.target.value;
+  return (
+    <>
+      <h3 className="not-tl">Add PDF</h3>
 
-  setSelectedType(id);
+      <div className="form-group">
+        <label>Content URL</label>
+        <input
+          type="text"
+          name="publicUrl"
+          value={form.publicUrl}
+          onChange={e => {
+            const url = e.target.value;
 
-  const newBlock = {
-    type: id,
-    sourceType: "external_url",
-    contentUrl: url
-  };
+            setSelectedType(id);
 
-  setBlocks(prev => {
-    const others = prev.filter(b => b.type !== id);
-    return [...others, newBlock];
-  });
+            const newBlock = {
+              type: id,
+              sourceType: "external_url",
+              publicUrl: url
+            };
 
-  setForm(prev => ({
-    ...prev,
-    type: id,
-    contentUrl: url,
-    sourceType: "external_url"
-  }));
-}}
-            />
-        </div>
-          <div className="form-group">
-            
-           <label>Upload File</label>
-            <input
-              type="file"
-              onChange={e => {
-                setSelectedType(id);
-                setForm(prev => ({ ...prev, type: id }));
-                uploadFile(e.target.files[0]);
-              }}
+            setBlocks(prev => {
+              const others = prev.filter(b => b.type !== id);
+              return [...others, newBlock];
+            });
+
+            setForm(prev => ({
+              ...prev,
+              type: id,
+              publicUrl: url,
+              sourceType: "external_url"
+            }));
+          }}
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Upload File</label>
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={e => {
+            const file = e.target.files[0];
+            setSelectedType(id);
+            setForm(prev => ({ ...prev, type: id }));
+            uploadFile(file);
+          }}
+        />
+
+        {/* ✅ PDF Preview UI */}
+        {(uploadedFileName || form.fileName) && (
+          <div
+            style={{
+              marginTop: "10px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "#f5f5f5",
+              padding: "8px 10px",
+              borderRadius: "6px"
+            }}
+          >
+            {/* PDF ICON */}
+            <i
+              className="fa fa-file-pdf"
+              style={{ color: "#e53935", fontSize: "18px" }}
+            ></i>
+
+            {/* FILE NAME */}
+            <span style={{ fontSize: "14px" }}>
+              {uploadedFileName || form.fileName}
+            </span>
+          </div>
+        )}
+
+        {/* OPTIONAL: preview iframe */}
+        {filePreview && selectedType === "pdf" && (
+          <div style={{ marginTop: "10px" }}>
+            <iframe
+              src={filePreview}
+              width="200"
+              height="120"
+              title="PDF Preview"
             />
           </div>
-          </>
-        );
+        )}
+      </div>
+    </>
+  );
       case "text":
         return (
             <>
@@ -508,7 +586,10 @@ setForm({
       </div>
 
       <div className="pg-tabs">
-        <span className={`pg-tb ${activeTab === "addLesson" ? "active-tab" : ""}`} onClick={() => setActiveTab("addLesson")}>
+        <span className={`pg-tb ${activeTab === "addLesson" ? "active-tab" : ""}`}  onClick={() => {
+    setActiveTab("addLesson");
+    setEditId(null);
+  }}>
           {editId ? "Update Lesson" : "Add Lesson"}
         </span>
         <span className={`pg-tb ${activeTab === "lessonList" ? "active-tab" : ""}`} onClick={() => setActiveTab("lessonList")}>

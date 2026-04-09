@@ -12,15 +12,11 @@ export default function CourseAssign() {
   const [selected, setSelected] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
   const [dueDate, setDueDate] = useState("");
-  const [loading, setLoading] = useState(false); // ✅ added
+  const [loading, setLoading] = useState(false);
 
   // ---------------- LOAD STAFF ----------------
   const loadStaff = async () => {
     try {
-      if ($.fn.DataTable.isDataTable("#staffTable")) {
-        $("#staffTable").DataTable().clear().destroy();
-      }
-
       const res = await api.get("/staff");
 
       const acceptedStaff =
@@ -29,24 +25,41 @@ export default function CourseAssign() {
         );
 
       setStaff(acceptedStaff);
-    } catch {
-      toastr.error("Failed to load staff");
+    } catch (err) {
+      console.error("Staff load error:", err);
+
+      // ✅ Only show real error (avoid false toast)
+      if (err.response) {
+        toastr.error("Failed to load staff");
+      }
     }
   };
 
+  // ---------------- INITIAL LOAD ----------------
   useEffect(() => {
     loadStaff();
   }, []);
 
+  // ---------------- DATATABLE INIT ----------------
   useEffect(() => {
-    if (staff.length > 0) {
-      setTimeout(() => {
-        $("#staffTable").DataTable({
-          destroy: true,
-          pageLength: 10,
-        });
-      }, 100);
-    }
+    if (staff.length === 0) return;
+
+    const timer = setTimeout(() => {
+      if ($.fn.DataTable.isDataTable("#staffTable")) {
+        $("#staffTable").DataTable().destroy();
+      }
+
+      $("#staffTable").DataTable({
+        pageLength: 10,
+      });
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if ($.fn.DataTable.isDataTable("#staffTable")) {
+        $("#staffTable").DataTable().destroy();
+      }
+    };
   }, [staff]);
 
   // ---------------- SELECT ----------------
@@ -76,7 +89,7 @@ export default function CourseAssign() {
       return toastr.error("Please select due date");
 
     try {
-      setLoading(true); // ✅ prevent double click
+      setLoading(true);
 
       await api.post(`/courses/${courseId}/assign`, {
         staffIds: selected,
@@ -89,7 +102,10 @@ export default function CourseAssign() {
       setSelected([]);
       setDueDate("");
 
-      await loadStaff(); // ✅ refresh table
+      // ✅ Delay reload to avoid race condition
+      setTimeout(() => {
+        loadStaff();
+      }, 300);
 
     } catch (err) {
       if (err.response?.status === 409) {
@@ -141,6 +157,7 @@ export default function CourseAssign() {
         </div>
       ) : (
         <table
+          key={staff.length}
           id="staffTable"
           border="1"
           cellPadding="10"
@@ -161,7 +178,6 @@ export default function CourseAssign() {
                   }
                 />
               </th>
-              <th>Sr No</th>
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
@@ -170,7 +186,7 @@ export default function CourseAssign() {
           </thead>
 
           <tbody>
-            {staff.map((s, i) => (
+            {staff.map((s) => (
               <tr
                 key={s._id}
                 style={{
@@ -186,7 +202,6 @@ export default function CourseAssign() {
                     onChange={() => handleSelect(s._id)}
                   />
                 </td>
-                <td>{i + 1}</td>
                 <td>{s.user?.name || "—"}</td>
                 <td>{s.email}</td>
                 <td>{s.role?.name || "—"}</td>
@@ -201,7 +216,7 @@ export default function CourseAssign() {
         </table>
       )}
 
-      {/* ASSIGN POPUP */}
+      {/* POPUP */}
       {showPopup && (
         <div className="popup-overlay">
           <div className="popup-box">
@@ -236,11 +251,9 @@ export default function CourseAssign() {
                 {loading ? "Assigning..." : "Assign"}
               </button>
 
-              <button className="snd-btn"
-                style={{
-                  marginLeft: "10px",
-                  padding: "8px 15px",
-                }}
+              <button
+                className="snd-btn"
+                style={{ marginLeft: "10px" }}
                 onClick={() => setShowPopup(false)}
                 disabled={loading}
               >
@@ -250,29 +263,28 @@ export default function CourseAssign() {
           </div>
         </div>
       )}
-
       <style>{`
-        .popup-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 999;
-        }
+  .popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+  }
 
-        .popup-box {
-          background: #fff;
-          padding: 25px;
-          border-radius: 8px;
-          width: 400px;
-          box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-        }
-      `}</style>
+  .popup-box {
+    background: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    width: 400px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+  }
+`}</style>
     </div>
   );
 }

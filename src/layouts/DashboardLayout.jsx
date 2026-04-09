@@ -124,13 +124,13 @@ export default function DashboardLayout() {
       icon: "fa-book-open-reader",
       path: "/dashboard/course-categories",
     },
+    // {
+    //   label: "Add Course",
+    //   icon: "fa-plus",
+    //   path: "/dashboard/course-add",
+    // },
     {
-      label: "Add Course",
-      icon: "fa-plus",
-      path: "/dashboard/course-add",
-    },
-    {
-      label: "Course List",
+      label: "Course",
       icon: "fa-book",
       path: "/dashboard/courses",
     },

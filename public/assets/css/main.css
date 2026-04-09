@@ -1939,6 +1939,8 @@ section,
   font-size: 14px;
   line-height: 20px;
   margin-bottom: 0;
+  width: 515px;
+  overflow: hidden;
 }
 
 @media (max-width: 991px) {

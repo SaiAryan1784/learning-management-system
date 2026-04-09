@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate,Link } from "react-router-dom";
 import api from "../../api/api";
 
 export default function StaffLessonView() {
@@ -224,34 +224,52 @@ export default function StaffLessonView() {
       <div className="about-showcase mt-4">
         <div className="about-content-box">
 
-          {currentLesson.type === "text" && (
-            <div
-              dangerouslySetInnerHTML={{
-                __html:
-                  currentLesson.contentText || "",
-              }}
-            />
-          )}
+         {currentLesson.blocks?.map((block) => {
+          if (block.type === "text") {
+            return (
+              <div
+                key={block._id}
+                dangerouslySetInnerHTML={{
+                  __html: block.contentText || "",
+                }}
+              />
+            );
+          }
 
-          {currentLesson.type === "video" && (
-            <iframe
-              width="100%"
-              height="450"
-              src={getVideoEmbedUrl(
-                currentLesson.contentUrl
-              )}
-              title="Lesson Video"
-              allowFullScreen
-            />
-          )}
+          if (block.type === "image") {
+            return (
+              <img
+                key={block._id}
+                src={`${import.meta.env.VITE_API_URL}/files/${block.storageKey}`}
+                alt={block.fileName}
+                style={{ width: "100%", marginBottom: "15px" }}
+              />
+            );
+          }
+
+          if (block.type === "video") {
+            return (
+              <iframe
+                key={block._id}
+                width="100%"
+                height="450"
+                src={getVideoEmbedUrl(block.contentUrl)}
+                title="Lesson Video"
+                allowFullScreen
+              />
+            );
+          }
+
+          return null;
+        })}
 
           <div className="d-flex justify-content-end mt-4">
-            <button
+            <Link to="/dashboard"
               className="logout-btn"
               onClick={handleComplete}
             >
               Complete Lesson
-            </button>
+            </Link>
           </div>
 
         </div>
