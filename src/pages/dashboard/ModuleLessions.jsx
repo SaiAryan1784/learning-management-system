@@ -24,21 +24,39 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
 const BASE_URL = api.defaults.baseURL;
+const FILE_BASE_URL = BASE_URL.replace("/api", "");
 
 /* ================= HELPER ================= */
 const getFileUrl = (block) => {
   if (!block) return "";
 
-  // ✅ always prefer publicUrl
-  if (block.publicUrl) return block.publicUrl;
+  if (block.publicUrl) {
+    return block.publicUrl.startsWith("http")
+      ? block.publicUrl
+      : `${FILE_BASE_URL}${block.publicUrl}`;
+  }
 
-  // ✅ fallback for stored file
-  if (block.storageKey) return `${BASE_URL}/${block.storageKey}`;
-
-  // ✅ external URL fallback
-  if (block.sourceType === "external_url") return block.publicUrl || "";
+  if (block.storageKey) {
+    return `${FILE_BASE_URL}/uploads/${block.storageKey}`;
+  }
 
   return "";
+};
+
+
+/* ✅ FIX: prevent duplicate blocks */
+const upsertBlock = (setBlocks, newBlock) => {
+  setBlocks(prev => {
+    const index = prev.findIndex(b => b.type === newBlock.type);
+
+    if (index !== -1) {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], ...newBlock };
+      return updated;
+    }
+
+    return [...prev, newBlock];
+  });
 };
 
 /* ================= SORTABLE ITEM ================= */
@@ -129,8 +147,6 @@ export default function ModuleLessons() {
   const [canvasFields, setCanvasFields] = useState([]);
 
   const sensors = useSensors(useSensor(PointerSensor));
-
-  /* ================= SIDEBAR UPDATED ================= */
   const sidebarFields = [
     { id: "title", label: "Lesson Title" },
     { id: "video", label: "Add Video" },
@@ -139,20 +155,21 @@ export default function ModuleLessons() {
     { id: "text", label: "Add Text" },
     { id: "order", label: "Display Order" }
   ];
-function handleDragEnd(event) {
-  const { active, over } = event;
-  if (!over || active.id === over.id) return;
 
-  const oldIndex = canvasFields.indexOf(active.id);
-  const newIndex = canvasFields.indexOf(over.id);
+  function handleDragEnd(event) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  const items = [...canvasFields];
-  items.splice(oldIndex, 1);
-  items.splice(newIndex, 0, active.id);
+    const oldIndex = canvasFields.indexOf(active.id);
+    const newIndex = canvasFields.indexOf(over.id);
 
-  setCanvasFields(items);
-}
-  /* ================= LOAD ================= */
+    const items = [...canvasFields];
+    items.splice(oldIndex, 1);
+    items.splice(newIndex, 0, active.id);
+
+    setCanvasFields(items);
+  }
+
   const loadLessons = async () => {
     try {
       setLoading(true);
@@ -171,163 +188,101 @@ function handleDragEnd(event) {
     loadLessons();
   }, []);
 
-  /* ================= CHANGE ================= */
   const handleChange = e => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
   /* ================= FILE UPLOAD ================= */
- const uploadFile = async (file, type) => {
-  const finalType = type || form.type;
+  const uploadFile = async (file, type) => {
+    const finalType = type || form.type;
 
-  if (!file || !finalType) {
-    toastr.error("Invalid file type");
-    return;
-  }
+    if (!file || !finalType) return;
 
-  setFilePreview(URL.createObjectURL(file));
-  setUploading(true);
+    const previewUrl = URL.createObjectURL(file);
 
-  const formData = new FormData();
-  formData.append("file", file);
+    const formData = new FormData();
+    formData.append("file", file);
 
-  try {
-    const res = await api.post(`/uploads/lessons/file/${finalType}`, formData);
+    try {
+      const res = await api.post(`/uploads/lessons/file/${finalType}`, formData);
 
-    const newBlock = {
-      type: finalType,
-      sourceType: "stored_file",
-      publicUrl: res.data.publicUrl,   // ✅ MUST STORE THIS
-      storageKey: res.data.storageKey,
-      fileName: res.data.fileName,
-      mimeType: res.data.mimeType,
-      fileSize: res.data.fileSize
-    };
+      const newBlock = {
+        type: finalType,
+        sourceType: "stored_file",
+        publicUrl: res.data.publicUrl,
+        storageKey: res.data.storageKey,
+        fileName: res.data.fileName,
+        mimeType: res.data.mimeType,
+        fileSize: res.data.fileSize,
+        preview: previewUrl // ✅ FIX
+      };
 
-    setBlocks(prev => {
-      const others = prev.filter(b => b.type !== finalType);
-      return [...others, newBlock];
-    });
+      upsertBlock(setBlocks, newBlock);
 
-    setForm(prev => ({
-      ...prev,
-      type: finalType,
-      publicUrl: res.data.publicUrl,  // ✅ KEEP THIS
-      storageKey: res.data.storageKey,
-      fileName: res.data.fileName,
-      mimeType: res.data.mimeType,
-      fileSize: res.data.fileSize
-    }));
-
-    setUploadedFileName(res.data.fileName);
-    toastr.success("Uploaded");
-  } catch (err) {
-    toastr.error(err.response?.data?.error || "Upload failed");
-  } finally {
-    setUploading(false);
-  }
-};
+      setUploadedFileName(res.data.fileName);
+      toastr.success("Uploaded");
+    } catch {
+      toastr.error("Upload failed");
+    }
+  };
 
   /* ================= SUBMIT ================= */
   const handleSubmit = async e => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (blocks.length === 0) {
-    return toastr.warning("Add at least one block");
-  }
-
-  const payload = {
-    title: form.title,
-    order: Number(form.order),
-    blocks: blocks.map((b, index) => ({
-  type: b.type,
-  order: index + 1,
-  sourceType: b.sourceType,
-
-  // ✅ TEXT
-  contentText: b.contentText || "",
-
-  // ✅ EXTERNAL
-  contentUrl: b.sourceType === "external_url" ? b.publicUrl : undefined,
-
-  // ✅ STORED FILE (MAIN FIX)
-  publicUrl: b.sourceType === "stored_file" ? b.publicUrl : undefined,
-  storageKey: b.storageKey || "",
-  fileName: b.fileName || "",
-  mimeType: b.mimeType || "",
-  fileSize: b.fileSize || 0
-})),
-    active: true
-  };
-
-  try {
-    if (editId) {
-      await api.put(`/courses/${courseId}/modules/${moduleId}/lessons/${editId}`, payload);
-      toastr.success("Updated");
-    } else {
-      await api.post(`/courses/${courseId}/modules/${moduleId}/lessons`, payload);
-      toastr.success("Created");
+    if (blocks.length === 0) {
+      return toastr.warning("Add at least one block");
     }
-setEditId(null);
-    // reset
-    setForm({
-      title: "",
-      type: "",
-      publicUrl: "",
-      textContent: "",
-      order: 1
-    });
 
-    setBlocks([]);
-    setCanvasFields([]);
-    setFilePreview("");
-    setSelectedType("");
+    const payload = {
+      title: form.title,
+      order: Number(form.order),
+      blocks: blocks.map((b, index) => ({
+        type: b.type,
+        order: index + 1,
+        sourceType: b.sourceType,
+        contentText: b.contentText || "",
+        contentUrl: b.sourceType === "external_url" ? b.publicUrl : undefined,
+        publicUrl: b.sourceType === "stored_file" ? b.publicUrl : undefined,
+        storageKey: b.storageKey || "",
+        fileName: b.fileName || "",
+        mimeType: b.mimeType || "",
+        fileSize: b.fileSize || 0
+      })),
+      active: true
+    };
 
-    loadLessons();
-    setActiveTab("lessonList");
-  } catch (err) {
-    toastr.error(err.response?.data?.error || "Save failed");
-  }
-};
+    try {
+      if (editId) {
+        await api.put(`/courses/${courseId}/modules/${moduleId}/lessons/${editId}`, payload);
+      } else {
+        await api.post(`/courses/${courseId}/modules/${moduleId}/lessons`, payload);
+      }
 
- /* ✅ FIXED EDIT (text handling) */
-  const handleEdit = lesson => {
-  setEditId(lesson._id);
+      setBlocks([]);
+      setCanvasFields([]);
+      setForm({
+        title: "",
+        publicUrl: "",
+        textContent: "",
+        order: 1
+      });
 
-  const blocksData = lesson.blocks || [];
+      setEditId(null);
+      setFilePreview("");
+      setSelectedType("");
 
-  setBlocks(blocksData);
-
-  const firstMedia = blocksData.find(b => b.type !== "text");
-
- setForm({
-  title: lesson.title,
-  textContent: blocksData.find(b => b.type === "text")?.contentText || "",
-  publicUrl: firstMedia?.publicUrl || "",
-  type: firstMedia?.type || "",   // ✅ FIX
-  order: lesson.order
-});
-
-setSelectedType(firstMedia?.type || ""); // ✅ FIX
-
-  setCanvasFields([
-    "title",
-    ...blocksData.map(b => b.type),
-    "order"
-  ]);
-
-  setActiveTab("addLesson");
-};
-
-  const handleDelete = async id => {
-    if (!window.confirm("Delete?")) return;
-    await api.delete(`/courses/${courseId}/modules/${moduleId}/lessons/${id}`);
-    loadLessons();
+      loadLessons();
+      setActiveTab("lessonList");
+    } catch {
+      toastr.error("Save failed");
+    }
   };
 
   /* ================= RENDER FIELD ================= */
   function renderField(id) {
+const currentBlock = blocks.filter(b => b.type === id).slice(-1)[0];
     switch (id) {
       case "title":
         return (
@@ -338,118 +293,15 @@ setSelectedType(firstMedia?.type || ""); // ✅ FIX
         );
 
       case "video":
-        return (
-            <>
-            <h3 className="not-tl">Add Video</h3>
-            <div className="form-group">
-            <label>Content URL</label>
-            <input
-                type="text"
-                name="publicUrl"
-                value={form.publicUrl}
-                onChange={e => {
-  const url = e.target.value;
-
-  setSelectedType(id);
-
-  const newBlock = {
-    type: id,
-    sourceType: "external_url",
-    publicUrl: url
-  };
-
-  setBlocks(prev => {
-    const others = prev.filter(b => b.type !== id);
-    return [...others, newBlock];
-  });
-
-  setForm(prev => ({
-    ...prev,
-    type: id,
-    publicUrl: url,
-    sourceType: "external_url"
-  }));
-}}
-            />
-        </div>
-          <div className="form-group">
-            
-           <label>Upload File</label>
-            <input
-              type="file"
-              onChange={e => {
-                setSelectedType(id);
-                setForm(prev => ({ ...prev, type: id }));
-                uploadFile(e.target.files[0], id);
-              }}
-            />
-            {filePreview && selectedType === "video" && (
-              <div style={{ marginTop: "10px" }}>
-                <video width="100%" controls src={filePreview} />
-              </div>
-            )}
-          </div>
-          </>
-        );
-    case "image":
-        return (
-            <>
-            <h3 className="not-tl">Add Image</h3>
-            <div className="form-group">
-            <label>Content URL</label>
-            <input
-                type="text"
-                name="publicUrl"
-                value={form.publicUrl}
-                onChange={e => {
-  const url = e.target.value;
-
-  setSelectedType(id);
-
-  const newBlock = {
-    type: id,
-    sourceType: "external_url",
-    publicUrl: url
-  };
-
-  setBlocks(prev => {
-    const others = prev.filter(b => b.type !== id);
-    return [...others, newBlock];
-  });
-
-  setForm(prev => ({
-    ...prev,
-    type: id,
-    publicUrl: url,
-    sourceType: "external_url"
-  }));
-}}
-            />
-        </div>
-          <div className="form-group">
-            
-           <label>Upload File</label>
-            <input
-              type="file"
-              onChange={e => {
-                setSelectedType(id);
-                setForm(prev => ({ ...prev, type: id }));
-                uploadFile(e.target.files[0], id);
-              }}
-            />
-            {filePreview && selectedType === "image" && (
-              <div style={{ marginTop: "10px" }}>
-                <img width="100%" src={filePreview} />
-              </div>
-            )}
-          </div>
-          </>
-        );
-        case "pdf":
+case "image":
+case "pdf":
   return (
     <>
-      <h3 className="not-tl">Add PDF</h3>
+      <h3 className="not-tl">
+        {id === "video" ? "Add Video" : id === "image" ? "Add Image" : "Add PDF"}
+      </h3>
 
+      {/* URL INPUT */}
       <div className="form-group">
         <label>Content URL</label>
         <input
@@ -461,42 +313,63 @@ setSelectedType(firstMedia?.type || ""); // ✅ FIX
 
             setSelectedType(id);
 
-            const newBlock = {
+            upsertBlock(setBlocks, {
               type: id,
               sourceType: "external_url",
               publicUrl: url
-            };
-
-            setBlocks(prev => {
-              const others = prev.filter(b => b.type !== id);
-              return [...others, newBlock];
             });
 
             setForm(prev => ({
               ...prev,
-              type: id,
               publicUrl: url,
+              type: id,
               sourceType: "external_url"
             }));
           }}
         />
       </div>
 
+      {/* FILE UPLOAD */}
       <div className="form-group">
         <label>Upload File</label>
         <input
           type="file"
-          accept="application/pdf"
+          accept={id === "pdf" ? "application/pdf" : "*"}
           onChange={e => {
-            const file = e.target.files[0];
             setSelectedType(id);
             setForm(prev => ({ ...prev, type: id }));
-            uploadFile(file);
+            uploadFile(e.target.files[0], id);
           }}
         />
 
-        {/* ✅ PDF Preview UI */}
-        {(uploadedFileName || form.fileName) && (
+        {/* ✅ VIDEO PREVIEW */}
+        {currentBlock?.preview && id === "video" && (
+          <div style={{ marginTop: "10px" }}>
+            <video width="100%" controls src={currentBlock?.preview} />
+          </div>
+        )}
+
+        {/* ✅ IMAGE PREVIEW */}
+        {currentBlock?.preview && id === "image" && (
+          <div style={{ marginTop: "10px" }}>
+            <img width="100%" src={currentBlock?.preview} alt="" />
+          </div>
+        )}
+
+        {/* ✅ PDF PREVIEW */}
+        {currentBlock?.preview && id === "pdf" && (
+          <div style={{ marginTop: "10px" }}>
+            <iframe
+              src={currentBlock?.preview}
+              width="200"
+              height="120"
+              title="PDF Preview"
+            />
+          </div>
+        )}
+
+        {/* ✅ FILE NAME DISPLAY (PDF etc) */}
+        {(currentBlock?.fileName) && (
           <div
             style={{
               marginTop: "10px",
@@ -508,59 +381,36 @@ setSelectedType(firstMedia?.type || ""); // ✅ FIX
               borderRadius: "6px"
             }}
           >
-            {/* PDF ICON */}
             <i
-              className="fa fa-file-pdf"
-              style={{ color: "#e53935", fontSize: "18px" }}
+              className="fa fa-file"
+              style={{ color: "#333", fontSize: "16px" }}
             ></i>
 
-            {/* FILE NAME */}
             <span style={{ fontSize: "14px" }}>
-              {uploadedFileName || form.fileName}
+              {currentBlock?.fileName}
             </span>
-          </div>
-        )}
-
-        {/* OPTIONAL: preview iframe */}
-        {filePreview && selectedType === "pdf" && (
-          <div style={{ marginTop: "10px" }}>
-            <iframe
-              src={filePreview}
-              width="200"
-              height="120"
-              title="PDF Preview"
-            />
           </div>
         )}
       </div>
     </>
   );
+
       case "text":
         return (
-            <>
+          <>
             <h3 className="not-tl">Add Description</h3>
-          <div className="form-group">
-            <label>Lesson Content</label>
             <ReactQuill
               value={form.textContent}
               onChange={val => {
-                setSelectedType("text");
-
-                const newBlock = {
-                    type: "text",
-                    sourceType: "inline",
-                    contentText: val
-                };
-
-                setBlocks(prev => {
-                    const others = prev.filter(b => b.type !== "text");
-                    return [...others, newBlock];
+                upsertBlock(setBlocks, {
+                  type: "text",
+                  sourceType: "inline",
+                  contentText: val
                 });
 
-                setForm(prev => ({ ...prev, textContent: val, type: "text" }));
-                }}
+                setForm(prev => ({ ...prev, textContent: val }));
+              }}
             />
-          </div>
           </>
         );
 
@@ -576,7 +426,53 @@ setSelectedType(firstMedia?.type || ""); // ✅ FIX
         return null;
     }
   }
+const handleEdit = (lesson) => {
+  setEditId(lesson._id);
 
+  const blocksData = lesson.blocks || [];
+
+  // Fix URLs
+  const fixedBlocks = blocksData.map(b => ({
+    ...b,
+    publicUrl: b.publicUrl
+      ? (b.publicUrl.startsWith("http")
+          ? b.publicUrl
+          : `${FILE_BASE_URL}${b.publicUrl}`)
+      : b.storageKey
+      ? `${FILE_BASE_URL}/uploads/${b.storageKey}`
+      : ""
+  }));
+
+  setBlocks(fixedBlocks);
+
+  // Fill form
+  setForm({
+    title: lesson.title,
+    order: lesson.order,
+    publicUrl: "",
+    textContent: ""
+  });
+
+  // Restore canvas layout
+  setCanvasFields([
+    "title",
+    ...blocksData.map(b => b.type),
+    "order"
+  ]);
+
+  setActiveTab("addLesson");
+};
+const handleDelete = async (id) => {
+  if (!window.confirm("Delete?")) return;
+
+  try {
+    await api.delete(`/courses/${courseId}/modules/${moduleId}/lessons/${id}`);
+    toastr.success("Deleted");
+    loadLessons();
+  } catch {
+    toastr.error("Delete failed");
+  }
+};
   /* ================= RENDER ================= */
   return (
     <div className="mx-wd">
@@ -586,11 +482,8 @@ setSelectedType(firstMedia?.type || ""); // ✅ FIX
       </div>
 
       <div className="pg-tabs">
-        <span className={`pg-tb ${activeTab === "addLesson" ? "active-tab" : ""}`}  onClick={() => {
-    setActiveTab("addLesson");
-    setEditId(null);
-  }}>
-          {editId ? "Update Lesson" : "Add Lesson"}
+        <span className={`pg-tb ${activeTab === "addLesson" ? "active-tab" : ""}`} onClick={() => setActiveTab("addLesson")}>
+          Add Lesson
         </span>
         <span className={`pg-tb ${activeTab === "lessonList" ? "active-tab" : ""}`} onClick={() => setActiveTab("lessonList")}>
           Lesson List
@@ -601,7 +494,7 @@ setSelectedType(firstMedia?.type || ""); // ✅ FIX
         {activeTab === "addLesson" && (
           <div className="tab-cnnt">
             <div style={{ display: "flex", gap: "30px" }}>
-              <div style={{ flex: 1, border: "1px solid #ddd", padding: "20px", position: "relative" }}>
+              <div style={{ flex: 1 }}>
                 <form onSubmit={handleSubmit}>
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={canvasFields} strategy={verticalListSortingStrategy}>
@@ -611,31 +504,39 @@ setSelectedType(firstMedia?.type || ""); // ✅ FIX
                     </SortableContext>
                   </DndContext>
 
-                  <button type="submit" className="snd-btn">
-                    {editId ? "Update Lesson" : "Create Lesson"}
-                  </button>
+                  <button type="submit" className="snd-btn">Save</button>
                 </form>
               </div>
 
-              <div style={{ width: "300px", border: "1px solid #ddd", padding: "15px" }}>
-                <p className="no-not mb-2">Please click on below option to add lesson</p>
+              <div style={{ width: "300px" }}>
                 {sidebarFields.map(field => (
-                  <div
-                    className="les-typ"
-                    key={field.id}
-                    onClick={() => {
-                      if (!canvasFields.includes(field.id)) {
-                        setCanvasFields(prev => [...prev, field.id]);
-                        if (["video", "image", "pdf", "text"].includes(field.id)) {
-                          setSelectedType(field.id);
-                          setForm(prev => ({ ...prev, type: field.id }));
-                        }
-                      }
-                    }}
-                  >
-                    <i className="fa-solid fa-grip-vertical"></i> {field.label}
-                  </div>
-                ))}
+  <div
+    className="les-typ"
+    key={field.id}
+    onClick={() => {
+      if (!canvasFields.includes(field.id)) {
+        setCanvasFields(prev => [...prev, field.id]);
+      }
+
+      if (["video", "image", "pdf", "text"].includes(field.id)) {
+        // ✅ RESET OLD DATA (THIS FIXES YOUR BUG)
+        setSelectedType(field.id);
+
+        setForm(prev => ({
+          ...prev,
+          type: field.id,
+          publicUrl: "",
+          textContent: ""
+        }));
+
+        setFilePreview("");        // ❌ remove previous preview
+        setUploadedFileName("");   // ❌ remove previous file name
+      }
+    }}
+  >
+    <i className="fa-solid fa-grip-vertical"></i> {field.label}
+  </div>
+))}
               </div>
             </div>
           </div>
@@ -654,41 +555,49 @@ setSelectedType(firstMedia?.type || ""); // ✅ FIX
                 </tr>
               </thead>
               <tbody>
-                {lessons.map(lesson => {
-                  const block = lesson.blocks?.[0] || {};
-                  const fileUrl = getFileUrl(block);
+                {lessons.map(lesson => (
+                  <tr key={lesson._id}>
+                    <td>{lesson.title}</td>
+                    <td>{lesson.blocks?.map(b => b.type).join(", ")}</td>
 
-                  return (
-                    <tr key={lesson._id}>
-                      <td>{lesson.title}</td>
-                      <td>{block.type}</td>
-                      <td>
-                        {block.type === "video" ? (
-                          <video width="200" controls>
-                            <source src={fileUrl} />
-                          </video>
-                        ) : block.type === "image" ? (
-                          <img src={fileUrl} width="150" alt="" />
-                        ) : block.type === "pdf" ? (
-                          <iframe src={fileUrl} width="200" height="120" />
-                        ) : (
-                          <div dangerouslySetInnerHTML={{ __html: block.contentText }} />
-                        )}
-                      </td>
-                      <td>{lesson.order}</td>
-                      <td>
-                        <div className="act-btns">
-                            <span className="logout-btn" onClick={() => handleEdit(lesson)}>
-                            <i className="fa fa-edit"></i>
-                            </span>
-                            <span className="logout-btn" onClick={() => handleDelete(lesson._id)}>
-                            <i className="fa fa-trash"></i>
-                            </span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    <td>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {lesson.blocks?.map((block, i) => {
+                          const fileUrl = getFileUrl(block);
+
+                          return (
+                            <div key={i}>
+                              {block.type === "video" ? (
+                                <video width="200" controls>
+                                  <source src={fileUrl} />
+                                </video>
+                              ) : block.type === "image" ? (
+                                <img src={fileUrl} width="150" alt="" />
+                              ) : block.type === "pdf" ? (
+                                <iframe src={fileUrl} width="200" height="120" />
+                              ) : (
+                                <div dangerouslySetInnerHTML={{ __html: block.contentText }} />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
+
+                    <td>{lesson.order}</td>
+
+                    <td>
+                      <div className="act-btns">
+                        <span className="logout-btn" onClick={() => handleEdit(lesson)}>
+                          <i className="fa fa-edit"></i>
+                        </span>
+                        <span className="logout-btn" onClick={() => handleDelete(lesson._id)}>
+                          <i className="fa fa-trash"></i>
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

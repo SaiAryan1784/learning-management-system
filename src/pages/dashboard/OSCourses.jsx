@@ -39,8 +39,15 @@ export default function CourseManager() {
 const loadCourses = async () => {
   try {
     const res = await api.get("/courses", {
-      params: { t: Date.now() } // 🔥 FORCE REFRESH
+      params: { t: Date.now() }
     });
+
+    // 🔥 DESTROY DATATABLE BEFORE SETTING DATA
+    if (dtRef.current) {
+      dtRef.current.destroy();
+      dtRef.current = null;
+    }
+
     setCourses(res.data.courses || []);
   } catch {
     toastr.error("Error loading courses");
@@ -123,37 +130,60 @@ const loadCourses = async () => {
     $(tableRef.current).off("click", ".assign-btn");
 
     // EDIT
-    $(tableRef.current).on("click", ".edit-btn", function () {
-  const rowData = dtRef.current.row($(this).closest("tr")).data();
+  $(tableRef.current).on("click", ".edit-btn", function () {
+ const id = dtRef.current.row($(this).closest("tr")).data()._id;
+const rowData = courses.find(c => c._id === id);
 
   if (dtRef.current) {
     dtRef.current.destroy();
     dtRef.current = null;
   }
+   setOpenAssessments({});
+  setOpenQuestions({});
 
-  // ✅ NORMALIZE assessments
-  const normalizedAssessments = (rowData.assessments || []).map(a => ({
-    ...a,
+  // 🔥 STEP 1: CLEAR FORM FIRST
+  setForm({
+    title: "",
+    description: "",
+    categoryIds: [],
+    status: "draft",
+    assessments: [],
+  });
+
+  // 🔥 STEP 2: small delay to ensure reset
+  setTimeout(() => {
+    const normalizedAssessments = (rowData.assessments || [])
+  .filter(a => a.active !== false) // 🔥 IMPORTANT
+  .map(a => ({
+    type: a.type,
+    title: a.title,
+    description: a.description || "",
+    passPercent: a.passPercent || 70,
+    maxAttempts: a.maxAttempts || 3,
+    certificateValidityDays: 365,
+    renewalWindowDays: 30,
     questions: (a.questions || []).map(q => ({
-      ...q,
-      correctOptionKeys: q.correctOptionKeys || [], // 🔥 FIX
+      prompt: q.prompt,
+      correctOptionKeys: q.correctOptionKeys || [],
       options: (q.options || []).map(o => ({
         key: o.key,
         text: o.text
       }))
-    }))
+    })),
+    practicalInstructions: a.practicalInstructions || ""
   }));
 
-  setEditId(rowData._id);
-  setForm({
-    title: rowData.title,
-    description: rowData.description,
-    categoryIds: rowData.categories?.map((c) => c._id) || [],
-    status: rowData.status,
-    assessments: normalizedAssessments, // ✅ USE NORMALIZED
-  });
+    setEditId(rowData._id);
+    setForm({
+      title: rowData.title,
+      description: rowData.description,
+      categoryIds: rowData.categories?.map((c) => c._id) || [],
+      status: rowData.status,
+      assessments: normalizedAssessments,
+    });
 
-  setView("form");
+    setView("form");
+  }, 0);
 });
 
     // PUBLISH
@@ -260,38 +290,39 @@ const preparePayload = () => {
     complianceType: null,
 
     assessments: form.assessments.map((a) => {
-      const base = {
-        type: a.type,
-        title: a.title,
-        description: a.description || "",
-        passPercent: a.passPercent || 70,
-        maxAttempts: a.maxAttempts || 3,
+  const base = {
+    type: a.type,
+    title: a.title,
+    description: a.description || "",
+    passPercent: a.passPercent || 70,
+    maxAttempts: a.maxAttempts || 3,
+    certificateValidityDays: 365,
+    renewalWindowDays: 30,
+  };
 
-        // ✅ REQUIRED FIELDS
-        certificateValidityDays: 365,
-        renewalWindowDays: 30,
-      };
+  if (a.type === "quiz") {
+    return {
+      ...base,
+      questions: (a.questions || []).map((q) => ({
+        prompt: q.prompt,
+        options: (q.options || []).map(o => ({
+          key: o.key,
+          text: o.text
+        })),
+        correctOptionKeys: q.correctOptionKeys || [],
+      })),
+    };
+  }
 
-      if (a.type === "quiz") {
-        return {
-          ...base,
-          questions: (a.questions || []).map((q) => ({
-            prompt: q.prompt,
-            options: q.options,
-            correctOptionKeys: q.correctOptionKeys || [],
-          })),
-        };
-      }
+  if (a.type === "practical") {
+    return {
+      ...base,
+      practicalInstructions: a.practicalInstructions || "",
+    };
+  }
 
-      if (a.type === "practical") {
-        return {
-          ...base,
-          practicalInstructions: a.practicalInstructions || "",
-        };
-      }
-
-      return base;
-    }),
+  return base;
+}),
   };
 };
 
@@ -313,7 +344,7 @@ const preparePayload = () => {
         const id = res.data._id;
         await api.patch(`/courses/${id}/publish`);
       }
-      console.log("PAYLOAD 👉", payload);
+      console.log(JSON.stringify(payload, null, 2));
 
       setView("list");
       setEditId(null);
@@ -397,34 +428,36 @@ const preparePayload = () => {
 
   <div className="assessment-actions">
   <select
-    className="login-ip"
-    defaultValue=""
-    onChange={(e) => {
-      const type = e.target.value;
-      if (!type) return;
+  className="login-ip"
+  defaultValue=""
+  onChange={(e) => {
+    const type = e.target.value;
+    if (!type) return;
 
-      const index = form.assessments.length;
+    // ✅ BLOCK during edit load
+    if (editId) return;
 
-      addAssessment(type);
+    const index = form.assessments.length;
 
-      // auto open newly added assessment
-      setOpenAssessments((prev) => ({
-        ...prev,
-        [index]: true,
-      }));
+    addAssessment(type);
 
-      e.target.value = "";
-    }}
-  >
-    <option value="">Select Assessment</option>
-    <option value="quiz">Quiz</option>
-    <option value="practical">Practical</option>
-  </select>
+    setOpenAssessments((prev) => ({
+      ...prev,
+      [index]: true,
+    }));
+
+    e.target.value = "";
+  }}
+>
+  <option value="">Select Assessment</option>
+  <option value="quiz">Quiz</option>
+  <option value="practical">Practical</option>
+</select>
 </div>
 
   {/* ===== Assessments ===== */}
   {form.assessments.map((a, ai) => (
-    <div key={ai} className="assessment-card">
+    <div key={ai + "-" + a.type} className="assessment-card">
       
       {/* Header */}
       <div className="assessment-header">
