@@ -129,11 +129,11 @@ export default function DashboardLayout() {
     //   icon: "fa-plus",
     //   path: "/dashboard/course-add",
     // },
-    {
-      label: "Course",
-      icon: "fa-book",
-      path: "/dashboard/courses",
-    },
+    // {
+    //   label: "Course",
+    //   icon: "fa-book",
+    //   path: "/dashboard/courses",
+    // },
     {
       label: "Certificates",
       icon: "fa-certificate",

@@ -95,6 +95,8 @@ export default function CourseCategories() {
           setOpenPop(true);
         }}><i className="fa-solid fa-plus"></i>
           <span className="tooltiptext">Add Course Category</span></span>
+          <Link to="/dashboard/courses" class="btn btn-sm" style={{"color": "rgb(5, 150, 105)","border": "1px solid #059669",
+    "marginTop": "10px"}}>Click To Add Course</Link>
         <Link to="/dashboard" className="logout-btn">
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
