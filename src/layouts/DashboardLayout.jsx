@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
+import { SectionLoader } from "../components/ui/Spinner";
 
 export default function DashboardLayout() {
   const { logout, user, access, loading } = useAuth();
@@ -345,7 +346,9 @@ export default function DashboardLayout() {
 
         {/* PAGE CONTENT */}
         <main className="flex-1 p-6">
-          <Outlet />
+          <Suspense fallback={<SectionLoader />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

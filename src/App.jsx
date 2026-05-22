@@ -17,8 +17,8 @@ const Login                 = lazy(() => import("./pages/Login"));
 const Register              = lazy(() => import("./pages/Register"));
 const Admin                 = lazy(() => import("./pages/Admin"));
 
-/* ── Layout ───────────────────────────────────────────── */
-const DashboardLayout = lazy(() => import("./layouts/DashboardLayout"));
+/* ── Layout (eager — shell must never lazy-load) ──────── */
+import DashboardLayout from "./layouts/DashboardLayout";
 
 /* ── Dashboard / Owner ────────────────────────────────── */
 const Modules           = lazy(() => import("./pages/dashboard/Modules"));
