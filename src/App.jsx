@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import useIdleLogout from "./pages/UserIdleLogout";
 import { PageLoader } from "./components/ui/Spinner";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 /* ── Public pages ─────────────────────────────────────── */
 const Landing               = lazy(() => import("./pages/Landing"));
