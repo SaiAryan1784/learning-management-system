@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { StatCard } from "../../components/ui/StatCard";
 
 export default function ComplianceOverview() {
-
-  /* ================= STATES ================= */
   const [summary, setSummary] = useState({
     totalStaffTracked: 0,
     totalMandatoryAssignments: 0,
@@ -11,10 +11,8 @@ export default function ComplianceOverview() {
     overdueAssignments: 0,
     completionRate: 0,
   });
-
   const [loading, setLoading] = useState(true);
 
-  /* ================= LOAD COMPLIANCE OVERVIEW ================= */
   const fetchOverview = async () => {
     try {
       setLoading(true);
@@ -27,86 +25,25 @@ export default function ComplianceOverview() {
     }
   };
 
-  useEffect(() => {
-    fetchOverview();
-  }, []);
+  useEffect(() => { fetchOverview(); }, []);
 
-  if (loading) return <div className="mx-wd py-5">Loading...</div>;
+  if (loading) return <p className="text-brand-muted text-sm p-6">Loading...</p>;
 
-  /* ================= UI ================= */
   return (
-    <div className="mx-wd">
-
-      {/* ================= HEADER ================= */}
-      <div className="about-image-grid dash-tp">
-        <div className="prof">
-          <h3 className="prof-name">Compliance Overview</h3>
-          <p className="prof-em my-2">
-            Summary of all compliance assignments
-          </p>
+    <div className="space-y-5">
+      <PageHeader title="Compliance Overview" subtitle="Summary of all compliance assignments">
+        <div className="flex items-center gap-2 bg-emerald/10 border border-emerald/20 rounded-lg px-4 py-2">
+          <span className="text-2xl font-bold text-emerald">{summary.completionRate}%</span>
+          <span className="text-xs text-brand-muted font-semibold uppercase tracking-wide">Avg Completion</span>
         </div>
+      </PageHeader>
 
-        <div className="experience-badge">
-          <span className="years">{summary.completionRate}%</span>
-          <span className="text">Avg Completion</span>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard icon="fa-users" label="Staff Tracked" value={summary.totalStaffTracked} />
+        <StatCard icon="fa-book-bookmark" label="Mandatory Assignments" value={summary.totalMandatoryAssignments} />
+        <StatCard icon="fa-circle-check" label="Completed" value={summary.completedAssignments} />
+        <StatCard icon="fa-triangle-exclamation" label="Overdue" value={summary.overdueAssignments} danger={summary.overdueAssignments > 0} />
       </div>
-
-      {/* ================= STATS CARDS ================= */}
-      <section id="stats" className="stats section">
-        <div className="mx-wd">
-
-          <div className="stats-grid">
-
-            {/* Total Staff Tracked */}
-            <div className="stats-card">
-              <div className="stats-icon">
-                <i className="bi bi-people-fill"></i>
-              </div>
-              <div className="stats-content">
-                <p>Total Staff Tracked</p>
-                <div className="stats-number">{summary.totalStaffTracked}</div>
-              </div>
-            </div>
-
-            {/* Total Mandatory Assignments */}
-            <div className="stats-card">
-              <div className="stats-icon">
-                <i className="bi bi-journal-check"></i>
-              </div>
-              <div className="stats-content">
-                <p>Total Mandatory Assignments</p>
-                <div className="stats-number">{summary.totalMandatoryAssignments}</div>
-              </div>
-            </div>
-
-            {/* Completed Assignments */}
-            <div className="stats-card">
-              <div className="stats-icon">
-                <i className="bi bi-check-circle"></i>
-              </div>
-              <div className="stats-content">
-                <p>Completed Assignments</p>
-                <div className="stats-number">{summary.completedAssignments}</div>
-              </div>
-            </div>
-
-            {/* Overdue Assignments */}
-            <div className="stats-card">
-              <div className="stats-icon">
-                <i className="bi bi-exclamation-circle"></i>
-              </div>
-              <div className="stats-content">
-                <p>Overdue Assignments</p>
-                <div className="stats-number">{summary.overdueAssignments}</div>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-      </section>
-
     </div>
   );
 }

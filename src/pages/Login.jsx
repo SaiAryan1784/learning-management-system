@@ -6,6 +6,9 @@ import toastr from "toastr";
 import AOS from "aos";
 import "aos/dist/aos.css";
 
+const inputClass =
+  "w-full px-3 py-2.5 mb-3 border border-brand-border rounded-lg bg-white text-sm text-brand-text placeholder-brand-muted focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent transition-shadow";
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,12 +17,8 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // ✅ FIX: Initialize AOS once
   useEffect(() => {
-    AOS.init({
-      duration: 800,
-      once: true,
-    });
+    AOS.init({ duration: 800, once: true });
   }, []);
 
   const handleLogin = async () => {
@@ -30,33 +29,24 @@ export default function Login() {
 
     try {
       setLoading(true);
-
       const res = await api.post("/auth/login", { email, password });
 
-      // ✅ Store token properly (IMPORTANT)
       if (res.data?.accessToken) {
         localStorage.setItem("accessToken", res.data.accessToken);
       }
-
       if (res.data?.organizationId) {
         localStorage.setItem("organizationId", res.data.organizationId);
       }
-
-      // ✅ Store login timestamp (for idle logout)
       localStorage.setItem("loginTime", Date.now());
 
-      // ✅ Update auth context
       login(res.data);
-
       toastr.success("Login successful!");
 
       setTimeout(() => {
         navigate("/dashboard");
       }, 800);
-
     } catch (err) {
       console.error("Login failed:", err);
-
       if (err.response?.status === 401) {
         toastr.warning("Invalid email or password");
       } else {
@@ -68,55 +58,60 @@ export default function Login() {
   };
 
   return (
-    <div className="lg-mn">
-      <video autoPlay muted loop playsInline>
+    <div className="min-h-screen flex items-center justify-center bg-charcoal relative overflow-hidden">
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="fixed inset-0 w-full h-full object-cover opacity-20 pointer-events-none"
+      >
         <source src="/images/rl-bnr.mp4" type="video/mp4" />
       </video>
 
-      <div className="mx-wd">
-        <div className="sc-wp">
-          <div className="sc-in">
+      <div
+        className="relative z-10 w-full max-w-sm mx-4 bg-surface rounded-2xl border border-brand-border p-8 shadow-card"
+        data-aos="fade-up"
+      >
+        <img
+          src="/images/lms.png"
+          className="w-40 mx-auto mb-6 block"
+          alt="Brand Logo"
+        />
 
-            <div className="login-container" data-aos="fade-up">
-              <img
-                src="/images/lms.png"
-                className="brand-img"
-                alt="Brand Logo"
-              />
+        <input
+          className={inputClass}
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-              <input
-                className="login-ip"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+        <input
+          className={inputClass}
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+        />
 
-              <input
-                className="login-ip"
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+        <button
+          className="w-full bg-emerald hover:bg-emerald-hover text-white font-semibold text-sm uppercase tracking-wide py-2.5 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+          onClick={handleLogin}
+          disabled={loading}
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
 
-              <button
-                className="snd-btn"
-                onClick={handleLogin}
-                disabled={loading}
-              >
-                {loading ? "Logging in..." : "Login"}
-              </button>
-
-              <p className="reg-tx">
-                Don't have an account?{" "}
-                <Link className="nv-lnk" to="/register">
-                  Register
-                </Link>
-              </p>
-            </div>
-
-          </div>
-        </div>
+        <p className="text-brand-muted text-xs mt-4 text-center">
+          Don&apos;t have an account?{" "}
+          <Link
+            className="text-emerald font-semibold hover:text-emerald-hover transition-colors"
+            to="/register"
+          >
+            Register
+          </Link>
+        </p>
       </div>
     </div>
   );

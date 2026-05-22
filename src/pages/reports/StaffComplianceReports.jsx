@@ -3,11 +3,13 @@ import api from "../../api/api";
 import toastr from "toastr";
 import $ from "jquery";
 import "datatables.net";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { StatCard } from "../../components/ui/StatCard";
+import { TableContainer } from "../../components/ui/TableContainer";
 
 export default function StaffComplianceReport() {
   const tableRef = useRef();
   const dtRef = useRef();
-
   const [summary, setSummary] = useState({
     totalStaffTracked: 0,
     totalMandatoryAssignments: 0,
@@ -16,7 +18,6 @@ export default function StaffComplianceReport() {
     completionRate: 0,
   });
 
-  // ---------------- LOAD SUMMARY ----------------
   const loadSummary = async () => {
     try {
       const res = await api.get("/reports/compliance/overview");
@@ -26,7 +27,6 @@ export default function StaffComplianceReport() {
     }
   };
 
-  // ---------------- LOAD DATATABLE ----------------
   useEffect(() => {
     loadSummary();
 
@@ -40,22 +40,16 @@ export default function StaffComplianceReport() {
       ajax: async (data, callback) => {
         try {
           const res = await api.get(
-            `/reports/compliance/staff?format=json&page=${
-              Math.floor(data.start / data.length) + 1
-            }&limit=${data.length}`
+            `/reports/compliance/staff?format=json&page=${Math.floor(data.start / data.length) + 1}&limit=${data.length}`
           );
           callback({
             data: res.data.rows,
             recordsTotal: res.data.pagination.total,
             recordsFiltered: res.data.pagination.total,
           });
-        } catch (err) {
+        } catch {
           toastr.error("Failed to load staff compliance data");
-          callback({
-            data: [],
-            recordsTotal: 0,
-            recordsFiltered: 0,
-          });
+          callback({ data: [], recordsTotal: 0, recordsFiltered: 0 });
         }
       },
       columns: [
@@ -67,95 +61,35 @@ export default function StaffComplianceReport() {
         { data: "complianceScore" },
       ],
     });
-
-    // VIEW DETAILS BUTTON
-   
   }, []);
 
   return (
-    <div className="mx-wd">
-      <div className="dash-tp">
-        <h1 className="wlc-tl">Staff Compliance Report</h1>
-        <p className="wlc-ms">
-          Overview of staff compliance status and mandatory course completion
-        </p>
+    <div className="space-y-5">
+      <PageHeader title="Staff Compliance Report" subtitle="Overview of staff compliance status and mandatory course completion" />
+
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <StatCard icon="fa-users" label="Staff Tracked" value={summary.totalStaffTracked} />
+        <StatCard icon="fa-book-bookmark" label="Mandatory Assignments" value={summary.totalMandatoryAssignments} />
+        <StatCard icon="fa-circle-check" label="Completed" value={summary.completedAssignments} />
+        <StatCard icon="fa-triangle-exclamation" label="Overdue" value={summary.overdueAssignments} danger={summary.overdueAssignments > 0} />
+        <StatCard icon="fa-chart-line" label="Compliance Rate" value={`${summary.completionRate}%`} />
       </div>
 
-      {/* ================= STATS CARDS ================= */}
-      <div className="stats">
-        <div className="stats-grid" style={{ marginBottom: "20px" }}>
-        <div className="stats-card">
-          <div className="stats-icon">
-            <i className="bi bi-people-fill"></i>
-          </div>
-          <div className="stats-content">
-            <p>Total Staff Tracked</p>
-            <div className="stats-number">{summary.totalStaffTracked}</div>
-          </div>
-        </div>
-
-        <div className="stats-card">
-          <div className="stats-icon">
-            <i className="bi bi-journal-bookmark-fill"></i>
-          </div>
-          <div className="stats-content">
-            <p>Total Mandatory Assignments</p>
-            <div className="stats-number">{summary.totalMandatoryAssignments}</div>
-          </div>
-        </div>
-
-        <div className="stats-card">
-          <div className="stats-icon">
-            <i className="bi bi-check-circle-fill"></i>
-          </div>
-          <div className="stats-content">
-            <p>Completed Assignments</p>
-            <div className="stats-number">{summary.completedAssignments}</div>
-          </div>
-        </div>
-
-        <div className="stats-card">
-          <div className="stats-icon">
-            <i className="bi bi-exclamation-triangle-fill"></i>
-          </div>
-          <div className="stats-content">
-            <p>Overdue Assignments</p>
-            <div className="stats-number">{summary.overdueAssignments}</div>
-          </div>
-        </div>
-
-        <div className="stats-card">
-          <div className="stats-icon">
-            <i className="bi bi-graph-up-arrow"></i>
-          </div>
-          <div className="stats-content">
-            <p>Compliance Rate</p>
-            <div className="stats-number">{summary.completionRate}%</div>
-          </div>
-        </div>
-      </div>
-      </div>
-
-      {/* ================= DATATABLE ================= */}
-      <table
-        ref={tableRef}
-        border="1"
-        cellPadding="10"
-        cellSpacing="0"
-        width="100%"
-      >
-        <thead>
-          <tr>
-            <th>Staff Name</th>
-            <th>Email</th>
-            <th>Mandatory Courses</th>
-            <th>Completed Courses</th>
-            <th>Overdue Courses</th>
-            <th>Compliance Score</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <TableContainer>
+        <table ref={tableRef} width="100%">
+          <thead>
+            <tr>
+              <th>Staff Name</th>
+              <th>Email</th>
+              <th>Mandatory Courses</th>
+              <th>Completed Courses</th>
+              <th>Overdue Courses</th>
+              <th>Compliance Score</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </TableContainer>
     </div>
   );
 }

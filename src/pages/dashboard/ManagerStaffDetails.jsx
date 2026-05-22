@@ -1,252 +1,122 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import api from "../../api/api";
 import toastr from "toastr";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { StatCard } from "../../components/ui/StatCard";
 
 export default function ManagerStaffDetails() {
   const { staffId } = useParams();
-  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [staffData, setStaffData] = useState(null);
   const [expandedCourses, setExpandedCourses] = useState({});
 
-  useEffect(() => {
-    loadProgress();
-  }, [staffId]);
+  useEffect(() => { loadProgress(); }, [staffId]);
 
   const loadProgress = async () => {
     try {
       setLoading(true);
       const res = await api.get(`/progress/staff/${staffId}`);
       setStaffData(res.data);
-    } catch (err) {
-      console.error(err);
+    } catch {
       toastr.error("Failed to load staff progress");
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleExpand = (id) => {
-    setExpandedCourses((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
+  const toggleExpand = (id) =>
+    setExpandedCourses((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const calculateCountdown = (dueDate) => {
     if (!dueDate) return "No Due Date";
-
-    const now = new Date();
-    const due = new Date(dueDate);
-    const diff = due - now;
-
+    const diff = new Date(dueDate) - new Date();
     if (diff <= 0) return "Overdue";
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    return `${days} Days Remaining`;
+    return `${Math.floor(diff / (1000 * 60 * 60 * 24))} Days Remaining`;
   };
 
-  if (loading) return <div className="container py-5">Loading...</div>;
-  if (!staffData) return <div className="container py-5">No data found.</div>;
+  if (loading) return <p className="text-brand-muted text-sm p-6">Loading...</p>;
+  if (!staffData) return <p className="text-brand-muted text-sm p-6">No data found.</p>;
 
   const { staff, courseProgress = [], lessonProgress = [] } = staffData;
 
-  // Overall average %
   const overallPercent =
     courseProgress.length === 0
       ? 0
-      : Math.round(
-          courseProgress.reduce(
-            (sum, c) => sum + (c.progressPercent || 0),
-            0
-          ) / courseProgress.length
-        );
+      : Math.round(courseProgress.reduce((s, c) => s + (c.progressPercent || 0), 0) / courseProgress.length);
 
-  const completedCourses = courseProgress.filter(
-    (c) => c.progressPercent === 100
-  ).length;
-
-  const overdueCourses = courseProgress.filter(
-    (c) => c.overdue
-  ).length;
+  const completedCourses = courseProgress.filter((c) => c.progressPercent === 100).length;
+  const overdueCourses = courseProgress.filter((c) => c.overdue).length;
 
   return (
-    <div className="mx-wd">
-      <div className="about-image-grid dash-tp">
-          <div className="prof">
-            <h3 className="prof-name">{staff?.name}</h3>
-            <p className="prof-em my-2">{staff?.email}</p>
-          </div>
-          <div className="experience-badge">
-            <span className="years">{overallPercent}%</span>
-            <span className="text">Overall Completion</span>
-          </div>
+    <div className="space-y-5">
+      <PageHeader title={staff?.name || "Staff Details"} subtitle={staff?.email}>
+        <div className="flex items-center gap-2 bg-emerald/10 border border-emerald/20 rounded-lg px-4 py-2">
+          <span className="text-2xl font-bold text-emerald">{overallPercent}%</span>
+          <span className="text-xs text-brand-muted font-semibold uppercase tracking-wide">Overall</span>
         </div>
-      <section id="stats" className="stats section">
-        <div className="mx-wd">
+      </PageHeader>
 
-          <div className="">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard icon="fa-book-open" label="Total Courses" value={courseProgress.length} />
+        <StatCard icon="fa-circle-check" label="Completed" value={completedCourses} />
+        <StatCard icon="fa-triangle-exclamation" label="Overdue" value={overdueCourses} danger={overdueCourses > 0} />
+        <StatCard icon="fa-chart-line" label="Completion" value={`${overallPercent}%`} />
+      </div>
 
-            <div className="col-lg-12 col-md-12">
-              <div
-                className="stats-overview text-center text-lg-start"
-              >
-                <h3>Training Performance Overview</h3>
-                <p>
-                  Live summary of staff training progress and engagement.
-                </p>
+      <div className="bg-surface border border-brand-border rounded-xl p-6">
+        <h2 className="text-sm font-semibold text-brand-text uppercase tracking-wide mb-4">Course Progress</h2>
+        <div className="space-y-4">
+          {courseProgress.map((course) => {
+            const percent = course.progressPercent || 0;
+            return (
+              <div key={course._id} className="border border-brand-border rounded-xl p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <span className="text-sm font-semibold text-brand-text">{course.course?.title}</span>
+                    <p className="text-xs text-brand-muted mt-0.5">
+                      {course.completedLessons} / {course.totalLessons} Lessons &bull;{" "}
+                      <span className={course.overdue ? "text-brand-danger font-semibold" : ""}>
+                        {calculateCountdown(course.dueDate)}
+                      </span>
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-emerald">{percent}%</span>
+                </div>
+                <div className="h-1.5 bg-brand-border rounded-full overflow-hidden mb-3">
+                  <div
+                    className="h-full bg-emerald rounded-full transition-all duration-500"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+                <button
+                  className="text-xs font-semibold text-brand-muted border border-brand-border rounded-lg px-3 py-1.5 hover:border-emerald hover:text-emerald transition-colors"
+                  onClick={() => toggleExpand(course._id)}
+                >
+                  {expandedCourses[course._id] ? "Hide Lessons" : "View Lessons"}
+                </button>
+
+                {expandedCourses[course._id] && (
+                  <div className="mt-3 border-t border-brand-border pt-3 space-y-1">
+                    {lessonProgress
+                      .filter((l) => l.course === course.course._id)
+                      .map((lesson) => (
+                        <div key={lesson._id} className="flex items-center justify-between text-xs py-1">
+                          <span className="text-brand-text">{lesson.lesson?.title}</span>
+                          <span className={lesson.status === "completed" ? "text-emerald font-semibold" : "text-brand-muted"}>
+                            {lesson.status}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
-            </div>
-
-            <div className="col-lg-12 col-md-12">
-              <div
-                className="stats-grid"
-              >
-
-                {/* Total Courses */}
-                <div className="stats-card">
-                  <div className="stats-icon">
-                    <i className="bi bi-folder2-open"></i>
-                  </div>
-                  <div className="stats-content">
-                    <div className="stats-number">
-                      {courseProgress.length}
-                    </div>
-                    <p>Total Courses</p>
-                  </div>
-                </div>
-
-                {/* Completed */}
-                <div className="stats-card">
-                  <div className="stats-icon">
-                    <i className="bi bi-check-circle"></i>
-                  </div>
-                  <div className="stats-content">
-                    <div className="stats-number">
-                      {completedCourses}
-                    </div>
-                    <p>Completed Courses</p>
-                  </div>
-                </div>
-
-                {/* Overdue */}
-                <div className="stats-card">
-                  <div className="stats-icon">
-                    <i className="bi bi-exclamation-circle"></i>
-                  </div>
-                  <div className="stats-content">
-                    <div className="stats-number">
-                      {overdueCourses}
-                    </div>
-                    <p>Overdue Courses</p>
-                  </div>
-                </div>
-
-                {/* Overall % */}
-                <div className="stats-card">
-                  <div className="stats-icon">
-                    <i className="bi bi-graph-up"></i>
-                  </div>
-                  <div className="stats-content">
-                    <div className="stats-number">
-                      {overallPercent}
-                      <span className="plus">%</span>
-                    </div>
-                    <p>Overall Completion</p>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-      <div className="align-items-center about-showcase">
-        {/* CONTENT SIDE */}
-        <div
-          className="mx-wd col-lg-12 order-lg-1"
-        >
-          <div className="about-content-box">
-            {/* COURSES PROGRESS LIST */}
-            <h2 className="st-tl">Courses Assigned & It's Progress</h2>
-            <div className="prog-rw">
-              {courseProgress.map((course) => {
-              const percent = course.progressPercent || 0;
-
-              return (
-                <div key={course._id} className="progress-item">
-
-                  <div className="d-flex justify-content-between">
-                    <span className="progress-title">
-                      {course.course?.title}
-                    </span>
-                    <span className="progress-percent">
-                      {percent}%
-                    </span>
-                  </div>
-
-                  <div className="progress">
-                    <div
-                      className="progress-bar"
-                      role="progressbar"
-                      style={{ width: `${percent}%` }}
-                      aria-valuenow={percent}
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                    ></div>
-                  </div>
-
-                  <small className="text-muted d-block mb-2">
-                    {course.completedLessons} / {course.totalLessons} Lessons
-                    • {calculateCountdown(course.dueDate)}
-                  </small>
-
-                  <button
-                    className="snd-btn mt-2"
-                    onClick={() => toggleExpand(course._id)}
-                  >
-                    {expandedCourses[course._id]
-                      ? "Hide Lessons"
-                      : "View Lessons"}
-                  </button>
-
-                  {/* Expand Lessons */}
-                  {expandedCourses[course._id] && (
-                    <div className="mt-2">
-                      {lessonProgress
-                        .filter(
-                          (l) =>
-                            l.course === course.course._id
-                        )
-                        .map((lesson) => (
-                          <div
-                            key={lesson._id}
-                            className="d-flex justify-content-between small border-bottom py-1"
-                          >
-                            <span>{lesson.lesson?.title}</span>
-                            <span
-                              className={
-                                lesson.status === "completed"
-                                  ? "text-success"
-                                  : "text-secondary"
-                              }
-                            >
-                              {lesson.status}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-
-                </div>
-              );
-            })}
-            </div>
-
-          </div>
+            );
+          })}
+          {courseProgress.length === 0 && (
+            <p className="text-brand-muted text-sm text-center py-8">No courses assigned.</p>
+          )}
         </div>
       </div>
     </div>

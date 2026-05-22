@@ -20,7 +20,6 @@ export default function DashboardLayout() {
   useEffect(() => {
     fetchNotifications();
 
-    // close dropdown on outside click
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setOpen(false);
@@ -31,7 +30,6 @@ export default function DashboardLayout() {
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
-  // ================= FETCH =================
   const fetchNotifications = async () => {
     try {
       const res = await fetch(
@@ -42,9 +40,7 @@ export default function DashboardLayout() {
           },
         }
       );
-
       const data = await res.json();
-
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
     } catch (err) {
@@ -52,7 +48,6 @@ export default function DashboardLayout() {
     }
   };
 
-  // ================= MARK SINGLE =================
   const markAsRead = async (id) => {
     try {
       await fetch(`${API}/notifications/${id}/read`, {
@@ -61,14 +56,12 @@ export default function DashboardLayout() {
           Authorization: "Bearer " + localStorage.getItem("accessToken"),
         },
       });
-
-      fetchNotifications(); // refresh
+      fetchNotifications();
     } catch (err) {
       console.error("Error marking notification:", err);
     }
   };
 
-  // ================= MARK ALL =================
   const markAllAsRead = async () => {
     try {
       await fetch(`${API}/notifications/me/read-all`, {
@@ -77,341 +70,283 @@ export default function DashboardLayout() {
           Authorization: "Bearer " + localStorage.getItem("accessToken"),
         },
       });
-
       fetchNotifications();
     } catch (err) {
       console.error("Error marking all:", err);
     }
   };
+
   if (loading) return null;
 
-  // ================= ROLE DETECTION (FIXED) =================
   const roleName = user?.role?.name?.trim().toLowerCase();
-
   const isSuperAdmin = user?.isPlatformAdmin === true;
-
-  const isOwnerAdmin =
-    !isSuperAdmin && (roleName === "admin" || roleName === "owner");
-
-  const isStaff =
-    !isSuperAdmin && roleName !== "admin" && roleName !== "owner";
+  const isOwnerAdmin = !isSuperAdmin && (roleName === "admin" || roleName === "owner");
+  const isStaff = !isSuperAdmin && roleName !== "admin" && roleName !== "owner";
 
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
-  const navFullClass = ({ isActive }) =>
-    isActive ? "nav-item-full active" : "nav-item-full";
+  const navClass = ({ isActive }) =>
+    [
+      "flex items-center gap-3 rounded-lg px-3 py-2.5 mb-1 no-underline transition-all duration-200",
+      sidebarOpen ? "" : "justify-center",
+      isActive
+        ? "bg-emerald text-white"
+        : "text-white/60 hover:bg-white/10 hover:text-white",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-  const navGridClass = ({ isActive }) =>
-    isActive ? "nav-item-grid active" : "nav-item-grid";
-
-  // ================= MANAGEMENT MENU =================
   const managementMenu = [
-    {
-      label: "Locations",
-      icon: "fa-location-dot",
-      path: "/dashboard/locations",
-    },
-    {
-      label: "Staff",
-      icon: "fa-users",
-      path: "/dashboard/staff",
-    },
-    {
-      label: "Course Category",
-      icon: "fa-book-open-reader",
-      path: "/dashboard/course-categories",
-    },
-    // {
-    //   label: "Add Course",
-    //   icon: "fa-plus",
-    //   path: "/dashboard/course-add",
-    // },
-    // {
-    //   label: "Course",
-    //   icon: "fa-book",
-    //   path: "/dashboard/courses",
-    // },
-    {
-      label: "Certificates",
-      icon: "fa-certificate",
-      path: "/dashboard/certificates",
-    },
+    { label: "Locations", icon: "fa-location-dot", path: "/dashboard/locations" },
+    { label: "Staff", icon: "fa-users", path: "/dashboard/staff" },
+    { label: "Course Category", icon: "fa-book-open-reader", path: "/dashboard/course-categories" },
+    { label: "Certificates", icon: "fa-certificate", path: "/dashboard/certificates" },
   ];
 
-  // ================= COMPLIANCE MENU =================
   const complianceMenu = [
-    {
-      label: "Compliance Settings",
-      icon: "fa-sliders",
-      path: "/dashboard/compliance/settings",
-    },
-    {
-      label: "Policies",
-      icon: "fa-shield-halved",
-      path: "/dashboard/compliance/policies",
-    },
-    // {
-    //   label: "Run Assignments",
-    //   icon: "fa-play",
-    //   path: "/dashboard/compliance/run-assignments",
-    // },
+    { label: "Compliance Settings", icon: "fa-sliders", path: "/dashboard/compliance/settings" },
+    { label: "Policies", icon: "fa-shield-halved", path: "/dashboard/compliance/policies" },
   ];
 
-  // ================= REPORTS MENU =================
   const reportsMenu = [
-    {
-      label: "Compliance Overview",
-      icon: "fa-chart-line",
-      path: "/dashboard/reports/compliance",
-    },
-    {
-      label: "Staff Compliance",
-      icon: "fa-user-check",
-      path: "/dashboard/reports/staff-compliance",
-    },
-    {
-      label: "Certificate Expiry",
-      icon: "fa-clock",
-      path: "/dashboard/reports/certificate-expiry",
-    },
-    {
-      label: "Notification Logs",
-      icon: "fa-bell",
-      path: "/dashboard/reports/notification-logs",
-    },
-    {
-      label: "Audit Trail",
-      icon: "fa-list",
-      path: "/dashboard/reports/audit-trail",
-    },
+    { label: "Compliance Overview", icon: "fa-chart-line", path: "/dashboard/reports/compliance" },
+    { label: "Staff Compliance", icon: "fa-user-check", path: "/dashboard/reports/staff-compliance" },
+    { label: "Certificate Expiry", icon: "fa-clock", path: "/dashboard/reports/certificate-expiry" },
+    { label: "Notification Logs", icon: "fa-bell", path: "/dashboard/reports/notification-logs" },
+    { label: "Audit Trail", icon: "fa-list", path: "/dashboard/reports/audit-trail" },
   ];
 
   return (
-    <div
-      className={`dash-cnt ${
-        sidebarOpen ? "sidebar-open" : "sidebar-collapsed"
-      }`}
-    >
+    <div className="flex min-h-screen">
       {/* ================= SIDEBAR ================= */}
-      <nav className="sidebar">
-        <div className="logo">
+      <nav
+        className={[
+          "sticky top-0 h-screen flex flex-col overflow-y-auto overflow-x-hidden",
+          "bg-charcoal transition-all duration-300 ease-in-out flex-shrink-0",
+          sidebarOpen ? "w-[220px]" : "w-[64px]",
+        ].join(" ")}
+        style={{ scrollbarWidth: "thin", scrollbarColor: "#3A3A3C #1C1C1E" }}
+      >
+        {/* Logo */}
+        <div
+          className={[
+            "flex items-center px-3 py-4 border-b border-charcoal-light",
+            sidebarOpen ? "justify-start gap-3" : "justify-center",
+          ].join(" ")}
+        >
           <img
             src="/images/lms-white.png"
-            className="nv-img"
+            className={sidebarOpen ? "w-32 object-contain" : "w-8 object-contain"}
             alt="Brand Logo"
           />
         </div>
 
-        {/* DASHBOARD */}
-        <NavLink to="/dashboard" end className={navFullClass}>
-          <i className="fa-solid fa-house"></i>
-          <span>Dashboard</span>
-        </NavLink>
+        {/* Nav Items */}
+        <div className="flex-1 px-2 py-3">
+          {/* DASHBOARD */}
+          <NavLink to="/dashboard" end className={navClass}>
+            <i className="fa-solid fa-house text-base flex-shrink-0"></i>
+            {sidebarOpen && (
+              <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
+                Dashboard
+              </span>
+            )}
+          </NavLink>
 
-        {/* SUPER ADMIN */}
-        {isSuperAdmin && (
-          <div className="nav-grid">
-            <NavLink to="/dashboard/modules" className={navGridClass}>
-              <i className="fa-solid fa-business-time"></i>
-              <span>Modules</span>
+          {/* SUPER ADMIN */}
+          {isSuperAdmin && (
+            <NavLink to="/dashboard/modules" className={navClass}>
+              <i className="fa-solid fa-business-time text-base flex-shrink-0"></i>
+              {sidebarOpen && (
+                <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
+                  Modules
+                </span>
+              )}
             </NavLink>
-          </div>
-        )}
+          )}
 
-        {/* OWNER / ADMIN */}
-        {isOwnerAdmin && (
-          <>
-            {/* MANAGEMENT */}
-            <h3 className="menu-heading">MANAGEMENT</h3>
-            <div className="nav-grid">
+          {/* OWNER / ADMIN */}
+          {isOwnerAdmin && (
+            <>
+              {sidebarOpen && (
+                <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1 mt-5 mb-2">
+                  Management
+                </h3>
+              )}
+              {!sidebarOpen && <div className="my-2 border-t border-charcoal-light" />}
               {managementMenu.map((item) => (
-                <NavLink key={item.path} to={item.path} className={navGridClass}>
-                  <i className={`fa-solid ${item.icon}`}></i>
-                  <span>{item.label}</span>
+                <NavLink key={item.path} to={item.path} className={navClass}>
+                  <i className={`fa-solid ${item.icon} text-base flex-shrink-0`}></i>
+                  {sidebarOpen && (
+                    <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
+                      {item.label}
+                    </span>
+                  )}
                 </NavLink>
               ))}
-            </div>
 
-            {/* COMPLIANCE */}
-            <h3 className="menu-heading">COMPLIANCE</h3>
-            <div className="nav-grid">
+              {sidebarOpen && (
+                <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1 mt-5 mb-2">
+                  Compliance
+                </h3>
+              )}
+              {!sidebarOpen && <div className="my-2 border-t border-charcoal-light" />}
               {complianceMenu.map((item) => (
-                <NavLink key={item.path} to={item.path} className={navGridClass}>
-                  <i className={`fa-solid ${item.icon}`}></i>
-                  <span>{item.label}</span>
+                <NavLink key={item.path} to={item.path} className={navClass}>
+                  <i className={`fa-solid ${item.icon} text-base flex-shrink-0`}></i>
+                  {sidebarOpen && (
+                    <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
+                      {item.label}
+                    </span>
+                  )}
                 </NavLink>
               ))}
-            </div>
 
-            {/* REPORTS */}
-            <h3 className="menu-heading">REPORTS</h3>
-            <div className="nav-grid">
+              {sidebarOpen && (
+                <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1 mt-5 mb-2">
+                  Reports
+                </h3>
+              )}
+              {!sidebarOpen && <div className="my-2 border-t border-charcoal-light" />}
               {reportsMenu.map((item) => (
-                <NavLink key={item.path} to={item.path} className={navGridClass}>
-                  <i className={`fa-solid ${item.icon}`}></i>
-                  <span>{item.label}</span>
+                <NavLink key={item.path} to={item.path} className={navClass}>
+                  <i className={`fa-solid ${item.icon} text-base flex-shrink-0`}></i>
+                  {sidebarOpen && (
+                    <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
+                      {item.label}
+                    </span>
+                  )}
                 </NavLink>
               ))}
-            </div>
-          </>
-        )}
+            </>
+          )}
 
-        {/* STAFF */}
-        {isStaff && (
-          <div className="nav-grid">
-            {managementMenu.map((item) => (
-              <NavLink key={item.path} to={item.path} className={navGridClass}>
-                <i className={`fa-solid ${item.icon}`}></i>
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
-          </div>
-        )}
+          {/* STAFF */}
+          {isStaff && (
+            <>
+              {managementMenu.map((item) => (
+                <NavLink key={item.path} to={item.path} className={navClass}>
+                  <i className={`fa-solid ${item.icon} text-base flex-shrink-0`}></i>
+                  {sidebarOpen && (
+                    <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
+                      {item.label}
+                    </span>
+                  )}
+                </NavLink>
+              ))}
+            </>
+          )}
+        </div>
       </nav>
 
       {/* ================= MAIN CONTENT ================= */}
-      <div className="main-data">
-        <div className="main-hdr">
-          <div className="mx-wd">
-            <div className="hdr-wp">
+      <div className="flex-1 min-w-0 flex flex-col bg-canvas">
 
-              {/* HAMBURGER */}
-              <span
-                className="hamburger-btn"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              >
-                <i className="fa-solid fa-bars"></i>
-              </span>
+        {/* TOPBAR */}
+        <header className="sticky top-0 z-40 bg-surface border-b border-brand-border h-14 flex items-center px-4 gap-2 flex-shrink-0">
 
-              {/* NOTIFICATION */}
-              <div className="nav-item dropdown notification-wrapper" ref={dropdownRef}>
-  
-                {/* 🔔 Bell Trigger */}
-                <span
-                  className="notification-bell dropdown-toggle position-relative d-block mx-3"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setOpen(!open);
-                  }}
-                >
-                  <i className="fa-solid fa-bell"></i>
+          {/* Hamburger */}
+          <button
+            className="flex items-center justify-center w-9 h-9 rounded-lg text-brand-muted hover:bg-brand-border/60 hover:text-brand-text transition-colors flex-shrink-0"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <i className="fa-solid fa-bars text-sm"></i>
+          </button>
 
-                  {/* 🔴 Count Badge */}
-                  {unreadCount > 0 && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: "2px",
-                        right: "3px",
-                        background: "#db767c",
-                        color: "#fff",
-                        borderRadius: "50%",
-                        fontSize: "10px",
-                        padding: "5px",
-                        fontWeight: "bold",
-                        width: "20px",
-                        height: "20px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
+          <div className="flex-1" />
+
+          {/* Notification Bell */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              className="relative flex items-center justify-center w-9 h-9 rounded-lg text-brand-muted hover:bg-brand-border/60 hover:text-brand-text transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                setOpen(!open);
+              }}
+            >
+              <i className="fa-solid fa-bell text-sm"></i>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-brand-danger text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {open && (
+              <div className="absolute top-full right-0 mt-2 w-80 bg-surface border border-brand-border rounded-xl shadow-card z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border">
+                  <span className="text-xs font-bold text-brand-text uppercase tracking-wide">
+                    Notifications
+                  </span>
+                  {notifications.length > 0 && (
+                    <button
+                      className="text-xs font-semibold text-emerald hover:text-emerald-hover transition-colors"
+                      onClick={markAllAsRead}
                     >
-                      {unreadCount}
-                    </span>
+                      Mark all read
+                    </button>
                   )}
-                </span>
-
-                {/* 📩 Dropdown */}
-                {open && (
-                  <ul
-                    className="dropdown-menu show"
-                    style={{
-                      width: "auto",
-                      maxHeight: "500px",
-                      overflowY: "auto",
-                      right: 0,
-                      left: "auto",
-                    }}
-                  >
-                    {/* Header */}
-                    <li className="dropdown-item d-flex justify-content-between align-items-center">
-                      <p className="not-tl">Notifications</p>
-
-                      {notifications.length > 0 && (
-                        <button style={{color:"#059669"}}
-                          className="btn btn-sm"
-                          onClick={markAllAsRead}
-                        >
-                          Mark all
-                        </button>
-                      )} 
-                    </li>
-
-                    <li><hr className="dropdown-divider" /></li>
-
-                    {/* No Notifications */}
-                    {notifications.length === 0 && (
-                      <li className="dropdown-item text-center">
-                       <p className="no-not"> No new notifications</p>
-                      </li>
-                    )}
-
-                    {/* Notification List */}
-                    {notifications.map((n) => (
-                      <li
-                        key={n._id}
-                        className="dropdown-item"
-                        onClick={() => markAsRead(n._id)}
-                      >
-                        <div className="dropdown-link">
-                          <p>
-                          {n.title}
-                          <span>{n.message}</span>
-                          <span style={{ fontSize: "11px", color: "#999" }}>
-                            {new Date(n.createdAt).toLocaleString()}
-                          </span>
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* PROFILE */}
-              <div
-                className="profile-section"
-                onClick={() => setProfileOpen(!profileOpen)}
-              >
-                <span className="profile-name">
-                  {user?.name || "User"}
-                </span>
-                  {/* {roleName} */}
-
-                <i className="fa-solid fa-chevron-down"></i>
-
-                {profileOpen && (
-                  <div className="profile-dropdown">
-                    <div
-                      className="dropdown-item logout"
-                      onClick={handleLogout}
+                </div>
+                <div className="max-h-80 overflow-y-auto divide-y divide-brand-border">
+                  {notifications.length === 0 && (
+                    <p className="text-center text-xs text-brand-muted py-6 uppercase tracking-wide">
+                      No new notifications
+                    </p>
+                  )}
+                  {notifications.map((n) => (
+                    <button
+                      key={n._id}
+                      className="w-full text-left px-4 py-3 hover:bg-canvas transition-colors block"
+                      onClick={() => markAsRead(n._id)}
                     >
-                      <i className="fa-solid fa-sign-out"></i>
-                      Logout
-                    </div>
-                  </div>
-                )}
+                      <p className="text-xs font-semibold text-brand-text">{n.title}</p>
+                      <p className="text-xs text-brand-muted mt-0.5 leading-relaxed">{n.message}</p>
+                      <p className="text-[10px] text-brand-muted/60 mt-1">
+                        {new Date(n.createdAt).toLocaleString()}
+                      </p>
+                    </button>
+                  ))}
+                </div>
               </div>
-
-            </div>
+            )}
           </div>
-        </div>
+
+          {/* Profile */}
+          <div className="relative">
+            <button
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-brand-border/60 transition-colors"
+              onClick={() => setProfileOpen(!profileOpen)}
+            >
+              <div className="w-7 h-7 rounded-full bg-emerald flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                {user?.name?.[0]?.toUpperCase() || "U"}
+              </div>
+              <span className="text-sm font-medium text-brand-text hidden sm:block max-w-[120px] truncate">
+                {user?.name || "User"}
+              </span>
+              <i className="fa-solid fa-chevron-down text-[10px] text-brand-muted"></i>
+            </button>
+
+            {profileOpen && (
+              <div className="absolute top-full right-0 mt-1 bg-surface border border-brand-border rounded-xl shadow-card w-36 z-50 overflow-hidden">
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 w-full px-4 py-3 text-sm text-brand-danger hover:bg-brand-danger/5 transition-colors"
+                >
+                  <i className="fa-solid fa-sign-out text-xs"></i>
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
 
         {/* PAGE CONTENT */}
-        <Outlet />
+        <main className="flex-1 p-6">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

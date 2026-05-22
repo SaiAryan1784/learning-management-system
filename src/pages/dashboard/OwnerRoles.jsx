@@ -3,14 +3,14 @@ import api from "../../api/api";
 import { Link } from "react-router-dom";
 import toastr from "toastr";
 import $ from "jquery";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { TableContainer } from "../../components/ui/TableContainer";
+import { Modal } from "../../components/ui/Modal";
 
 export default function OwnerRoles() {
   const [roles, setRoles] = useState([]);
   const [modules, setModules] = useState([]);
-  const [form, setForm] = useState({
-    name: "",
-    permissions: [],
-  });
+  const [form, setForm] = useState({ name: "", permissions: [] });
   const [editId, setEditId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
 
@@ -43,7 +43,9 @@ export default function OwnerRoles() {
   useEffect(() => {
     if (roles.length > 0) {
       setTimeout(() => {
-        $("#rolesTable").DataTable();
+        if (!$.fn.DataTable.isDataTable("#rolesTable")) {
+          $("#rolesTable").DataTable();
+        }
       }, 0);
     }
   }, [roles]);
@@ -57,70 +59,42 @@ export default function OwnerRoles() {
     }));
   };
 
-  // ✅ GLOBAL SELECT ALL
   const handleGlobalSelectAll = () => {
-    const allPermissions = [];
-
-    modules.forEach((module) => {
-      module.actions.forEach((action) => {
-        const perm = action.includes(":")
-          ? action
-          : `${module.key}:${action}`;
-        allPermissions.push(perm);
-      });
-    });
-
-    const isAllSelected =
-      form.permissions.length === allPermissions.length;
-
-    setForm((prev) => ({
-      ...prev,
-      permissions: isAllSelected ? [] : allPermissions,
-    }));
+    const allPermissions = modules.flatMap((module) =>
+      module.actions.map((action) =>
+        action.includes(":") ? action : `${module.key}:${action}`
+      )
+    );
+    const isAllSelected = form.permissions.length === allPermissions.length;
+    setForm((prev) => ({ ...prev, permissions: isAllSelected ? [] : allPermissions }));
   };
 
-  // ✅ MODULE SELECT ALL
   const handleModuleSelectAll = (module) => {
     const modulePerms = module.actions.map((action) =>
-      action.includes(":")
-        ? action
-        : `${module.key}:${action}`
+      action.includes(":") ? action : `${module.key}:${action}`
     );
-
-    const allSelected = modulePerms.every((perm) =>
-      form.permissions.includes(perm)
-    );
-
+    const allSelected = modulePerms.every((perm) => form.permissions.includes(perm));
     setForm((prev) => ({
       ...prev,
       permissions: allSelected
-        ? prev.permissions.filter(
-            (p) => !modulePerms.includes(p)
-          )
+        ? prev.permissions.filter((p) => !modulePerms.includes(p))
         : [...new Set([...prev.permissions, ...modulePerms])],
     }));
   };
 
   const handleSubmit = async () => {
+    if (!form.name || form.permissions.length === 0) {
+      toastr.error("Please fill all fields.", "error");
+      return;
+    }
     try {
-      if (!form.name || form.permissions.length === 0) {
-        toastr.error("Please fill all fields.", "error");
-        return;
-      }
-
-      const payload = {
-        name: form.name,
-        permissions: form.permissions,
-      };
-
       if (editId) {
-        await api.put(`/roles/${editId}`, payload);
+        await api.put(`/roles/${editId}`, { name: form.name, permissions: form.permissions });
         toastr.success("Role updated successfully!", "success");
       } else {
-        await api.post("/roles", payload);
+        await api.post("/roles", { name: form.name, permissions: form.permissions });
         toastr.success("Role created successfully!", "success");
       }
-
       resetForm();
       setOpenPop(false);
       loadRoles();
@@ -131,10 +105,7 @@ export default function OwnerRoles() {
 
   const handleEdit = (role) => {
     setEditId(role._id);
-    setForm({
-      name: role.name,
-      permissions: role.permissions || [],
-    });
+    setForm({ name: role.name, permissions: role.permissions || [] });
     setOpenPop(true);
   };
 
@@ -143,9 +114,13 @@ export default function OwnerRoles() {
     setEditId(null);
   };
 
+  const closeModal = () => {
+    setOpenPop(false);
+    resetForm();
+  };
+
   const groupPermissions = (permissions) => {
     if (permissions.includes("*")) return { all: ["All Permissions"] };
-
     return permissions.reduce((acc, perm) => {
       const [module, action] = perm.split(":");
       if (!acc[module]) acc[module] = [];
@@ -154,179 +129,157 @@ export default function OwnerRoles() {
     }, {});
   };
 
+  const totalPerms = modules.reduce((acc, m) => acc + m.actions.length, 0);
+  const allSelected = modules.length > 0 && form.permissions.length === totalPerms;
+
+  const actionBtn = "flex items-center justify-center w-7 h-7 rounded-md border border-brand-border text-brand-muted hover:bg-emerald/10 hover:text-emerald hover:border-emerald transition-colors";
+
   return (
-    <div className="mx-wd">
-      <div className="dash-tp">
-        <h1 className="wlc-tl">ROLE</h1>
-      </div>
-
-      <div className="tp-sc">
-        <span
-          className="logout-btn"
-          onClick={() => {
-            resetForm();
-            setOpenPop(true);
-          }}
+    <div className="space-y-5">
+      <PageHeader title="Roles" subtitle="Manage roles and permissions">
+        <button
+          className="flex items-center gap-2 bg-emerald hover:bg-emerald-hover text-white text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg transition-colors"
+          onClick={() => { resetForm(); setOpenPop(true); }}
         >
-          <i className="fa-solid fa-plus"></i>
-          <span className="tooltiptext">Add Role</span>
-        </span>
-
-        <Link to="/dashboard" className="logout-btn">
-          <i className="fa-solid fa-arrow-left"></i>
+          <i className="fa-solid fa-plus text-xs"></i>
+          Add Role
+        </button>
+        <Link
+          to="/dashboard"
+          className="flex items-center justify-center w-8 h-8 bg-charcoal-light hover:bg-charcoal-muted text-white/60 rounded-lg transition-colors"
+        >
+          <i className="fa-solid fa-arrow-left text-xs"></i>
         </Link>
-      </div>
+      </PageHeader>
 
-      {/* POPUP */}
-      <div className={`frm-cntr ${openPop ? "open" : ""}`}>
-        <span
-          className="logout-btn"
-          onClick={() => {
-            setOpenPop(false);
-            resetForm();
-          }}
-        >
-          <i className="fa-solid fa-close"></i>
-        </span>
+      <TableContainer>
+        <table id="rolesTable" width="100%">
+          <thead>
+            <tr>
+              <th>Role Name</th>
+              <th>Permissions</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {roles.map((r) => {
+              const grouped = groupPermissions(r.permissions);
+              return (
+                <tr key={r._id}>
+                  <td className="font-medium">{r.name}</td>
+                  <td>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(grouped).map(([module, actions]) => (
+                        <div key={module} className="text-xs">
+                          <span className="font-semibold capitalize text-brand-text">{module}</span>
+                          <span className="text-brand-muted">: {actions.join(", ")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                  <td>
+                    {!r.builtin && (
+                      <button className={actionBtn} onClick={() => handleEdit(r)} title="Edit Role">
+                        <i className="fa fa-edit text-xs"></i>
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </TableContainer>
 
-        <h2 className="sc-tl">
-          {editId ? "Edit Role" : "Add Role"}
-        </h2>
+      <Modal
+        isOpen={openPop}
+        onClose={closeModal}
+        title={editId ? "Edit Role" : "Add Role"}
+        maxWidth="max-w-2xl"
+        footer={
+          <>
+            <button
+              className="px-4 py-2 text-sm font-semibold text-brand-muted bg-canvas border border-brand-border rounded-lg hover:bg-brand-border/30 transition-colors"
+              onClick={closeModal}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 text-sm font-semibold text-white bg-emerald hover:bg-emerald-hover rounded-lg transition-colors"
+              onClick={handleSubmit}
+            >
+              {editId ? "Update Role" : "Create Role"}
+            </button>
+          </>
+        }
+      >
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">
+            Role Name
+          </label>
+          <input
+            className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent"
+            placeholder="e.g. Manager"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </div>
 
-        <input
-          className="login-ip"
-          placeholder="Role Name"
-          value={form.name}
-          onChange={(e) =>
-            setForm({ ...form, name: e.target.value })
-          }
-        />
-
-        {/* ✅ PERMISSIONS SECTION */}
         <div>
-          <h3 className="frm-tl">Select Permissions:</h3>
-
-          {/* GLOBAL SELECT */}
-          <div style={{ marginBottom: "10px" }}>
-            <label style={{ fontWeight: "bold", cursor: "pointer" }}>
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-xs font-semibold text-brand-muted uppercase tracking-wide">
+              Permissions
+            </label>
+            <label className="flex items-center gap-2 text-xs font-semibold text-brand-text cursor-pointer">
               <input
                 type="checkbox"
-                checked={
-                  modules.length > 0 &&
-                  form.permissions.length ===
-                    modules.reduce(
-                      (acc, m) => acc + m.actions.length,
-                      0
-                    )
-                }
+                className="w-3.5 h-3.5 accent-emerald"
+                checked={allSelected}
                 onChange={handleGlobalSelectAll}
-                style={{ marginRight: "6px" }}
               />
-              Select All Permissions
+              Select All
             </label>
           </div>
 
-          <div
-            style={{
-              maxHeight: "350px",
-              overflowY: "auto",
-              padding: "10px",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              background: "#fafafa",
-            }}
-          >
+          <div className="max-h-72 overflow-y-auto border border-brand-border rounded-lg bg-canvas p-3 space-y-4">
             {modules.map((module) => {
-              const modulePerms = module.actions.map(
-                (action) =>
-                  action.includes(":")
-                    ? action
-                    : `${module.key}:${action}`
+              const modulePerms = module.actions.map((action) =>
+                action.includes(":") ? action : `${module.key}:${action}`
+              );
+              const isModuleAllSelected = modulePerms.every((perm) =>
+                form.permissions.includes(perm)
               );
 
-              const isModuleAllSelected =
-                modulePerms.every((perm) =>
-                  form.permissions.includes(perm)
-                );
-
               return (
-                <div
-                  key={module.key}
-                  style={{ marginBottom: "20px" }}
-                >
-                  {/* MODULE HEADER */}
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "8px",
-                      borderBottom: "1px solid #eee",
-                      paddingBottom: "5px",
-                    }}
-                  >
-                    <strong
-                      style={{
-                        textTransform: "capitalize",
-                      }}
-                    >
+                <div key={module.key}>
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-brand-border">
+                    <span className="text-xs font-semibold text-brand-text capitalize">
                       {module.name}
-                    </strong>
-
-                    <label
-                      style={{
-                        fontSize: "13px",
-                        cursor: "pointer",
-                      }}
-                    >
+                    </span>
+                    <label className="flex items-center gap-1.5 text-[11px] text-brand-muted cursor-pointer">
                       <input
                         type="checkbox"
+                        className="w-3 h-3 accent-emerald"
                         checked={isModuleAllSelected}
-                        onChange={() =>
-                          handleModuleSelectAll(module)
-                        }
-                        style={{ marginRight: "5px" }}
+                        onChange={() => handleModuleSelectAll(module)}
                       />
                       Select All
                     </label>
                   </div>
-
-                  {/* ACTION CHECKBOXES */}
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "repeat(auto-fill,minmax(160px,1fr))",
-                      gap: "8px 15px",
-                    }}
-                  >
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1.5">
                     {module.actions.map((action) => {
-                      const perm = action.includes(":")
-                        ? action
-                        : `${module.key}:${action}`;
-
-                      const actionName =
-                        perm.split(":")[1];
-
+                      const perm = action.includes(":") ? action : `${module.key}:${action}`;
+                      const actionName = perm.split(":")[1];
                       return (
                         <label
                           key={perm}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            cursor: "pointer",
-                            fontSize: "14px",
-                          }}
+                          className="flex items-center gap-1.5 text-xs text-brand-text cursor-pointer"
                         >
                           <input
                             type="checkbox"
-                            checked={form.permissions.includes(
-                              perm
-                            )}
-                            onChange={() =>
-                              togglePermission(perm)
-                            }
+                            className="w-3 h-3 accent-emerald"
+                            checked={form.permissions.includes(perm)}
+                            onChange={() => togglePermission(perm)}
                           />
                           {actionName}
                         </label>
@@ -338,75 +291,7 @@ export default function OwnerRoles() {
             })}
           </div>
         </div>
-
-        <button className="snd-btn" onClick={handleSubmit}>
-          {editId ? "Update" : "Add"}
-        </button>
-      </div>
-
-      {/* TABLE (UNCHANGED) */}
-      <table
-        id="rolesTable"
-        border="1"
-        cellPadding="10"
-        cellSpacing="0"
-        width="100%"
-      >
-        <thead>
-          <tr>
-            <th>Role Name</th>
-            <th>Permissions for assigned modules</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {roles.map((r) => {
-            const grouped = groupPermissions(r.permissions);
-            return (
-              <tr key={r._id}>
-                <td>{r.name}</td>
-                <td>
-                  <div style={{ display: "flex", flexWrap: "wrap" }}>
-                    {Object.entries(grouped).map(
-                      ([module, actions]) => (
-                        <div
-                          key={module}
-                          style={{
-                            marginBottom: "10px",
-                            width: "30%",
-                          }}
-                        >
-                          <strong
-                            style={{
-                              textTransform: "capitalize",
-                              fontWeight: "bolder",
-                              textDecoration: "underline",
-                            }}
-                          >
-                            {module}
-                          </strong>
-                          : {actions.join(", ")}
-                        </div>
-                      )
-                    )}
-                  </div>
-                </td>
-                <td>
-                  {!r.builtin && (
-                    <span
-                      className="logout-btn"
-                      onClick={() => handleEdit(r)}
-                    >
-                      <i className="fa fa-edit"></i>
-                    </span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      </Modal>
     </div>
   );
 }

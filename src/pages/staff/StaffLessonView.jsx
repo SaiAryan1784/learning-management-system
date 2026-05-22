@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate,Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "../../api/api";
 
 export default function StaffLessonView() {
@@ -10,248 +10,132 @@ export default function StaffLessonView() {
   const [progressData, setProgressData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /* ================= LOAD COURSE CONTENT ================= */
   const loadCourseContent = async () => {
-    const res = await api.get(
-      `/progress/me/assigned-courses/${courseId}/content`
-    );
+    const res = await api.get(`/progress/me/assigned-courses/${courseId}/content`);
     setCourseData(res.data);
   };
 
-  /* ================= LOAD STAFF PROGRESS ================= */
   const loadProgress = async () => {
-    const res = await api.get(
-      `/progress/staff?hasCourses=true&page=1&limit=15`
-    );
-
+    const res = await api.get(`/progress/staff?hasCourses=true&page=1&limit=15`);
     const staffList = res.data?.staffProgress || [];
-
     if (!staffList.length) return;
-
-    // Since this is logged-in staff, first object is current staff
-    const currentStaff = staffList[0];
-
-    const matchedCourse = currentStaff.courses.find(
-      (c) => c.course._id === courseId
-    );
-
+    const matchedCourse = staffList[0].courses.find((c) => c.course._id === courseId);
     setProgressData(matchedCourse || null);
   };
 
-  /* ================= INITIAL LOAD ================= */
   useEffect(() => {
     const loadAll = async () => {
       try {
         setLoading(true);
-        await Promise.all([
-          loadCourseContent(),
-          loadProgress(),
-        ]);
+        await Promise.all([loadCourseContent(), loadProgress()]);
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
-
     loadAll();
   }, [courseId]);
 
-  /* ================= FLATTEN LESSONS ================= */
   const allLessons = useMemo(() => {
     if (!courseData?.modules) return [];
-
-    return courseData.modules.flatMap(
-      (m) => m.lessons || []
-    );
+    return courseData.modules.flatMap((m) => m.lessons || []);
   }, [courseData]);
 
-  const currentLesson = allLessons.find(
-    (l) => l._id === lessonId
+  const currentLesson = allLessons.find((l) => l._id === lessonId);
+  const progressPercent = progressData?.progressPercent || 0;
+  const completedLessonsCount = progressData?.completedLessons || 0;
+  const completedLessonIds = useMemo(
+    () => allLessons.slice(0, completedLessonsCount).map((l) => l._id),
+    [allLessons, completedLessonsCount]
   );
-
-  /* ================= PROGRESS VALUES ================= */
-
-  const progressPercent =
-    progressData?.progressPercent || 0;
-
-  const completedLessonsCount =
-    progressData?.completedLessons || 0;
-
-  /* ================= DETERMINE COMPLETED LESSON IDS ================= */
-
-  const completedLessonIds = useMemo(() => {
-    if (!completedLessonsCount) return [];
-
-    // Mark first N lessons as completed
-    return allLessons
-      .slice(0, completedLessonsCount)
-      .map((l) => l._id);
-  }, [allLessons, completedLessonsCount]);
-
-  /* ================= COMPLETE LESSON ================= */
 
   const handleComplete = async () => {
     try {
-      await api.post(
-        `/progress/lessons/${lessonId}/complete`
-      );
-
-      await loadProgress(); // refresh percent
-
+      await api.post(`/progress/lessons/${lessonId}/complete`);
+      await loadProgress();
     } catch (err) {
       console.error(err);
     }
   };
 
-  /* ================= YOUTUBE EMBED FIX ================= */
-
   const getVideoEmbedUrl = (url) => {
     if (!url) return "";
-
-    if (url.includes("youtube.com/watch")) {
-      const videoId = url.split("v=")[1]?.split("&")[0];
-      return `https://www.youtube.com/embed/${videoId}`;
-    }
-
-    if (url.includes("youtu.be/")) {
-      const videoId = url.split("youtu.be/")[1];
-      return `https://www.youtube.com/embed/${videoId}`;
-    }
-
+    if (url.includes("youtube.com/watch")) return `https://www.youtube.com/embed/${url.split("v=")[1]?.split("&")[0]}`;
+    if (url.includes("youtu.be/")) return `https://www.youtube.com/embed/${url.split("youtu.be/")[1]}`;
     return url;
   };
 
-  /* ================= RENDER ================= */
-
-  if (loading)
-    return <div className="mx-wd py-5">Loading...</div>;
-
-  if (!currentLesson)
-    return <div className="mx-wd py-5">Lesson not found</div>;
+  if (loading) return <p className="text-brand-muted text-sm p-6">Loading...</p>;
+  if (!currentLesson) return <p className="text-brand-muted text-sm p-6">Lesson not found.</p>;
 
   return (
-    <div className="mx-wd les-vw">
-
-      {/* ================= HEADER ================= */}
-      <div className="about-image-grid dash-tp">
-        <div className="prof">
-          <h3 className="prof-name">
-            {currentLesson.title}
-          </h3>
-          <p className="prof-em my-2">
-            Lesson Progress Overview
-          </p>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between bg-charcoal rounded-xl px-5 py-4">
+        <div>
+          <h1 className="text-xl font-semibold text-white uppercase tracking-wide">{currentLesson.title}</h1>
+          <p className="text-sm text-white/60 mt-0.5">Lesson Progress Overview</p>
         </div>
-
-        <div className="experience-badge">
-          <span className="years">
-            {progressPercent}%
-          </span>
-          <span className="text">
-            Course Completed
-          </span>
+        <div className="flex items-center gap-2 bg-emerald/10 border border-emerald/20 rounded-lg px-4 py-2">
+          <span className="text-2xl font-bold text-emerald">{progressPercent}%</span>
+          <span className="text-xs text-white/60 font-semibold uppercase tracking-wide">Completed</span>
         </div>
       </div>
 
-      {/* ================= LESSON GRID ================= */}
-      <section className="stats section mt-4">
-        <div className="mx-wd">
-          <h3 className="st-tl">
-            All Lessons
-          </h3>
-
-          <div className="crd-wp">
-
-            {allLessons.map((lesson, index) => {
-              const isActive =
-                lesson._id === lessonId;
-
-              const isCompleted =
-                completedLessonIds.includes(
-                  lesson._id
-                );
-
-              return (
-                <div
-                  key={lesson._id}
-                  className="col-md-3 col-12"
-                >
-                  <div
-                    className="datcard"
-                    onClick={() =>
-                      navigate(
-                        `/dashboard/staff/course/${courseId}/lesson/${lesson._id}`
-                      )
-                    }
-                    style={{
-                      cursor: "pointer",
-                      border: isActive
-                        ? "2px solid #198754"
-                        : "1px solid #eee",
-                      opacity: isCompleted ? 1 : 0.9,
-                    }}
-                  >
-                    <div className="fplogo">
-
-                      <i className="fa-solid fa-book-open-reader fa-2x mn-ic"></i>
-
-                      <h2 className="mod-tl">
-                        {lesson.title}
-                      </h2>
-
-                      <p>Lesson {index + 1}</p>
-
-                      {isCompleted && (
-                        <div className="hero-tag">
-                          <i className="bi bi-check-circle"></i>
-                        </div>
-                      )}
-
-                      <div className="go-corner"></div>
-
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-          </div>
-        </div>
-      </section>
-
-      {/* ================= CONTENT ================= */}
-      <div className="about-showcase mt-4">
-        <div className="about-content-box">
-
-         {currentLesson.blocks?.map((block) => {
-          if (block.type === "text") {
+      {/* All Lessons grid */}
+      <div className="bg-surface border border-brand-border rounded-xl p-5">
+        <h3 className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-4">All Lessons</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {allLessons.map((lesson, index) => {
+            const isActive = lesson._id === lessonId;
+            const isCompleted = completedLessonIds.includes(lesson._id);
             return (
               <div
-                key={block._id}
-                dangerouslySetInnerHTML={{
-                  __html: block.contentText || "",
-                }}
-              />
+                key={lesson._id}
+                className={`p-3 rounded-xl border cursor-pointer transition-colors ${
+                  isActive
+                    ? "border-emerald bg-emerald/5"
+                    : isCompleted
+                    ? "border-emerald/30 bg-emerald/5"
+                    : "border-brand-border hover:border-emerald/30"
+                }`}
+                onClick={() => navigate(`/dashboard/staff/course/${courseId}/lesson/${lesson._id}`)}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-semibold text-brand-muted uppercase">Lesson {index + 1}</span>
+                  {isCompleted && <i className="fa-solid fa-circle-check text-emerald text-xs"></i>}
+                </div>
+                <p className="text-xs font-medium text-brand-text line-clamp-2">{lesson.title}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="bg-surface border border-brand-border rounded-xl p-6">
+        {currentLesson.blocks?.map((block) => {
+          if (block.type === "text") {
+            return (
+              <div key={block._id} className="prose prose-sm max-w-none mb-4" dangerouslySetInnerHTML={{ __html: block.contentText || "" }} />
             );
           }
-
           if (block.type === "image") {
             return (
               <img
                 key={block._id}
                 src={`${import.meta.env.VITE_API_URL}/files/${block.storageKey}`}
                 alt={block.fileName}
-                style={{ width: "100%", marginBottom: "15px" }}
+                className="w-full rounded-xl mb-4"
               />
             );
           }
-
           if (block.type === "video") {
             return (
               <iframe
                 key={block._id}
-                width="100%"
+                className="w-full rounded-xl mb-4"
                 height="450"
                 src={getVideoEmbedUrl(block.contentUrl)}
                 title="Lesson Video"
@@ -259,22 +143,20 @@ export default function StaffLessonView() {
               />
             );
           }
-
           return null;
         })}
 
-          <div className="d-flex justify-content-end mt-4">
-            <Link to="/dashboard"
-              className="logout-btn"
-              onClick={handleComplete}
-            >
-              Complete Lesson
-            </Link>
-          </div>
-
+        <div className="flex justify-end pt-4 border-t border-brand-border">
+          <Link
+            to="/dashboard"
+            className="bg-emerald hover:bg-emerald-hover text-white font-semibold text-sm uppercase tracking-wide px-6 py-2.5 rounded-lg transition-colors"
+            onClick={handleComplete}
+          >
+            <i className="fa-solid fa-check text-xs mr-1.5"></i>
+            Complete Lesson
+          </Link>
         </div>
       </div>
-
     </div>
   );
 }

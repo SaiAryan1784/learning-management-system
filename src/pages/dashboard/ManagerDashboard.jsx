@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { StatCard } from "../../components/ui/StatCard";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
@@ -17,9 +19,7 @@ export default function ManagerDashboard() {
   const fetchStaff = async () => {
     try {
       setLoading(true);
-      const res = await api.get(
-        `/progress/staff?page=${page}&limit=10`
-      );
+      const res = await api.get(`/progress/staff?page=${page}&limit=10`);
       setStaffData(res.data.staffProgress);
       setPagination(res.data.pagination);
     } catch (err) {
@@ -30,197 +30,90 @@ export default function ManagerDashboard() {
   };
 
   const totalStaff = staffData.length;
-
   const avgProgress =
     totalStaff > 0
-      ? Math.round(
-          staffData.reduce(
-            (acc, s) => acc + s.avgProgressPercent,
-            0
-          ) / totalStaff
-        )
+      ? Math.round(staffData.reduce((acc, s) => acc + s.avgProgressPercent, 0) / totalStaff)
       : 0;
-
-  const totalOverdue = staffData.reduce(
-    (acc, s) => acc + s.overdueCourses,
-    0
-  );
+  const totalOverdue = staffData.reduce((acc, s) => acc + s.overdueCourses, 0);
 
   if (loading)
-    return <div className="mx-wd py-5">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center py-20 text-brand-muted text-sm">
+        Loading...
+      </div>
+    );
 
   return (
-    <div className="mx-wd">
+    <div className="space-y-6">
+      {/* Header */}
+      <PageHeader title="Manager Dashboard" subtitle="Staff training performance overview">
+        <span className="text-3xl font-bold text-white">
+          {avgProgress}%
+          <span className="text-sm font-normal text-white/60 ml-1">avg</span>
+        </span>
+      </PageHeader>
 
-      {/* ================= TOP SUMMARY HEADER ================= */}
-
-      <div className="about-image-grid dash-tp">
-        <div className="prof">
-          <h3 className="prof-name">
-            Manager Dashboard
-          </h3>
-          <p className="prof-em my-2">
-            Staff training performance overview
-          </p>
-        </div>
-
-        <div className="experience-badge">
-          <span className="years">
-            {avgProgress}%
-          </span>
-          <span className="text">
-            Avg Completion
-          </span>
-        </div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard icon="fa-users" label="Total Staff" value={totalStaff} />
+        <StatCard icon="fa-chart-line" label="Avg Completion" value={`${avgProgress}%`} />
+        <StatCard icon="fa-triangle-exclamation" label="Overdue Courses" value={totalOverdue} danger />
       </div>
 
-      {/* ================= STATS SECTION ================= */}
+      {/* Staff Progress Cards */}
+      <div>
+        <h2 className="text-lg font-semibold text-brand-text mb-4">Staff & Their Progress</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {staffData.map((staff) => (
+            <div
+              key={staff.staffId}
+              className="bg-surface border border-brand-border rounded-xl p-4"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-sm font-semibold text-brand-text leading-tight pr-2">
+                  {staff.staffName}
+                </span>
+                <span className="text-sm font-bold text-emerald flex-shrink-0">
+                  {staff.avgProgressPercent}%
+                </span>
+              </div>
 
-      <section id="stats" className="stats section">
-        <div className="mx-wd">
+              <div className="h-1.5 bg-brand-border rounded-full overflow-hidden mb-2">
+                <div
+                  className="h-full bg-emerald rounded-full transition-all duration-500"
+                  style={{ width: `${staff.avgProgressPercent}%` }}
+                />
+              </div>
 
-          <div className="col-lg-12 col-md-12">
-            <div className="stats-overview text-center text-lg-start">
-              <h3>Training Performance Overview</h3>
-              <p>
-                Live summary of all staff learning
-                progress and overdue courses.
+              <p className="text-xs text-brand-muted">
+                {staff.staffEmail} • {staff.trackedCourses} Courses •{" "}
+                <span className={staff.overdueCourses > 0 ? "text-brand-danger" : ""}>
+                  {staff.overdueCourses} Overdue
+                </span>
               </p>
             </div>
-          </div>
-
-          <div className="col-lg-12 col-md-12">
-            <div className="stats-grid">
-
-              {/* Total Staff */}
-              <div className="stats-card">
-                <div className="stats-icon">
-                  <i className="bi bi-people-fill"></i>
-                </div>
-                <div className="stats-content">
-                  <p>Total Staff</p>
-                  <div className="stats-number">
-                    {totalStaff}
-                  </div>
-                </div>
-              </div>
-
-              {/* Average Progress */}
-              <div className="stats-card">
-                <div className="stats-icon">
-                  <i className="bi bi-graph-up"></i>
-                </div>
-                <div className="stats-content">
-                  <p>Average Completion</p>
-                  <div className="stats-number">
-                    {avgProgress}
-                    <span className="plus">%</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Overdue */}
-              <div className="stats-card">
-                <div className="stats-icon">
-                  <i className="bi bi-exclamation-circle"></i>
-                </div>
-                <div className="stats-content">
-                  <p>Overdue Courses</p>
-
-                  <div className="stats-number">
-                    {totalOverdue}
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* ================= STAFF LIST ================= */}
-
-      <div className="align-items-center about-showcase">
-        <div className="mx-wd col-lg-12 order-lg-1">
-
-          <div className="about-content-box">
-
-            <h2 className="st-tl">
-              Staff & Their Progress
-            </h2>
-
-            <div className="prog-rw">
-
-              {staffData.map((staff) => (
-                <div key={staff.staffId} className="progress-item">
-
-                  <div className="d-flex justify-content-between">
-                    <span className="progress-title">
-                      {staff.staffName}
-                    </span>
-                    <span className="progress-percent">
-                      {staff.avgProgressPercent}%
-                    </span>
-                  </div>
-
-                  <div className="progress">
-                    <div
-                      className="progress-bar"
-                      style={{
-                        width: `${staff.avgProgressPercent}%`,
-                      }}
-                    ></div>
-                  </div>
-
-                  <small className="text-muted d-block mb-2">
-                    {staff.staffEmail} •{" "}
-                    {staff.trackedCourses} Courses •{" "}
-                    {staff.overdueCourses} Overdue
-                  </small>
-
-                </div>
-              ))}
-
-            </div>
-
-            {/* ================= PAGINATION ================= */}
-
-            <div className="d-flex justify-content-between mt-4">
-
-              <button
-                className="snd-btn"
-                disabled={page === 1}
-                onClick={() =>
-                  setPage((p) => p - 1)
-                }
-              >
-                Prev
-              </button>
-
-              <span>
-                Page {pagination.page}
-              </span>
-
-              <button
-                className="snd-btn"
-                disabled={
-                  page * pagination.limit >=
-                  pagination.total
-                }
-                onClick={() =>
-                  setPage((p) => p + 1)
-                }
-              >
-                Next
-              </button>
-
-            </div>
-
-          </div>
+          ))}
         </div>
       </div>
 
+      {/* Pagination */}
+      <div className="flex items-center justify-between mt-2">
+        <button
+          className="px-4 py-2 bg-surface border border-brand-border text-sm font-medium text-brand-text rounded-lg hover:bg-canvas disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          disabled={page === 1}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Previous
+        </button>
+        <span className="text-sm text-brand-muted">Page {pagination.page}</span>
+        <button
+          className="px-4 py-2 bg-surface border border-brand-border text-sm font-medium text-brand-text rounded-lg hover:bg-canvas disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          disabled={page * pagination.limit >= pagination.total}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,181 +1,110 @@
-// src/pages/dashboard/ModuleLessons.jsx
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../../api/api";
 import toastr from "toastr";
-
 import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
-
 import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy
+  SortableContext, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-
 import { CSS } from "@dnd-kit/utilities";
-
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { PageHeader } from "../../components/ui/PageHeader";
 
 const BASE_URL = api.defaults.baseURL;
 const FILE_BASE_URL = BASE_URL.replace("/api", "");
 
-/* ================= HELPER ================= */
 const getFileUrl = (block) => {
   if (!block) return "";
-
-  if (block.publicUrl) {
-    return block.publicUrl.startsWith("http")
-      ? block.publicUrl
-      : `${FILE_BASE_URL}${block.publicUrl}`;
-  }
-
-  if (block.storageKey) {
-    return `${FILE_BASE_URL}/uploads/${block.storageKey}`;
-  }
-
+  if (block.publicUrl) return block.publicUrl.startsWith("http") ? block.publicUrl : `${FILE_BASE_URL}${block.publicUrl}`;
+  if (block.storageKey) return `${FILE_BASE_URL}/uploads/${block.storageKey}`;
   return "";
 };
 
-
-/* ✅ FIX: prevent duplicate blocks */
 const upsertBlock = (setBlocks, newBlock) => {
-  setBlocks(prev => {
-    const index = prev.findIndex(b => b.type === newBlock.type);
-
+  setBlocks((prev) => {
+    const index = prev.findIndex((b) => b.type === newBlock.type);
     if (index !== -1) {
       const updated = [...prev];
       updated[index] = { ...updated[index], ...newBlock };
       return updated;
     }
-
     return [...prev, newBlock];
   });
 };
 
-/* ================= SORTABLE ITEM ================= */
 function SortableItem({ id, renderField, onRemove }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } =
-    useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    border: "1px solid #ddd",
-    padding: "15px",
-    marginBottom: "15px",
-    background: "#fff",
-    position: "relative"
-  };
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className="border border-brand-border rounded-xl p-4 mb-3 bg-surface relative">
       <div
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
-        style={{
-          cursor: "grab",
-          border: "1px solid #f5f5f5",
-          padding: "6px 10px",
-          marginBottom: "10px",
-          display: "inline-block",
-          borderRadius: "4px",
-          fontSize: "13px"
-        }}
+        className="inline-flex items-center gap-1.5 text-xs text-brand-muted border border-brand-border rounded px-2 py-1 mb-3 cursor-grab select-none"
       >
-        ☰
+        <i className="fa-solid fa-grip-vertical text-[10px]"></i> Drag
       </div>
-
       <button
         type="button"
         onClick={() => onRemove(id)}
-        style={{
-          position: "absolute",
-          top: 5,
-          right: 5,
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          fontSize: "16px",
-          color: "#c00"
-        }}
+        className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded text-brand-danger hover:bg-brand-danger/10 transition-colors"
       >
-        ×
+        <i className="fa-solid fa-xmark text-xs"></i>
       </button>
-
       {renderField(id)}
     </div>
   );
 }
 
-/* ================= MAIN COMPONENT ================= */
+const fieldInputClass =
+  "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent";
+
 export default function ModuleLessons() {
   const { courseId, moduleId } = useParams();
   const [blocks, setBlocks] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [editId, setEditId] = useState(null);
-
   const [selectedType, setSelectedType] = useState("");
-
   const [form, setForm] = useState({
-    title: "",
-    summary: "",
-    type: "",
-    sourceType: "external_url",
-    publicUrl: "",
-    textContent: "",
-    order: 1,
-    storageKey: "",
-    fileName: "",
-    mimeType: "",
-    fileSize: 0
+    title: "", summary: "", type: "", sourceType: "external_url",
+    publicUrl: "", textContent: "", order: 1, storageKey: "", fileName: "", mimeType: "", fileSize: 0,
   });
-
   const [filePreview, setFilePreview] = useState("");
   const [uploadedFileName, setUploadedFileName] = useState("");
-  const [uploading, setUploading] = useState(false);
-
   const [activeTab, setActiveTab] = useState("addLesson");
   const [loading, setLoading] = useState(false);
   const [canvasFields, setCanvasFields] = useState([]);
 
   const sensors = useSensors(useSensor(PointerSensor));
   const sidebarFields = [
-    { id: "title", label: "Lesson Title" },
-    { id: "video", label: "Add Video" },
-    { id: "image", label: "Add Image" },
-    { id: "pdf", label: "Add PDF" },
-    { id: "text", label: "Add Text" },
-    { id: "order", label: "Display Order" }
+    { id: "title", label: "Lesson Title", icon: "fa-heading" },
+    { id: "video", label: "Add Video", icon: "fa-video" },
+    { id: "image", label: "Add Image", icon: "fa-image" },
+    { id: "pdf", label: "Add PDF", icon: "fa-file-pdf" },
+    { id: "text", label: "Add Text", icon: "fa-align-left" },
+    { id: "order", label: "Display Order", icon: "fa-sort" },
   ];
 
   function handleDragEnd(event) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-
-    const oldIndex = canvasFields.indexOf(active.id);
-    const newIndex = canvasFields.indexOf(over.id);
-
     const items = [...canvasFields];
+    const oldIndex = items.indexOf(active.id);
+    const newIndex = items.indexOf(over.id);
     items.splice(oldIndex, 1);
     items.splice(newIndex, 0, active.id);
-
     setCanvasFields(items);
   }
 
   const loadLessons = async () => {
     try {
       setLoading(true);
-      const res = await api.get(
-        `/courses/${courseId}/modules/${moduleId}/lessons?active=true&page=1&limit=100`
-      );
+      const res = await api.get(`/courses/${courseId}/modules/${moduleId}/lessons?active=true&page=1&limit=100`);
       setLessons(res.data.lessons || []);
     } catch {
       toastr.error("Failed to load lessons");
@@ -184,42 +113,27 @@ export default function ModuleLessons() {
     }
   };
 
-  useEffect(() => {
-    loadLessons();
-  }, []);
+  useEffect(() => { loadLessons(); }, []);
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  /* ================= FILE UPLOAD ================= */
   const uploadFile = async (file, type) => {
     const finalType = type || form.type;
-
     if (!file || !finalType) return;
-
     const previewUrl = URL.createObjectURL(file);
-
     const formData = new FormData();
     formData.append("file", file);
-
     try {
       const res = await api.post(`/uploads/lessons/file/${finalType}`, formData);
-
-      const newBlock = {
-        type: finalType,
-        sourceType: "stored_file",
-        publicUrl: res.data.publicUrl,
-        storageKey: res.data.storageKey,
-        fileName: res.data.fileName,
-        mimeType: res.data.mimeType,
-        fileSize: res.data.fileSize,
-        preview: previewUrl // ✅ FIX
-      };
-
-      upsertBlock(setBlocks, newBlock);
-
+      upsertBlock(setBlocks, {
+        type: finalType, sourceType: "stored_file",
+        publicUrl: res.data.publicUrl, storageKey: res.data.storageKey,
+        fileName: res.data.fileName, mimeType: res.data.mimeType, fileSize: res.data.fileSize,
+        preview: previewUrl,
+      });
       setUploadedFileName(res.data.fileName);
       toastr.success("Uploaded");
     } catch {
@@ -227,52 +141,28 @@ export default function ModuleLessons() {
     }
   };
 
-  /* ================= SUBMIT ================= */
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (blocks.length === 0) {
-      return toastr.warning("Add at least one block");
-    }
-
+    if (blocks.length === 0) return toastr.warning("Add at least one block");
     const payload = {
-      title: form.title,
-      order: Number(form.order),
+      title: form.title, order: Number(form.order),
       blocks: blocks.map((b, index) => ({
-        type: b.type,
-        order: index + 1,
-        sourceType: b.sourceType,
-        contentText: b.contentText || "",
+        type: b.type, order: index + 1, sourceType: b.sourceType, contentText: b.contentText || "",
         contentUrl: b.sourceType === "external_url" ? b.publicUrl : undefined,
         publicUrl: b.sourceType === "stored_file" ? b.publicUrl : undefined,
-        storageKey: b.storageKey || "",
-        fileName: b.fileName || "",
-        mimeType: b.mimeType || "",
-        fileSize: b.fileSize || 0
+        storageKey: b.storageKey || "", fileName: b.fileName || "", mimeType: b.mimeType || "", fileSize: b.fileSize || 0,
       })),
-      active: true
+      active: true,
     };
-
     try {
       if (editId) {
         await api.put(`/courses/${courseId}/modules/${moduleId}/lessons/${editId}`, payload);
       } else {
         await api.post(`/courses/${courseId}/modules/${moduleId}/lessons`, payload);
       }
-
-      setBlocks([]);
-      setCanvasFields([]);
-      setForm({
-        title: "",
-        publicUrl: "",
-        textContent: "",
-        order: 1
-      });
-
-      setEditId(null);
-      setFilePreview("");
-      setSelectedType("");
-
+      setBlocks([]); setCanvasFields([]);
+      setForm({ title: "", publicUrl: "", textContent: "", order: 1 });
+      setEditId(null); setFilePreview(""); setSelectedType("");
       loadLessons();
       setActiveTab("lessonList");
     } catch {
@@ -280,329 +170,253 @@ export default function ModuleLessons() {
     }
   };
 
-  /* ================= RENDER FIELD ================= */
   function renderField(id) {
-const currentBlock = blocks.filter(b => b.type === id).slice(-1)[0];
+    const currentBlock = blocks.filter((b) => b.type === id).slice(-1)[0];
     switch (id) {
       case "title":
         return (
-          <div className="form-group">
-            <label>Lesson Title</label>
-            <input name="title" value={form.title} onChange={handleChange} />
+          <div>
+            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Lesson Title</label>
+            <input className={fieldInputClass} name="title" value={form.title} onChange={handleChange} placeholder="Lesson title" />
           </div>
         );
-
       case "video":
-case "image":
-case "pdf":
-  return (
-    <>
-      <h3 className="not-tl">
-        {id === "video" ? "Add Video" : id === "image" ? "Add Image" : "Add PDF"}
-      </h3>
-
-      {/* URL INPUT */}
-      <div className="form-group">
-        <label>Content URL</label>
-        <input
-          type="text"
-          name="publicUrl"
-          value={form.publicUrl}
-          onChange={e => {
-            const url = e.target.value;
-
-            setSelectedType(id);
-
-            upsertBlock(setBlocks, {
-              type: id,
-              sourceType: "external_url",
-              publicUrl: url
-            });
-
-            setForm(prev => ({
-              ...prev,
-              publicUrl: url,
-              type: id,
-              sourceType: "external_url"
-            }));
-          }}
-        />
-      </div>
-
-      {/* FILE UPLOAD */}
-      <div className="form-group">
-        <label>Upload File</label>
-        <input
-          type="file"
-          accept={id === "pdf" ? "application/pdf" : "*"}
-          onChange={e => {
-            setSelectedType(id);
-            setForm(prev => ({ ...prev, type: id }));
-            uploadFile(e.target.files[0], id);
-          }}
-        />
-
-        {/* ✅ VIDEO PREVIEW */}
-        {currentBlock?.preview && id === "video" && (
-          <div style={{ marginTop: "10px" }}>
-            <video width="100%" controls src={currentBlock?.preview} />
+      case "image":
+      case "pdf":
+        return (
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide">
+              {id === "video" ? "Video" : id === "image" ? "Image" : "PDF"}
+            </p>
+            <div>
+              <label className="block text-xs text-brand-muted mb-1">Content URL</label>
+              <input
+                className={fieldInputClass}
+                type="text"
+                name="publicUrl"
+                value={form.publicUrl}
+                onChange={(e) => {
+                  setSelectedType(id);
+                  upsertBlock(setBlocks, { type: id, sourceType: "external_url", publicUrl: e.target.value });
+                  setForm((prev) => ({ ...prev, publicUrl: e.target.value, type: id, sourceType: "external_url" }));
+                }}
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-brand-muted mb-1">Upload File</label>
+              <input
+                type="file"
+                accept={id === "pdf" ? "application/pdf" : "*"}
+                className="text-xs text-brand-muted"
+                onChange={(e) => { setSelectedType(id); setForm((prev) => ({ ...prev, type: id })); uploadFile(e.target.files[0], id); }}
+              />
+              {currentBlock?.preview && id === "video" && <video className="mt-2 w-full rounded-lg" controls src={currentBlock.preview} />}
+              {currentBlock?.preview && id === "image" && <img className="mt-2 w-full rounded-lg" src={currentBlock.preview} alt="" />}
+              {currentBlock?.preview && id === "pdf" && <iframe className="mt-2 w-full rounded" src={currentBlock.preview} height="120" title="PDF Preview" />}
+              {currentBlock?.fileName && (
+                <div className="mt-2 flex items-center gap-2 bg-canvas border border-brand-border rounded-lg px-3 py-2">
+                  <i className="fa fa-file text-brand-muted text-sm"></i>
+                  <span className="text-xs text-brand-text">{currentBlock.fileName}</span>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-
-        {/* ✅ IMAGE PREVIEW */}
-        {currentBlock?.preview && id === "image" && (
-          <div style={{ marginTop: "10px" }}>
-            <img width="100%" src={currentBlock?.preview} alt="" />
-          </div>
-        )}
-
-        {/* ✅ PDF PREVIEW */}
-        {currentBlock?.preview && id === "pdf" && (
-          <div style={{ marginTop: "10px" }}>
-            <iframe
-              src={currentBlock?.preview}
-              width="200"
-              height="120"
-              title="PDF Preview"
-            />
-          </div>
-        )}
-
-        {/* ✅ FILE NAME DISPLAY (PDF etc) */}
-        {(currentBlock?.fileName) && (
-          <div
-            style={{
-              marginTop: "10px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              background: "#f5f5f5",
-              padding: "8px 10px",
-              borderRadius: "6px"
-            }}
-          >
-            <i
-              className="fa fa-file"
-              style={{ color: "#333", fontSize: "16px" }}
-            ></i>
-
-            <span style={{ fontSize: "14px" }}>
-              {currentBlock?.fileName}
-            </span>
-          </div>
-        )}
-      </div>
-    </>
-  );
-
+        );
       case "text":
         return (
-          <>
-            <h3 className="not-tl">Add Description</h3>
+          <div>
+            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-2">Text Content</label>
             <ReactQuill
               value={form.textContent}
-              onChange={val => {
-                upsertBlock(setBlocks, {
-                  type: "text",
-                  sourceType: "inline",
-                  contentText: val
-                });
-
-                setForm(prev => ({ ...prev, textContent: val }));
+              onChange={(val) => {
+                upsertBlock(setBlocks, { type: "text", sourceType: "inline", contentText: val });
+                setForm((prev) => ({ ...prev, textContent: val }));
               }}
             />
-          </>
-        );
-
-      case "order":
-        return (
-          <div className="form-group">
-            <label>Display Order</label>
-            <input name="order" value={form.order} onChange={handleChange} />
           </div>
         );
-
+      case "order":
+        return (
+          <div>
+            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Display Order</label>
+            <input className="w-24 px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent" name="order" value={form.order} onChange={handleChange} type="number" />
+          </div>
+        );
       default:
         return null;
     }
   }
-const handleEdit = (lesson) => {
-  setEditId(lesson._id);
 
-  const blocksData = lesson.blocks || [];
+  const handleEdit = (lesson) => {
+    setEditId(lesson._id);
+    const blocksData = lesson.blocks || [];
+    const fixedBlocks = blocksData.map((b) => ({
+      ...b,
+      publicUrl: b.publicUrl
+        ? (b.publicUrl.startsWith("http") ? b.publicUrl : `${FILE_BASE_URL}${b.publicUrl}`)
+        : b.storageKey ? `${FILE_BASE_URL}/uploads/${b.storageKey}` : "",
+    }));
+    setBlocks(fixedBlocks);
+    setForm({ title: lesson.title, order: lesson.order, publicUrl: "", textContent: "" });
+    setCanvasFields(["title", ...blocksData.map((b) => b.type), "order"]);
+    setActiveTab("addLesson");
+  };
 
-  // Fix URLs
-  const fixedBlocks = blocksData.map(b => ({
-    ...b,
-    publicUrl: b.publicUrl
-      ? (b.publicUrl.startsWith("http")
-          ? b.publicUrl
-          : `${FILE_BASE_URL}${b.publicUrl}`)
-      : b.storageKey
-      ? `${FILE_BASE_URL}/uploads/${b.storageKey}`
-      : ""
-  }));
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete?")) return;
+    try {
+      await api.delete(`/courses/${courseId}/modules/${moduleId}/lessons/${id}`);
+      toastr.success("Deleted");
+      loadLessons();
+    } catch {
+      toastr.error("Delete failed");
+    }
+  };
 
-  setBlocks(fixedBlocks);
+  const actionBtn = "flex items-center justify-center w-7 h-7 rounded-md border border-brand-border text-brand-muted hover:bg-emerald/10 hover:text-emerald hover:border-emerald transition-colors";
 
-  // Fill form
-  setForm({
-    title: lesson.title,
-    order: lesson.order,
-    publicUrl: "",
-    textContent: ""
-  });
-
-  // Restore canvas layout
-  setCanvasFields([
-    "title",
-    ...blocksData.map(b => b.type),
-    "order"
-  ]);
-
-  setActiveTab("addLesson");
-};
-const handleDelete = async (id) => {
-  if (!window.confirm("Delete?")) return;
-
-  try {
-    await api.delete(`/courses/${courseId}/modules/${moduleId}/lessons/${id}`);
-    toastr.success("Deleted");
-    loadLessons();
-  } catch {
-    toastr.error("Delete failed");
-  }
-};
-  /* ================= RENDER ================= */
   return (
-    <div className="mx-wd">
-      <div className="dash-tp">
-        <h1 className="wlc-tl">LESSON</h1>
-        <p className="wlc-ms">Please add your lesson's and take a look at lessons.</p>
+    <div className="space-y-5">
+      <PageHeader title="Lessons" subtitle="Add and manage lessons for this module" />
+
+      <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-max">
+        {[{ key: "addLesson", label: editId ? "Edit Lesson" : "Add Lesson" }, { key: "lessonList", label: "Lesson List" }].map(({ key, label }) => (
+          <button
+            key={key}
+            className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${activeTab === key ? "bg-charcoal text-white" : "text-brand-muted hover:text-brand-text"}`}
+            onClick={() => setActiveTab(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      <div className="pg-tabs">
-        <span className={`pg-tb ${activeTab === "addLesson" ? "active-tab" : ""}`} onClick={() => setActiveTab("addLesson")}>
-          Add Lesson
-        </span>
-        <span className={`pg-tb ${activeTab === "lessonList" ? "active-tab" : ""}`} onClick={() => setActiveTab("lessonList")}>
-          Lesson List
-        </span>
-      </div>
+      {activeTab === "addLesson" && (
+        <div className="flex gap-5">
+          {/* Canvas */}
+          <div className="flex-1 min-w-0">
+            <form onSubmit={handleSubmit} className="space-y-0">
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={canvasFields} strategy={verticalListSortingStrategy}>
+                  {canvasFields.map((id) => (
+                    <SortableItem
+                      key={id}
+                      id={id}
+                      renderField={renderField}
+                      onRemove={(f) => setCanvasFields((prev) => prev.filter((x) => x !== f))}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
 
-      <div className="tab-content">
-        {activeTab === "addLesson" && (
-          <div className="tab-cnnt">
-            <div style={{ display: "flex", gap: "30px" }}>
-              <div style={{ flex: 1 }}>
-                <form onSubmit={handleSubmit}>
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={canvasFields} strategy={verticalListSortingStrategy}>
-                      {canvasFields.map(id => (
-                        <SortableItem key={id} id={id} renderField={renderField} onRemove={f => setCanvasFields(prev => prev.filter(x => x !== f))} />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
+              {canvasFields.length === 0 && (
+                <div className="border-2 border-dashed border-brand-border rounded-xl p-12 text-center">
+                  <i className="fa-solid fa-hand-pointer text-brand-muted text-2xl mb-2 block"></i>
+                  <p className="text-brand-muted text-sm">Click fields on the right to add them here</p>
+                </div>
+              )}
 
-                  <button type="submit" className="snd-btn">Save</button>
-                </form>
-              </div>
+              {canvasFields.length > 0 && (
+                <button
+                  type="submit"
+                  className="mt-3 bg-emerald hover:bg-emerald-hover text-white font-semibold text-sm uppercase tracking-wide px-6 py-2.5 rounded-lg transition-colors"
+                >
+                  {editId ? "Update Lesson" : "Save Lesson"}
+                </button>
+              )}
+            </form>
+          </div>
 
-              <div style={{ width: "300px" }}>
-                {sidebarFields.map(field => (
-  <div
-    className="les-typ"
-    key={field.id}
-    onClick={() => {
-      if (!canvasFields.includes(field.id)) {
-        setCanvasFields(prev => [...prev, field.id]);
-      }
-
-      if (["video", "image", "pdf", "text"].includes(field.id)) {
-        // ✅ RESET OLD DATA (THIS FIXES YOUR BUG)
-        setSelectedType(field.id);
-
-        setForm(prev => ({
-          ...prev,
-          type: field.id,
-          publicUrl: "",
-          textContent: ""
-        }));
-
-        setFilePreview("");        // ❌ remove previous preview
-        setUploadedFileName("");   // ❌ remove previous file name
-      }
-    }}
-  >
-    <i className="fa-solid fa-grip-vertical"></i> {field.label}
-  </div>
-))}
-              </div>
+          {/* Sidebar */}
+          <div className="w-52 flex-shrink-0">
+            <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-3">Fields</p>
+            <div className="space-y-2">
+              {sidebarFields.map((field) => (
+                <button
+                  key={field.id}
+                  type="button"
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${
+                    canvasFields.includes(field.id)
+                      ? "border-emerald bg-emerald/5 text-emerald"
+                      : "border-brand-border text-brand-muted hover:border-emerald/40 hover:text-emerald/70"
+                  }`}
+                  onClick={() => {
+                    if (!canvasFields.includes(field.id)) {
+                      setCanvasFields((prev) => [...prev, field.id]);
+                    }
+                    if (["video", "image", "pdf", "text"].includes(field.id)) {
+                      setSelectedType(field.id);
+                      setForm((prev) => ({ ...prev, type: field.id, publicUrl: "", textContent: "" }));
+                      setFilePreview("");
+                      setUploadedFileName("");
+                    }
+                  }}
+                >
+                  <i className={`fa-solid ${field.icon} text-[11px]`}></i>
+                  {field.label}
+                </button>
+              ))}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {activeTab === "lessonList" && (
-          <div className="ls-tbl">
-            <table className="dataTable">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Type</th>
-                  <th>Preview</th>
-                  <th>Order</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lessons.map(lesson => (
-                  <tr key={lesson._id}>
-                    <td>{lesson.title}</td>
-                    <td>{lesson.blocks?.map(b => b.type).join(", ")}</td>
-
-                    <td>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        {lesson.blocks?.map((block, i) => {
-                          const fileUrl = getFileUrl(block);
-
-                          return (
-                            <div key={i}>
-                              {block.type === "video" ? (
-                                <video width="200" controls>
-                                  <source src={fileUrl} />
-                                </video>
-                              ) : block.type === "image" ? (
-                                <img src={fileUrl} width="150" alt="" />
-                              ) : block.type === "pdf" ? (
-                                <iframe src={fileUrl} width="200" height="120" />
-                              ) : (
-                                <div dangerouslySetInnerHTML={{ __html: block.contentText }} />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </td>
-
-                    <td>{lesson.order}</td>
-
-                    <td>
-                      <div className="act-btns">
-                        <span className="logout-btn" onClick={() => handleEdit(lesson)}>
-                          <i className="fa fa-edit"></i>
-                        </span>
-                        <span className="logout-btn" onClick={() => handleDelete(lesson._id)}>
-                          <i className="fa fa-trash"></i>
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
+      {activeTab === "lessonList" && (
+        <div className="bg-surface border border-brand-border rounded-xl overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-brand-border bg-canvas">
+                {["Title", "Type", "Preview", "Order", "Actions"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-brand-muted uppercase tracking-wide">{h}</th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-brand-border">
+              {lessons.map((lesson) => (
+                <tr key={lesson._id} className="hover:bg-canvas transition-colors">
+                  <td className="px-4 py-3 font-medium text-brand-text">{lesson.title}</td>
+                  <td className="px-4 py-3 text-brand-muted">{lesson.blocks?.map((b) => b.type).join(", ")}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-2">
+                      {lesson.blocks?.map((block, i) => {
+                        const fileUrl = getFileUrl(block);
+                        return (
+                          <div key={i}>
+                            {block.type === "video" ? (
+                              <video width="200" controls><source src={fileUrl} /></video>
+                            ) : block.type === "image" ? (
+                              <img src={fileUrl} width="120" alt="" className="rounded" />
+                            ) : block.type === "pdf" ? (
+                              <iframe src={fileUrl} width="200" height="100" title="pdf" className="rounded" />
+                            ) : (
+                              <div className="text-xs text-brand-muted line-clamp-2" dangerouslySetInnerHTML={{ __html: block.contentText }} />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-brand-muted">{lesson.order}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button className={actionBtn} onClick={() => handleEdit(lesson)} title="Edit">
+                        <i className="fa fa-edit text-xs"></i>
+                      </button>
+                      <button className={`${actionBtn} hover:bg-brand-danger/10 hover:text-brand-danger hover:border-brand-danger`} onClick={() => handleDelete(lesson._id)} title="Delete">
+                        <i className="fa fa-trash text-xs"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {lessons.length === 0 && (
+                <tr><td colSpan="5" className="px-4 py-12 text-center text-brand-muted">No lessons yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

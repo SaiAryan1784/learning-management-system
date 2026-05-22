@@ -4,13 +4,15 @@ import toastr from "toastr";
 import { Link } from "react-router-dom";
 import $ from "jquery";
 import "datatables.net";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { TableContainer } from "../../components/ui/TableContainer";
 
 export default function MyCourses() {
   const [courses, setCourses] = useState([]);
 
   const loadCourses = async () => {
     try {
-      const res = await api.get("/courses/assigned"); // ✅ Correct API
+      const res = await api.get("/courses/assigned");
       setCourses(res.data.courses || []);
     } catch {
       toastr.error("Failed to load courses");
@@ -21,56 +23,53 @@ export default function MyCourses() {
     loadCourses();
   }, []);
 
-  // ✅ Proper DataTable lifecycle
   useEffect(() => {
     if (courses.length === 0) return;
-
     const table = $("#myCoursesTable").DataTable();
-
     return () => {
       table.destroy();
     };
   }, [courses]);
 
   return (
-    <div className="mx-wd">
-      <div className="dash-tp">
-        <h1 className="wlc-tl">My Courses</h1>
-        <p className="wlc-ms">Courses assigned to you</p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader title="My Courses" subtitle="Courses assigned to you" />
 
       {courses.length === 0 ? (
-        <h3 style={{ textAlign: "center" }}>
-          No courses assigned yet.
-        </h3>
+        <div className="bg-surface border border-brand-border rounded-xl p-12 text-center">
+          <i className="fa-solid fa-book text-brand-muted text-3xl mb-3 block"></i>
+          <p className="text-brand-muted text-sm">No courses assigned yet.</p>
+        </div>
       ) : (
-        <table id="myCoursesTable" className="tbl" width="100%">
-          <thead>
-            <tr>
-              <th>Sr No</th>
-              <th>Title</th>
-              <th>Description</th>
-              <th>Open</th>
-            </tr>
-          </thead>
-          <tbody>
-            {courses.map((c, i) => (
-              <tr key={c._id}>
-                <td>{i + 1}</td>
-                <td>{c.title}</td>
-                <td>{c.description}</td>
-                <td>
-                  <Link
-                    className="logout-btn"
-                    to={`/dashboard/courses/${c._id}/modules`} // ✅ Correct route
-                  >
-                    Open
-                  </Link>
-                </td>
+        <TableContainer>
+          <table id="myCoursesTable" width="100%">
+            <thead>
+              <tr>
+                <th>Sr No</th>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Open</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {courses.map((c, i) => (
+                <tr key={c._id}>
+                  <td>{i + 1}</td>
+                  <td>{c.title}</td>
+                  <td>{c.description}</td>
+                  <td>
+                    <Link
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-emerald/10 text-emerald border border-emerald/20 rounded-md text-xs font-semibold hover:bg-emerald hover:text-white transition-colors"
+                      to={`/dashboard/courses/${c._id}/modules`}
+                    >
+                      Open
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableContainer>
       )}
     </div>
   );
