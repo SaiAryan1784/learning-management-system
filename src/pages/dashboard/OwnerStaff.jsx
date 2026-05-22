@@ -7,6 +7,7 @@ import $ from "jquery";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
 import { Modal } from "../../components/ui/Modal";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -159,7 +160,7 @@ export default function OwnerStaff() {
       </div>
 
       {loading ? (
-        <p className="text-brand-muted text-sm">Loading staff...</p>
+        <SectionLoader />
       ) : (
         <TableContainer>
           <table id="staffTable" width="100%">

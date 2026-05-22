@@ -6,6 +6,7 @@ import $ from "jquery";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
 import { Modal } from "../../components/ui/Modal";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 export default function OwnerRoles() {
   const [roles, setRoles] = useState([]);
@@ -13,9 +14,11 @@ export default function OwnerRoles() {
   const [form, setForm] = useState({ name: "", permissions: [] });
   const [editId, setEditId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const loadRoles = async () => {
     try {
+      setLoading(true);
       if ($.fn.DataTable.isDataTable("#rolesTable")) {
         $("#rolesTable").DataTable().destroy();
       }
@@ -23,6 +26,8 @@ export default function OwnerRoles() {
       setRoles(res.data.roles || []);
     } catch (err) {
       toastr.error("Failed to load roles.", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -152,6 +157,9 @@ export default function OwnerRoles() {
         </Link>
       </PageHeader>
 
+      {loading ? (
+        <SectionLoader />
+      ) : (
       <TableContainer>
         <table id="rolesTable" width="100%">
           <thead>
@@ -190,6 +198,7 @@ export default function OwnerRoles() {
           </tbody>
         </table>
       </TableContainer>
+      )}
 
       <Modal
         isOpen={openPop}

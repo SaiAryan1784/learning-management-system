@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 export default function AuditTrail() {
   const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchAuditLogs(); }, []);
 
   const fetchAuditLogs = async () => {
     try {
+      setLoading(true);
       const res = await fetch(import.meta.env.VITE_API_URL + "/reports/audit-trail", {
         headers: { Authorization: "Bearer " + localStorage.getItem("accessToken") },
       });
@@ -15,6 +18,8 @@ export default function AuditTrail() {
       setLogs(data.logs || []);
     } catch (err) {
       console.error("Error fetching audit logs:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -22,7 +27,9 @@ export default function AuditTrail() {
     <div className="space-y-5">
       <PageHeader title="Audit Trail" subtitle="Recent system activities" />
 
-      {logs.length === 0 ? (
+      {loading ? (
+        <SectionLoader />
+      ) : logs.length === 0 ? (
         <div className="bg-surface border border-brand-border rounded-xl p-12 text-center">
           <i className="fa-solid fa-clipboard-list text-brand-muted text-3xl mb-3 block"></i>
           <p className="text-brand-muted text-sm">No audit logs found.</p>

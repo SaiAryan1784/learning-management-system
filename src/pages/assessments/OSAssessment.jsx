@@ -4,6 +4,7 @@ import toastr from "toastr";
 import "toastr/build/toastr.min.css";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -268,7 +269,7 @@ export default function OSAssessment() {
 
       {activeTab === "list" && (
         loading ? (
-          <p className="text-brand-muted text-sm">Loading...</p>
+          <SectionLoader />
         ) : (
           <TableContainer>
             <table width="100%">

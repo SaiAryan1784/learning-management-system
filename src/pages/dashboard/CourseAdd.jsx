@@ -4,6 +4,7 @@ import toastr from "toastr";
 import { useNavigate, useParams } from "react-router-dom";
 import { FaPlus, FaTrash, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { PageLoader } from "../../components/ui/Spinner";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -138,7 +139,7 @@ export default function CourseAdd() {
     }
   };
 
-  if (loading) return <p className="text-brand-muted text-sm p-6">Loading...</p>;
+  if (loading) return <PageLoader />;
 
   return (
     <div className="space-y-5">

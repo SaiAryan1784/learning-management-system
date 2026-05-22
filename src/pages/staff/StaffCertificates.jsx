@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/api";
 import toastr from "toastr";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { PageLoader } from "../../components/ui/Spinner";
 
 export default function StaffCertificates() {
   const [certificates, setCertificates] = useState([]);
@@ -40,7 +41,7 @@ export default function StaffCertificates() {
 
   useEffect(() => { loadCertificates(); }, []);
 
-  if (loading) return <p className="text-brand-muted text-sm p-6">Loading...</p>;
+  if (loading) return <PageLoader />;
 
   const eligibleCertificates = certificates.filter((cert) => {
     const course = coursesProgress.find((c) => c.courseId === cert.course?._id);

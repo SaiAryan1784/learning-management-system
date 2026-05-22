@@ -6,16 +6,21 @@ import $ from "jquery";
 import "datatables.net";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 export default function MyCourses() {
   const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const loadCourses = async () => {
     try {
+      setLoading(true);
       const res = await api.get("/courses/assigned");
       setCourses(res.data.courses || []);
     } catch {
       toastr.error("Failed to load courses");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,7 +40,9 @@ export default function MyCourses() {
     <div className="space-y-5">
       <PageHeader title="My Courses" subtitle="Courses assigned to you" />
 
-      {courses.length === 0 ? (
+      {loading ? (
+        <SectionLoader />
+      ) : courses.length === 0 ? (
         <div className="bg-surface border border-brand-border rounded-xl p-12 text-center">
           <i className="fa-solid fa-book text-brand-muted text-3xl mb-3 block"></i>
           <p className="text-brand-muted text-sm">No courses assigned yet.</p>

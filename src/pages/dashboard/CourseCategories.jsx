@@ -6,6 +6,7 @@ import $ from "jquery";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
 import { Modal } from "../../components/ui/Modal";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -15,9 +16,11 @@ export default function CourseCategories() {
   const [form, setForm] = useState({ name: "", description: "" });
   const [editId, setEditId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const loadCategories = async () => {
     try {
+      setLoading(true);
       if ($.fn.DataTable.isDataTable("#catTable")) {
         $("#catTable").DataTable().destroy();
       }
@@ -25,6 +28,8 @@ export default function CourseCategories() {
       setCategories(res.data.categories || []);
     } catch {
       toastr.error("Failed to load categories");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -93,6 +98,9 @@ export default function CourseCategories() {
         </Link>
       </PageHeader>
 
+      {loading ? (
+        <SectionLoader />
+      ) : (
       <TableContainer>
         <table id="catTable" width="100%">
           <thead>
@@ -127,6 +135,7 @@ export default function CourseCategories() {
           </tbody>
         </table>
       </TableContainer>
+      )}
 
       <Modal
         isOpen={openPop}

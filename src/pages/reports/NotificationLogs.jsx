@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 export default function NotificationLogs() {
   const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchNotifications(); }, []);
 
   const fetchNotifications = async () => {
     try {
+      setLoading(true);
       const res = await fetch(import.meta.env.VITE_API_URL + "/notifications/logs", {
         headers: { Authorization: "Bearer " + localStorage.getItem("accessToken") },
       });
@@ -15,6 +18,8 @@ export default function NotificationLogs() {
       setNotifications(data.notifications || []);
     } catch (err) {
       console.error("Error fetching notifications:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -28,7 +33,9 @@ export default function NotificationLogs() {
     <div className="space-y-5">
       <PageHeader title="Notification Logs" subtitle="Track all system notifications" />
 
-      {notifications.length === 0 ? (
+      {loading ? (
+        <SectionLoader />
+      ) : notifications.length === 0 ? (
         <div className="bg-surface border border-brand-border rounded-xl p-12 text-center">
           <i className="fa-solid fa-bell-slash text-brand-muted text-3xl mb-3 block"></i>
           <p className="text-brand-muted text-sm">No notifications found.</p>

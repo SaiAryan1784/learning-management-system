@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "../../api/api";
+import { PageLoader } from "../../components/ui/Spinner";
 
 export default function StaffLessonView() {
   const { courseId, lessonId } = useParams();
@@ -66,7 +67,7 @@ export default function StaffLessonView() {
     return url;
   };
 
-  if (loading) return <p className="text-brand-muted text-sm p-6">Loading...</p>;
+  if (loading) return <PageLoader />;
   if (!currentLesson) return <p className="text-brand-muted text-sm p-6">Lesson not found.</p>;
 
   return (

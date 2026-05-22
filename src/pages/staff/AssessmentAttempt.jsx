@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import toastr from "toastr";
+import { PageLoader } from "../../components/ui/Spinner";
 
 export default function AssessmentAttempt() {
   const { assessmentId, courseId } = useParams();
@@ -99,7 +100,7 @@ export default function AssessmentAttempt() {
     }
   };
 
-  if (loading) return <p className="text-brand-muted text-sm p-6">Loading...</p>;
+  if (loading) return <PageLoader />;
   if (!assessment) return <p className="text-brand-muted text-sm p-6">No assessment found.</p>;
 
   if (assessment?.isCourseEmbedded) {

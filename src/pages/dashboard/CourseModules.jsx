@@ -7,6 +7,7 @@ import "datatables.net";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
 import { Modal } from "../../components/ui/Modal";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -108,7 +109,7 @@ export default function CourseModules() {
       </PageHeader>
 
       {loading ? (
-        <p className="text-brand-muted text-sm">Loading modules...</p>
+        <SectionLoader />
       ) : modules.length === 0 ? (
         <div className="bg-surface border border-brand-border rounded-xl p-12 text-center">
           <i className="fa-solid fa-cubes text-brand-muted text-3xl mb-3 block"></i>

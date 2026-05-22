@@ -5,6 +5,7 @@ import $ from "jquery";
 import "datatables.net";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -178,7 +179,7 @@ export default function CompliancePolicies() {
 
       {activeTab === "policyList" && (
         loading ? (
-          <p className="text-brand-muted text-sm">Loading policies...</p>
+          <SectionLoader />
         ) : (
           <TableContainer>
             <table id="policyTable" ref={tableRef} width="100%">

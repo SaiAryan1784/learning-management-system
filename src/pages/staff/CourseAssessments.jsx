@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { PageLoader } from "../../components/ui/Spinner";
 
 export default function CourseAssessments() {
   const { courseId } = useParams();
@@ -80,7 +81,7 @@ export default function CourseAssessments() {
     return map[status] || "bg-brand-muted/10 text-brand-muted";
   };
 
-  if (loading) return <p className="text-brand-muted text-sm p-6">Loading assessments...</p>;
+  if (loading) return <PageLoader />;
 
   return (
     <div className="space-y-5">

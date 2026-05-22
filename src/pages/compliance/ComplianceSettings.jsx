@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import api from "../../api/api";
 import toastr from "toastr";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 export default function ComplianceSettings() {
+  const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({
     autoAssignOnStaffOnboarding: false,
     defaultDueDays: 30,
@@ -15,6 +17,7 @@ export default function ComplianceSettings() {
 
   const loadSettings = async () => {
     try {
+      setLoading(true);
       const res = await api.get("/compliance/settings");
       setSettings({
         autoAssignOnStaffOnboarding: res.data?.autoAssignOnStaffOnboarding ?? false,
@@ -24,6 +27,8 @@ export default function ComplianceSettings() {
       });
     } catch {
       toastr.error("Failed to load settings");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,6 +69,8 @@ export default function ComplianceSettings() {
       <div className="w-10 h-5 bg-brand-border rounded-full peer peer-checked:bg-emerald transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-5"></div>
     </label>
   );
+
+  if (loading) return <SectionLoader />;
 
   return (
     <div className="space-y-5">

@@ -3,6 +3,7 @@ import { useAuth } from "../../auth/AuthContext";
 import api from "../../api/api";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 export default function LocationsView() {
   const [locations, setLocations] = useState([]);
@@ -28,7 +29,7 @@ export default function LocationsView() {
       <PageHeader title="Locations" subtitle="Read-only view of all locations" />
 
       {loading ? (
-        <p className="text-brand-muted text-sm">Loading locations...</p>
+        <SectionLoader />
       ) : (
         <TableContainer>
           <table width="100%">

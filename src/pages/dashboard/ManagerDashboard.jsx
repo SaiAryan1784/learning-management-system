@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatCard } from "../../components/ui/StatCard";
+import { PageLoader } from "../../components/ui/Spinner";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
@@ -36,12 +37,7 @@ export default function ManagerDashboard() {
       : 0;
   const totalOverdue = staffData.reduce((acc, s) => acc + s.overdueCourses, 0);
 
-  if (loading)
-    return (
-      <div className="flex items-center justify-center py-20 text-brand-muted text-sm">
-        Loading...
-      </div>
-    );
+  if (loading) return <PageLoader />;
 
   return (
     <div className="space-y-6">

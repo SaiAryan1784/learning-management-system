@@ -6,6 +6,7 @@ import $ from "jquery";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
 import { Modal } from "../../components/ui/Modal";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -15,9 +16,11 @@ export default function Modules() {
   const [form, setForm] = useState({ key: "", name: "", actions: [] });
   const [editId, setEditId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const loadModules = async () => {
     try {
+      setLoading(true);
       if ($.fn.DataTable.isDataTable("#modulesTable")) {
         $("#modulesTable").DataTable().destroy();
       }
@@ -25,6 +28,8 @@ export default function Modules() {
       setModules(res.data.modules || []);
     } catch {
       toastr.error("Failed to load modules.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -101,6 +106,9 @@ export default function Modules() {
         </Link>
       </PageHeader>
 
+      {loading ? (
+        <SectionLoader />
+      ) : (
       <TableContainer>
         <table id="modulesTable" width="100%">
           <thead>
@@ -129,6 +137,7 @@ export default function Modules() {
           </tbody>
         </table>
       </TableContainer>
+      )}
 
       <Modal
         isOpen={openPop}

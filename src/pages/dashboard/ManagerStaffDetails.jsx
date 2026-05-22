@@ -4,6 +4,7 @@ import api from "../../api/api";
 import toastr from "toastr";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatCard } from "../../components/ui/StatCard";
+import { PageLoader } from "../../components/ui/Spinner";
 
 export default function ManagerStaffDetails() {
   const { staffId } = useParams();
@@ -36,7 +37,7 @@ export default function ManagerStaffDetails() {
     return `${Math.floor(diff / (1000 * 60 * 60 * 24))} Days Remaining`;
   };
 
-  if (loading) return <p className="text-brand-muted text-sm p-6">Loading...</p>;
+  if (loading) return <PageLoader />;
   if (!staffData) return <p className="text-brand-muted text-sm p-6">No data found.</p>;
 
   const { staff, courseProgress = [], lessonProgress = [] } = staffData;
