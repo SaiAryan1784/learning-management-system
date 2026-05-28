@@ -4,6 +4,7 @@ import api from "../../api/api";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatCard } from "../../components/ui/StatCard";
 import { PageLoader } from "../../components/ui/Spinner";
+import ChatWidget from "../../components/ui/ChatWidget";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
@@ -110,6 +111,8 @@ export default function ManagerDashboard() {
           Next
         </button>
       </div>
+
+      <ChatWidget mode="admin" />
     </div>
   );
 }

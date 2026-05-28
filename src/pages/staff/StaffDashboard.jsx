@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatCard } from "../../components/ui/StatCard";
+import ChatWidget from "../../components/ui/ChatWidget";
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
@@ -150,6 +151,8 @@ export default function StaffDashboard() {
           <p className="text-brand-muted text-sm">No courses assigned yet.</p>
         </div>
       )}
+
+      <ChatWidget mode="staff" />
     </div>
   );
 }
