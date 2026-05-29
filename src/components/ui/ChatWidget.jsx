@@ -18,7 +18,9 @@ function getOrCreateSessionId() {
   return id;
 }
 
-export default function ChatWidget({ mode = "staff" }) {
+const MAX_MSG_LEN = 4000;
+
+export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -51,6 +53,14 @@ export default function ChatWidget({ mode = "staff" }) {
     const text = input.trim();
     if (!text || loading) return;
 
+    if (text.length > MAX_MSG_LEN) {
+      setMessages((prev) => [
+        ...prev,
+        { _id: `err-${Date.now()}`, role: "assistant", content: `Message too long (max ${MAX_MSG_LEN} characters).` },
+      ]);
+      return;
+    }
+
     setInput("");
     setMessages((prev) => [
       ...prev,
@@ -59,19 +69,26 @@ export default function ChatWidget({ mode = "staff" }) {
     setLoading(true);
 
     try {
-      const res = await api.post("/chat/message", { message: text, sessionId, mode });
+      const res = await api.post("/chat/message", { message: text, sessionId });
       setMessages((prev) => [
         ...prev,
         { _id: `a-${Date.now()}`, role: "assistant", content: res.data.reply },
       ]);
-    } catch {
+    } catch (err) {
+      const status = err?.response?.status;
+      const msg =
+        status === 429
+          ? "Too many messages — please wait a moment before sending more."
+          : status === 504
+          ? "AI is taking too long to respond. Please try again."
+          : status === 403
+          ? "You are not authorised to use chat."
+          : status === 400
+          ? (err?.response?.data?.message || "Invalid message.")
+          : "Something went wrong. Please try again.";
       setMessages((prev) => [
         ...prev,
-        {
-          _id: `err-${Date.now()}`,
-          role: "assistant",
-          content: "Sorry, something went wrong. Please try again.",
-        },
+        { _id: `err-${Date.now()}`, role: "assistant", content: msg },
       ]);
     } finally {
       setLoading(false);
@@ -85,11 +102,8 @@ export default function ChatWidget({ mode = "staff" }) {
     }
   };
 
-  const isAdmin = mode === "admin";
-  const botName = isAdmin ? "Admin Assistant" : "Learning Assistant";
-  const welcomeMsg = isAdmin
-    ? "Ask me about staff training progress, compliance status, overdue courses, or certificate analytics."
-    : "Ask me about your courses, certificates, due dates, or training progress.";
+  const botName = "LMS Assistant";
+  const welcomeMsg = "Ask me about courses, training progress, certificates, compliance, assessments, or team performance.";
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">

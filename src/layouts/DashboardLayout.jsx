@@ -2,6 +2,7 @@ import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useEffect, useState, useRef, Suspense } from "react";
 import { SectionLoader } from "../components/ui/Spinner";
+import ChatWidget from "../components/ui/ChatWidget";
 
 export default function DashboardLayout() {
   const { logout, user, access, loading } = useAuth();
@@ -351,6 +352,10 @@ export default function DashboardLayout() {
           </Suspense>
         </main>
       </div>
+
+      {!isSuperAdmin && (
+        <ChatWidget />
+      )}
     </div>
   );
 }

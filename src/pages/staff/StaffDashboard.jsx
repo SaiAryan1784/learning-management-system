@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatCard } from "../../components/ui/StatCard";
-import ChatWidget from "../../components/ui/ChatWidget";
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
@@ -152,7 +151,6 @@ export default function StaffDashboard() {
         </div>
       )}
 
-      <ChatWidget mode="staff" />
     </div>
   );
 }
