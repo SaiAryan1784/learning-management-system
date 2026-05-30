@@ -1,11 +1,20 @@
 import { useEffect, useState, useRef } from "react";
+import { motion } from "framer-motion";
 import api from "../../api/api";
 import toastr from "toastr";
 import $ from "jquery";
 import "datatables.net";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { TableContainer } from "../../components/ui/TableContainer";
-import { SectionLoader } from "../../components/ui/Spinner";
+import {
+  PageHeader,
+  TableContainer,
+  SectionLoader,
+  Button,
+  Input,
+  Textarea,
+  FormField,
+  Badge,
+  Card,
+} from "../../components/ui";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -21,6 +30,7 @@ export default function CompliancePolicies() {
     name: "", description: "", courseIds: [], orgWide: true,
     locationIds: [], autoAssignOnStaffOnboarding: true, dueDays: 30,
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const loadPolicies = async () => {
     try {
@@ -78,6 +88,7 @@ export default function CompliancePolicies() {
       dueDays: Number(form.dueDays),
     };
     try {
+      setSubmitting(true);
       if (editId) {
         await api.put(`/compliance/policies/${editId}`, payload);
         toastr.success("Policy updated");
@@ -91,6 +102,8 @@ export default function CompliancePolicies() {
       setActiveTab("policyList");
     } catch (err) {
       toastr.error(err.response?.data?.message || "Save failed");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -116,31 +129,51 @@ export default function CompliancePolicies() {
         {[{ key: "addPolicy", label: editId ? "Edit Policy" : "Add Policy" }, { key: "policyList", label: "Policy List" }].map(({ key, label }) => (
           <button
             key={key}
-            className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${activeTab === key ? "bg-charcoal text-white" : "text-brand-muted hover:text-brand-text"}`}
+            className={`relative px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              activeTab === key ? "text-white" : "text-brand-muted hover:text-brand-text"
+            }`}
             onClick={() => setActiveTab(key)}
           >
-            {label}
+            {activeTab === key && (
+              <motion.span
+                layoutId="policy-tab-pill"
+                className="absolute inset-0 bg-charcoal rounded-md"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10">{label}</span>
           </button>
         ))}
       </div>
 
       {activeTab === "addPolicy" && (
-        <div className="bg-surface border border-brand-border rounded-xl p-6 max-w-2xl">
+        <Card className="!p-6 max-w-2xl">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Policy Name</label>
-              <input className={inputClass} type="text" name="name" value={form.name} onChange={handleChange} placeholder="Policy Name" required />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Description</label>
-              <textarea className={inputClass} rows={4} name="description" value={form.description} onChange={handleChange} placeholder="Policy description" required />
-            </div>
+            <FormField label="Policy Name" required>
+              <Input
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Policy Name"
+                required
+              />
+            </FormField>
+            <FormField label="Description" required>
+              <Textarea
+                rows={4}
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                placeholder="Policy description"
+                required
+              />
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-2">Assign Courses</label>
+            <FormField label="Assign Courses">
               <div className="border border-brand-border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                 {courses.map((course) => (
-                  <label key={course._id} className="flex items-center gap-2 text-sm text-brand-text cursor-pointer">
+                  <label key={course._id} className="flex items-center gap-2 text-body text-brand-text cursor-pointer">
                     <input
                       type="checkbox"
                       className="accent-emerald w-3.5 h-3.5"
@@ -151,30 +184,36 @@ export default function CompliancePolicies() {
                   </label>
                 ))}
               </div>
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Due Days</label>
-              <input className="w-32 px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent" type="number" name="dueDays" value={form.dueDays} onChange={handleChange} />
-            </div>
+            <FormField label="Due Days" hint="Days from assignment to deadline.">
+              <div className="w-32">
+                <Input
+                  type="number"
+                  name="dueDays"
+                  value={form.dueDays}
+                  onChange={handleChange}
+                />
+              </div>
+            </FormField>
 
             <div className="flex flex-col gap-2">
               {[
                 { name: "orgWide", label: "Apply Organization Wide" },
                 { name: "autoAssignOnStaffOnboarding", label: "Auto Assign On Staff Onboarding" },
               ].map(({ name, label }) => (
-                <label key={name} className="flex items-center gap-2 text-sm text-brand-text cursor-pointer">
+                <label key={name} className="flex items-center gap-2 text-body text-brand-text cursor-pointer">
                   <input type="checkbox" className="accent-emerald w-3.5 h-3.5" name={name} checked={form[name]} onChange={handleChange} />
                   {label}
                 </label>
               ))}
             </div>
 
-            <button className="bg-emerald hover:bg-emerald-hover text-white font-semibold text-sm uppercase tracking-wide px-6 py-2.5 rounded-lg transition-colors" type="submit">
+            <Button type="submit" variant="primary" size="lg" loading={submitting}>
               {editId ? "Update Policy" : "Create Policy"}
-            </button>
+            </Button>
           </form>
-        </div>
+        </Card>
       )}
 
       {activeTab === "policyList" && (
@@ -202,9 +241,9 @@ export default function CompliancePolicies() {
                     <td>{p.courseIds?.map((c) => c.title).join(", ") || "—"}</td>
                     <td>{p.dueDays}</td>
                     <td>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${p.orgWide ? "bg-emerald/10 text-emerald" : "bg-brand-muted/10 text-brand-muted"}`}>
+                      <Badge tone={p.orgWide ? "success" : "neutral"} dot size="sm">
                         {p.orgWide ? "Yes" : "No"}
-                      </span>
+                      </Badge>
                     </td>
                     <td>
                       <button className={actionBtn} onClick={() => handleEdit(p)} title="Edit">

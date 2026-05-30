@@ -1,21 +1,25 @@
-import { Outlet, useNavigate, NavLink } from "react-router-dom";
+import { Outlet, useNavigate, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useEffect, useState, useRef, Suspense } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { SectionLoader } from "../components/ui/Spinner";
 import ChatWidget from "../components/ui/ChatWidget";
 
 export default function DashboardLayout() {
   const { logout, user, access, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [prevUnread, setPrevUnread] = useState(0);
+  const [bellPulse, setBellPulse] = useState(false);
   const [open, setOpen] = useState(false);
-  const [coursesOpen, setCoursesOpen] = useState(false);
 
-  const dropdownRef = useRef();
+  const notifRef = useRef();
+  const profileRef = useRef();
 
   const API = import.meta.env.VITE_API_URL;
 
@@ -23,14 +27,26 @@ export default function DashboardLayout() {
     fetchNotifications();
 
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
         setOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
       }
     };
 
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (unreadCount > prevUnread) {
+      setBellPulse(true);
+      const t = setTimeout(() => setBellPulse(false), 700);
+      return () => clearTimeout(t);
+    }
+    setPrevUnread(unreadCount);
+  }, [unreadCount, prevUnread]);
 
   const fetchNotifications = async () => {
     try {
@@ -90,16 +106,56 @@ export default function DashboardLayout() {
     navigate("/");
   };
 
-  const navClass = ({ isActive }) =>
-    [
-      "flex items-center gap-3 rounded-lg px-3 py-2.5 mb-1 no-underline transition-all duration-200",
-      sidebarOpen ? "" : "justify-center",
-      isActive
-        ? "bg-emerald text-white"
-        : "text-white/60 hover:bg-white/10 hover:text-white",
-    ]
-      .filter(Boolean)
-      .join(" ");
+  const NavItem = ({ to, icon, label, end = false }) => (
+    <NavLink to={to} end={end} className="block no-underline">
+      {({ isActive }) => (
+        <div
+          className={[
+            "relative flex items-center gap-3 rounded-lg px-3 py-2.5 mb-1 transition-colors duration-200",
+            sidebarOpen ? "" : "justify-center",
+            isActive ? "text-white" : "text-white/60 hover:bg-white/10 hover:text-white",
+          ].join(" ")}
+        >
+          {isActive && (
+            <motion.span
+              layoutId="sidebar-active-pill"
+              className="absolute inset-0 rounded-lg bg-emerald"
+              transition={{ type: "spring", stiffness: 400, damping: 32 }}
+            />
+          )}
+          <i className={`fa-solid ${icon} text-base flex-shrink-0 relative z-10`}></i>
+          <AnimatePresence initial={false}>
+            {sidebarOpen && (
+              <motion.span
+                key="label"
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -6 }}
+                transition={{ duration: 0.18 }}
+                className="text-xs font-medium tracking-wide uppercase whitespace-nowrap relative z-10"
+              >
+                {label}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+    </NavLink>
+  );
+
+  const SectionLabel = ({ children }) =>
+    sidebarOpen ? (
+      <motion.h3
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1 mt-5 mb-2"
+      >
+        {children}
+      </motion.h3>
+    ) : (
+      <div className="my-2 border-t border-charcoal-light" />
+    );
 
   const managementMenu = [
     { label: "Locations", icon: "fa-location-dot", path: "/dashboard/locations" },
@@ -124,12 +180,10 @@ export default function DashboardLayout() {
   return (
     <div className="flex min-h-screen">
       {/* ================= SIDEBAR ================= */}
-      <nav
-        className={[
-          "sticky top-0 h-screen flex flex-col overflow-y-auto overflow-x-hidden",
-          "bg-charcoal transition-all duration-300 ease-in-out flex-shrink-0",
-          sidebarOpen ? "w-[220px]" : "w-[64px]",
-        ].join(" ")}
+      <motion.nav
+        animate={{ width: sidebarOpen ? 220 : 64 }}
+        transition={{ type: "spring", stiffness: 280, damping: 32 }}
+        className="sticky top-0 h-screen flex flex-col overflow-y-auto overflow-x-hidden bg-charcoal flex-shrink-0"
         style={{ scrollbarWidth: "thin", scrollbarColor: "#3A3A3C #1C1C1E" }}
       >
         {/* Logo */}
@@ -148,177 +202,149 @@ export default function DashboardLayout() {
 
         {/* Nav Items */}
         <div className="flex-1 px-2 py-3">
-          {/* DASHBOARD */}
-          <NavLink to="/dashboard" end className={navClass}>
-            <i className="fa-solid fa-house text-base flex-shrink-0"></i>
-            {sidebarOpen && (
-              <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
-                Dashboard
-              </span>
-            )}
-          </NavLink>
+          <NavItem to="/dashboard" end icon="fa-house" label="Dashboard" />
 
-          {/* SUPER ADMIN */}
           {isSuperAdmin && (
-            <NavLink to="/dashboard/modules" className={navClass}>
-              <i className="fa-solid fa-business-time text-base flex-shrink-0"></i>
-              {sidebarOpen && (
-                <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
-                  Modules
-                </span>
-              )}
-            </NavLink>
+            <NavItem to="/dashboard/modules" icon="fa-business-time" label="Modules" />
           )}
 
-          {/* OWNER / ADMIN */}
           {isOwnerAdmin && (
             <>
-              {sidebarOpen && (
-                <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1 mt-5 mb-2">
-                  Management
-                </h3>
-              )}
-              {!sidebarOpen && <div className="my-2 border-t border-charcoal-light" />}
+              <SectionLabel>Management</SectionLabel>
               {managementMenu.map((item) => (
-                <NavLink key={item.path} to={item.path} className={navClass}>
-                  <i className={`fa-solid ${item.icon} text-base flex-shrink-0`}></i>
-                  {sidebarOpen && (
-                    <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
-                      {item.label}
-                    </span>
-                  )}
-                </NavLink>
+                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
               ))}
 
-              {sidebarOpen && (
-                <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1 mt-5 mb-2">
-                  Compliance
-                </h3>
-              )}
-              {!sidebarOpen && <div className="my-2 border-t border-charcoal-light" />}
+              <SectionLabel>Compliance</SectionLabel>
               {complianceMenu.map((item) => (
-                <NavLink key={item.path} to={item.path} className={navClass}>
-                  <i className={`fa-solid ${item.icon} text-base flex-shrink-0`}></i>
-                  {sidebarOpen && (
-                    <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
-                      {item.label}
-                    </span>
-                  )}
-                </NavLink>
+                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
               ))}
 
-              {sidebarOpen && (
-                <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1 mt-5 mb-2">
-                  Reports
-                </h3>
-              )}
-              {!sidebarOpen && <div className="my-2 border-t border-charcoal-light" />}
+              <SectionLabel>Reports</SectionLabel>
               {reportsMenu.map((item) => (
-                <NavLink key={item.path} to={item.path} className={navClass}>
-                  <i className={`fa-solid ${item.icon} text-base flex-shrink-0`}></i>
-                  {sidebarOpen && (
-                    <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
-                      {item.label}
-                    </span>
-                  )}
-                </NavLink>
+                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
               ))}
             </>
           )}
 
-          {/* STAFF */}
           {isStaff && (
             <>
               {managementMenu.map((item) => (
-                <NavLink key={item.path} to={item.path} className={navClass}>
-                  <i className={`fa-solid ${item.icon} text-base flex-shrink-0`}></i>
-                  {sidebarOpen && (
-                    <span className="text-xs font-medium tracking-wide uppercase whitespace-nowrap">
-                      {item.label}
-                    </span>
-                  )}
-                </NavLink>
+                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
               ))}
             </>
           )}
         </div>
-      </nav>
+      </motion.nav>
 
       {/* ================= MAIN CONTENT ================= */}
       <div className="flex-1 min-w-0 flex flex-col bg-canvas">
 
         {/* TOPBAR */}
-        <header className="sticky top-0 z-40 bg-surface border-b border-brand-border h-14 flex items-center px-4 gap-2 flex-shrink-0">
+        <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-brand-border h-14 flex items-center px-4 gap-2 flex-shrink-0">
 
-          {/* Hamburger */}
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             className="flex items-center justify-center w-9 h-9 rounded-lg text-brand-muted hover:bg-brand-border/60 hover:text-brand-text transition-colors flex-shrink-0"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle sidebar"
           >
             <i className="fa-solid fa-bars text-sm"></i>
-          </button>
+          </motion.button>
 
           <div className="flex-1" />
 
           {/* Notification Bell */}
-          <div className="relative" ref={dropdownRef}>
-            <button
+          <div className="relative" ref={notifRef}>
+            <motion.button
+              whileTap={{ scale: 0.92 }}
               className="relative flex items-center justify-center w-9 h-9 rounded-lg text-brand-muted hover:bg-brand-border/60 hover:text-brand-text transition-colors"
               onClick={(e) => {
                 e.preventDefault();
                 setOpen(!open);
               }}
+              aria-label="Notifications"
             >
-              <i className="fa-solid fa-bell text-sm"></i>
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-brand-danger text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
+              <motion.i
+                animate={bellPulse ? { rotate: [0, -12, 12, -8, 8, 0] } : { rotate: 0 }}
+                transition={{ duration: 0.6 }}
+                className="fa-solid fa-bell text-sm"
+              />
+              <AnimatePresence>
+                {unreadCount > 0 && (
+                  <motion.span
+                    key={unreadCount}
+                    initial={{ scale: 0.4, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.4, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 480, damping: 20 }}
+                    className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-brand-danger text-white text-[9px] font-bold rounded-full flex items-center justify-center"
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.button>
 
-            {open && (
-              <div className="absolute top-full right-0 mt-2 w-80 bg-surface border border-brand-border rounded-xl shadow-card z-50 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border">
-                  <span className="text-xs font-bold text-brand-text uppercase tracking-wide">
-                    Notifications
-                  </span>
-                  {notifications.length > 0 && (
-                    <button
-                      className="text-xs font-semibold text-emerald hover:text-emerald-hover transition-colors"
-                      onClick={markAllAsRead}
-                    >
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-80 overflow-y-auto divide-y divide-brand-border">
-                  {notifications.length === 0 && (
-                    <p className="text-center text-xs text-brand-muted py-6 uppercase tracking-wide">
-                      No new notifications
-                    </p>
-                  )}
-                  {notifications.map((n) => (
-                    <button
-                      key={n._id}
-                      className="w-full text-left px-4 py-3 hover:bg-canvas transition-colors block"
-                      onClick={() => markAsRead(n._id)}
-                    >
-                      <p className="text-xs font-semibold text-brand-text">{n.title}</p>
-                      <p className="text-xs text-brand-muted mt-0.5 leading-relaxed">{n.message}</p>
-                      <p className="text-[10px] text-brand-muted/60 mt-1">
-                        {new Date(n.createdAt).toLocaleString()}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <AnimatePresence>
+              {open && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute top-full right-0 mt-2 w-80 bg-surface border border-brand-border rounded-xl shadow-floating z-50 overflow-hidden origin-top-right"
+                >
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border">
+                    <span className="text-xs font-bold text-brand-text uppercase tracking-wide">
+                      Notifications
+                    </span>
+                    {notifications.length > 0 && (
+                      <button
+                        className="text-xs font-semibold text-emerald hover:text-emerald-hover transition-colors"
+                        onClick={markAllAsRead}
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto divide-y divide-brand-border">
+                    {notifications.length === 0 && (
+                      <div className="text-center py-8 px-4">
+                        <div className="w-10 h-10 rounded-full bg-canvas flex items-center justify-center mx-auto mb-2">
+                          <i className="fa-regular fa-bell text-brand-muted text-sm" />
+                        </div>
+                        <p className="text-xs text-brand-muted uppercase tracking-wide">
+                          You're all caught up
+                        </p>
+                      </div>
+                    )}
+                    {notifications.map((n, i) => (
+                      <motion.button
+                        key={n._id}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03, duration: 0.18 }}
+                        className="w-full text-left px-4 py-3 hover:bg-canvas transition-colors block"
+                        onClick={() => markAsRead(n._id)}
+                      >
+                        <p className="text-xs font-semibold text-brand-text">{n.title}</p>
+                        <p className="text-xs text-brand-muted mt-0.5 leading-relaxed">{n.message}</p>
+                        <p className="text-[10px] text-brand-muted/60 mt-1">
+                          {new Date(n.createdAt).toLocaleString()}
+                        </p>
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Profile */}
-          <div className="relative">
-            <button
+          <div className="relative" ref={profileRef}>
+            <motion.button
+              whileTap={{ scale: 0.96 }}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-brand-border/60 transition-colors"
               onClick={() => setProfileOpen(!profileOpen)}
             >
@@ -329,26 +355,48 @@ export default function DashboardLayout() {
                 {user?.name || "User"}
               </span>
               <i className="fa-solid fa-chevron-down text-[10px] text-brand-muted"></i>
-            </button>
+            </motion.button>
 
-            {profileOpen && (
-              <div className="absolute top-full right-0 mt-1 bg-surface border border-brand-border rounded-xl shadow-card w-36 z-50 overflow-hidden">
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 w-full px-4 py-3 text-sm text-brand-danger hover:bg-brand-danger/5 transition-colors"
+            <AnimatePresence>
+              {profileOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute top-full right-0 mt-1 bg-surface border border-brand-border rounded-xl shadow-floating w-44 z-50 overflow-hidden origin-top-right"
                 >
-                  <i className="fa-solid fa-sign-out text-xs"></i>
-                  Logout
-                </button>
-              </div>
-            )}
+                  <div className="px-4 py-3 border-b border-brand-border">
+                    <p className="text-xs font-semibold text-brand-text truncate">{user?.name || "User"}</p>
+                    <p className="text-[10px] text-brand-muted truncate">{user?.email || ""}</p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 w-full px-4 py-3 text-sm text-brand-danger hover:bg-brand-danger/5 transition-colors"
+                  >
+                    <i className="fa-solid fa-sign-out text-xs"></i>
+                    Logout
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </header>
 
         {/* PAGE CONTENT */}
         <main className="flex-1 p-6">
           <Suspense fallback={<SectionLoader />}>
-            <Outlet />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </Suspense>
         </main>
       </div>

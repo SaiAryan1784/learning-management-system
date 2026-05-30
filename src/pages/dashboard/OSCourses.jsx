@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import api from "../../api/api";
 import toastr from "toastr";
 import { FaPlus, FaTrash } from "react-icons/fa";
@@ -6,6 +7,7 @@ import $ from "jquery";
 import "datatables.net";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
+import { Button } from "../../components/ui/Button";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -35,6 +37,7 @@ export default function CourseManager() {
 
   const [openAssessments, setOpenAssessments] = useState({});
   const [openQuestions, setOpenQuestions] = useState({});
+  const [saving, setSaving] = useState(false);
 
   /* LOAD */
   const loadCategories = async () => {
@@ -238,6 +241,7 @@ export default function CourseManager() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setSaving(true);
       const payload = preparePayload();
       let res;
       if (editId) {
@@ -250,13 +254,14 @@ export default function CourseManager() {
       if (!editId && form.status === "published") {
         await api.patch(`/courses/${res.data._id}/publish`);
       }
-      console.log(JSON.stringify(payload, null, 2));
       setView("list");
       setEditId(null);
       setForm({ title: "", description: "", categoryIds: [], status: "draft", assessments: [] });
       loadCourses();
     } catch {
       toastr.error("Save failed");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -265,13 +270,16 @@ export default function CourseManager() {
     return (
       <div className="space-y-5">
         <PageHeader title={editId ? "Edit Course" : "Add Course"} subtitle="Create or update a course">
-          <button
+          <Button
             type="button"
-            className="flex items-center justify-center w-8 h-8 bg-charcoal-light hover:bg-charcoal-muted text-white/60 rounded-lg transition-colors"
+            variant="ghost"
+            size="sm"
+            className="!text-white !border-white/20 hover:!bg-white/10"
+            leadingIcon={<i className="fa fa-arrow-left text-xs" />}
             onClick={() => setView("list")}
           >
-            <i className="fa fa-arrow-left text-xs"></i>
-          </button>
+            Back
+          </Button>
         </PageHeader>
 
         <form onSubmit={handleSubmit}>
@@ -449,13 +457,13 @@ export default function CourseManager() {
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-brand-border">
-              <button
-                type="submit"
-                className="px-6 py-2 text-sm font-semibold text-white bg-emerald hover:bg-emerald-hover rounded-lg transition-colors"
-              >
+            <div className="flex justify-end gap-2 pt-2 border-t border-brand-border">
+              <Button type="button" variant="ghost" onClick={() => setView("list")}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" loading={saving}>
                 {editId ? "Update Course" : "Save Course"}
-              </button>
+              </Button>
             </div>
           </div>
         </form>
@@ -467,8 +475,10 @@ export default function CourseManager() {
   return (
     <div className="space-y-5">
       <PageHeader title="Courses" subtitle="Manage your courses">
-        <button
-          className="flex items-center gap-2 bg-emerald hover:bg-emerald-hover text-white text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg transition-colors"
+        <Button
+          variant="primary"
+          size="sm"
+          leadingIcon={<i className="fa-solid fa-plus text-xs" />}
           onClick={() => {
             if (dtRef.current) { dtRef.current.destroy(); dtRef.current = null; }
             setEditId(null);
@@ -476,19 +486,27 @@ export default function CourseManager() {
             setView("form");
           }}
         >
-          <i className="fa-solid fa-plus text-xs"></i>
           Add Course
-        </button>
+        </Button>
       </PageHeader>
 
       <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-max">
         {["published", "draft"].map((tab) => (
           <button
             key={tab}
-            className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors capitalize ${activeTab === tab ? "bg-charcoal text-white" : "text-brand-muted hover:text-brand-text"}`}
+            className={`relative px-4 py-1.5 rounded-md text-xs font-semibold transition-colors capitalize ${
+              activeTab === tab ? "text-white" : "text-brand-muted hover:text-brand-text"
+            }`}
             onClick={() => setActiveTab(tab)}
           >
-            {tab}
+            {activeTab === tab && (
+              <motion.span
+                layoutId="course-tab-pill"
+                className="absolute inset-0 bg-charcoal rounded-md"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10">{tab}</span>
           </button>
         ))}
       </div>

@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import api from "../../api/api";
 import toastr from "toastr";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { SectionLoader } from "../../components/ui/Spinner";
+import {
+  PageHeader,
+  SectionLoader,
+  Button,
+  Input,
+  FormField,
+  Card,
+} from "../../components/ui";
 
 export default function ComplianceSettings() {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
     autoAssignOnStaffOnboarding: false,
     defaultDueDays: 30,
@@ -56,17 +64,20 @@ export default function ComplianceSettings() {
 
   const saveSettings = async () => {
     try {
+      setSaving(true);
       await api.put("/compliance/settings", settings);
       toastr.success("Compliance settings updated");
     } catch {
       toastr.error("Failed to update settings");
+    } finally {
+      setSaving(false);
     }
   };
 
   const Toggle = ({ checked, onChange }) => (
     <label className="relative inline-flex items-center cursor-pointer">
       <input type="checkbox" className="sr-only peer" checked={checked} onChange={onChange} />
-      <div className="w-10 h-5 bg-brand-border rounded-full peer peer-checked:bg-emerald transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-5"></div>
+      <div className="w-10 h-5 bg-brand-border rounded-full peer peer-checked:bg-emerald transition-all duration-250 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:shadow-soft after:transition-transform after:duration-250 after:ease-smooth peer-checked:after:translate-x-5"></div>
     </label>
   );
 
@@ -76,7 +87,7 @@ export default function ComplianceSettings() {
     <div className="space-y-5">
       <PageHeader title="Compliance Settings" subtitle="Configure compliance rules for your organization" />
 
-      <div className="bg-surface border border-brand-border rounded-xl p-6 max-w-2xl space-y-6">
+      <Card className="!p-6 max-w-2xl !space-y-6 flex flex-col">
 
         {/* Auto Assign */}
         <div className="flex items-center justify-between py-3 border-b border-brand-border">
@@ -92,14 +103,16 @@ export default function ComplianceSettings() {
 
         {/* Default Due Days */}
         <div className="py-3 border-b border-brand-border">
-          <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-2">Default Due Days</label>
-          <input
-            type="number"
-            name="defaultDueDays"
-            value={settings.defaultDueDays}
-            onChange={handleChange}
-            className="w-32 px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent"
-          />
+          <FormField label="Default Due Days" hint="Days from assignment until compliance is due.">
+            <div className="w-32">
+              <Input
+                type="number"
+                name="defaultDueDays"
+                value={settings.defaultDueDays}
+                onChange={handleChange}
+              />
+            </div>
+          </FormField>
         </div>
 
         {/* Certificate Alert Days */}
@@ -107,17 +120,18 @@ export default function ComplianceSettings() {
           <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-3">Certificate Expiry Alerts</label>
           <div className="flex flex-wrap gap-2">
             {alertOptions.map((day) => (
-              <label
+              <motion.label
                 key={day}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-xs font-semibold ${
+                whileTap={{ scale: 0.96 }}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-caption font-semibold ${
                   settings.certificateAlertDays.includes(day)
-                    ? "bg-emerald/10 border-emerald text-emerald"
+                    ? "bg-emerald-muted border-emerald text-emerald-hover"
                     : "border-brand-border text-brand-muted hover:border-emerald/40"
                 }`}
               >
                 <input type="checkbox" className="sr-only" checked={settings.certificateAlertDays.includes(day)} onChange={() => toggleAlertDay(day)} />
                 {day} Days Before
-              </label>
+              </motion.label>
             ))}
           </div>
         </div>
@@ -135,13 +149,12 @@ export default function ComplianceSettings() {
           </div>
         </div>
 
-        <button
-          className="bg-emerald hover:bg-emerald-hover text-white font-semibold text-sm uppercase tracking-wide px-6 py-2.5 rounded-lg transition-colors"
-          onClick={saveSettings}
-        >
-          Save Settings
-        </button>
-      </div>
+        <div>
+          <Button variant="primary" size="lg" loading={saving} onClick={saveSettings}>
+            Save Settings
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }

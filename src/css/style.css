@@ -2,6 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ================================================
+   Design tokens — Tailwind theme is authoritative.
+   These :root variables mirror tailwind.config.js so
+   legacy CSS rules below stay in sync.
+   ================================================ */
+:root {
+  --color-charcoal: #1C1C1E;
+  --color-charcoal-light: #2C2C2E;
+  --color-charcoal-muted: #3A3A3C;
+  --color-emerald: #10B981;
+  --color-emerald-hover: #059669;
+  --color-emerald-light: #D1FAE5;
+  --color-emerald-muted: rgba(16,185,129,0.12);
+  --color-surface: #FFFFFF;
+  --color-canvas: #F9FAFB;
+  --color-text: #111827;
+  --color-muted: #6B7280;
+  --color-border: #E5E7EB;
+  --color-danger: #EF4444;
+  --color-danger-hover: #DC2626;
+  --color-warning: #F59E0B;
+  --color-info: #3B82F6;
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-soft: 0 2px 8px rgba(17,24,39,0.04), 0 1px 2px rgba(17,24,39,0.03);
+  --shadow-elevated: 0 8px 24px rgba(17,24,39,0.08), 0 2px 6px rgba(17,24,39,0.04);
+  --shadow-floating: 0 20px 40px rgba(17,24,39,0.14), 0 6px 12px rgba(17,24,39,0.06);
+}
+
 html, body {height: 100%;}
 html{scroll-behavior: smooth;}
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,img,ins,kbd,q,s,samp,small,strike,strong,sub,tt,var,b,u,i,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td,article,aside,canvas,details,embed,figure,figcaption,footer,header,hgroup,menu,nav,output,section,summary,time,mark,audio,video{margin:0;padding:0;border:0;font-size:100%;font:inherit;vertical-align:baseline;}

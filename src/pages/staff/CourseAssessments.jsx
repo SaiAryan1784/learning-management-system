@@ -1,8 +1,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import api from "../../api/api";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { PageLoader } from "../../components/ui/Spinner";
+import {
+  PageHeader,
+  Button,
+  Card,
+  Badge,
+  EmptyState,
+  SkeletonCard,
+} from "../../components/ui";
 
 export default function CourseAssessments() {
   const { courseId } = useParams();
@@ -72,79 +79,112 @@ export default function CourseAssessments() {
     };
   };
 
-  const statusBadge = (status) => {
-    const map = {
-      passed: "bg-emerald/10 text-emerald",
-      failed: "bg-brand-danger/10 text-brand-danger",
-      started: "bg-amber-50 text-amber-600",
-    };
-    return map[status] || "bg-brand-muted/10 text-brand-muted";
+  const toneByStatus = (status) => {
+    if (status === "passed") return "success";
+    if (status === "failed") return "danger";
+    if (status === "started") return "warning";
+    return "neutral";
   };
-
-  if (loading) return <PageLoader />;
 
   return (
     <div className="space-y-5">
       <PageHeader title="Course Assessments" subtitle="Complete quizzes & practical evaluations" />
 
-      {assessments.length === 0 ? (
-        <div className="bg-surface border border-brand-border rounded-xl p-12 text-center">
-          <i className="fa-solid fa-clipboard-question text-brand-muted text-3xl mb-3 block"></i>
-          <p className="text-brand-muted text-sm">No assessments available.</p>
-        </div>
-      ) : (
+      {loading ? (
         <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      ) : assessments.length === 0 ? (
+        <Card padded={false}>
+          <EmptyState
+            icon={<i className="fa-solid fa-clipboard-question" />}
+            title="No assessments available"
+            description="This course does not have any quizzes or evaluations yet."
+          />
+        </Card>
+      ) : (
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }}
+          className="space-y-3"
+        >
           {assessments.map((assessment) => {
             const meta = getAssessmentMeta(assessment);
+            const canStart =
+              !assessment.isCourseEmbedded &&
+              meta.status !== "passed" &&
+              assessment.attempts.length < assessment.maxAttempts;
             return (
-              <div
+              <motion.div
                 key={`${assessment._id}-${assessment.source}`}
-                className="bg-surface border border-brand-border rounded-xl p-5"
+                variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${assessment.type === "quiz" ? "bg-emerald/10 text-emerald" : "bg-brand-muted/10 text-brand-muted"}`}>
-                        {assessment.type}
-                      </span>
-                      <h3 className="text-sm font-semibold text-brand-text">{assessment.title}</h3>
+                <Card interactive className="!p-5">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <Badge tone={assessment.type === "quiz" ? "success" : "neutral"} size="sm">
+                          {assessment.type}
+                        </Badge>
+                        <h3 className="text-body font-semibold text-brand-text">{assessment.title}</h3>
+                      </div>
+                      <p className="text-caption text-brand-muted">{assessment.description}</p>
                     </div>
-                    <p className="text-xs text-brand-muted">{assessment.description}</p>
+                    <Badge tone={toneByStatus(meta.status)} dot>
+                      {meta.label}
+                    </Badge>
                   </div>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${statusBadge(meta.status)}`}>
-                    {meta.label}
-                  </span>
-                </div>
 
-                <div className="flex items-center gap-4 text-xs text-brand-muted mb-4">
-                  {meta.score !== null && <span>Score: <strong className="text-brand-text">{meta.score}%</strong></span>}
-                  <span>Attempts: <strong className="text-brand-text">{assessment.attempts.length} / {assessment.maxAttempts}</strong></span>
-                  <span>Pass: <strong className="text-brand-text">{assessment.passPercent}%</strong></span>
-                </div>
+                  <div className="flex items-center gap-4 text-caption text-brand-muted mb-4 flex-wrap">
+                    {meta.score !== null && (
+                      <span>
+                        Score: <strong className="text-brand-text">{meta.score}%</strong>
+                      </span>
+                    )}
+                    <span>
+                      Attempts:{" "}
+                      <strong className="text-brand-text">
+                        {assessment.attempts.length} / {assessment.maxAttempts}
+                      </strong>
+                    </span>
+                    <span>
+                      Pass: <strong className="text-brand-text">{assessment.passPercent}%</strong>
+                    </span>
+                  </div>
 
-                <div className="flex gap-2">
-                  {!assessment.isCourseEmbedded && meta.status !== "passed" && assessment.attempts.length < assessment.maxAttempts && (
-                    <button
-                      className="bg-emerald hover:bg-emerald-hover text-white text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg transition-colors"
-                      onClick={() => navigate(`/dashboard/staff/assessment/${assessment._id}/${courseId}`)}
-                    >
-                      <i className="fa-solid fa-play text-[10px] mr-1.5"></i>
-                      {assessment.attempts.length > 0 ? "Retry" : "Start"}
-                    </button>
-                  )}
-                  {meta.status === "passed" && assessment.certificateUrl && (
-                    <button
-                      className="flex items-center gap-1.5 text-xs font-semibold text-emerald border border-emerald/30 bg-emerald/5 hover:bg-emerald hover:text-white px-4 py-2 rounded-lg transition-colors"
-                      onClick={() => window.open(assessment.certificateUrl, "_blank")}
-                    >
-                      <i className="fa-solid fa-download text-[10px]"></i> Download Certificate
-                    </button>
-                  )}
-                </div>
-              </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {canStart && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        leadingIcon={<i className="fa-solid fa-play text-[10px]" />}
+                        onClick={() =>
+                          navigate(`/dashboard/staff/assessment/${assessment._id}/${courseId}`)
+                        }
+                      >
+                        {assessment.attempts.length > 0 ? "Retry" : "Start"}
+                      </Button>
+                    )}
+                    {meta.status === "passed" && assessment.certificateUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        leadingIcon={<i className="fa-solid fa-download text-[10px]" />}
+                        onClick={() => window.open(assessment.certificateUrl, "_blank")}
+                      >
+                        Download Certificate
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
     </div>
   );

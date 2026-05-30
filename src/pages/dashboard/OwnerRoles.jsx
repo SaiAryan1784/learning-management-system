@@ -3,10 +3,15 @@ import api from "../../api/api";
 import { Link } from "react-router-dom";
 import toastr from "toastr";
 import $ from "jquery";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { TableContainer } from "../../components/ui/TableContainer";
-import { Modal } from "../../components/ui/Modal";
-import { SectionLoader } from "../../components/ui/Spinner";
+import {
+  PageHeader,
+  TableContainer,
+  Modal,
+  SectionLoader,
+  Button,
+  Input,
+  FormField,
+} from "../../components/ui";
 
 export default function OwnerRoles() {
   const [roles, setRoles] = useState([]);
@@ -15,6 +20,7 @@ export default function OwnerRoles() {
   const [editId, setEditId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const loadRoles = async () => {
     try {
@@ -93,6 +99,7 @@ export default function OwnerRoles() {
       return;
     }
     try {
+      setSubmitting(true);
       if (editId) {
         await api.put(`/roles/${editId}`, { name: form.name, permissions: form.permissions });
         toastr.success("Role updated successfully!", "success");
@@ -105,6 +112,8 @@ export default function OwnerRoles() {
       loadRoles();
     } catch (err) {
       toastr.error("Failed to save role.", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -142,16 +151,17 @@ export default function OwnerRoles() {
   return (
     <div className="space-y-5">
       <PageHeader title="Roles" subtitle="Manage roles and permissions">
-        <button
-          className="flex items-center gap-2 bg-emerald hover:bg-emerald-hover text-white text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg transition-colors"
+        <Button
+          variant="primary"
+          size="sm"
+          leadingIcon={<i className="fa-solid fa-plus text-xs" />}
           onClick={() => { resetForm(); setOpenPop(true); }}
         >
-          <i className="fa-solid fa-plus text-xs"></i>
           Add Role
-        </button>
+        </Button>
         <Link
           to="/dashboard"
-          className="flex items-center justify-center w-8 h-8 bg-charcoal-light hover:bg-charcoal-muted text-white/60 rounded-lg transition-colors"
+          className="flex items-center justify-center w-8 h-8 bg-charcoal-light hover:bg-charcoal-muted text-white/60 rounded-lg transition-colors no-underline"
         >
           <i className="fa-solid fa-arrow-left text-xs"></i>
         </Link>
@@ -207,32 +217,22 @@ export default function OwnerRoles() {
         maxWidth="max-w-2xl"
         footer={
           <>
-            <button
-              className="px-4 py-2 text-sm font-semibold text-brand-muted bg-canvas border border-brand-border rounded-lg hover:bg-brand-border/30 transition-colors"
-              onClick={closeModal}
-            >
+            <Button variant="ghost" onClick={closeModal}>
               Cancel
-            </button>
-            <button
-              className="px-4 py-2 text-sm font-semibold text-white bg-emerald hover:bg-emerald-hover rounded-lg transition-colors"
-              onClick={handleSubmit}
-            >
+            </Button>
+            <Button variant="primary" loading={submitting} onClick={handleSubmit}>
               {editId ? "Update Role" : "Create Role"}
-            </button>
+            </Button>
           </>
         }
       >
-        <div className="mb-4">
-          <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">
-            Role Name
-          </label>
-          <input
-            className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent"
+        <FormField label="Role Name" required className="mb-4">
+          <Input
             placeholder="e.g. Manager"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
-        </div>
+        </FormField>
 
         <div>
           <div className="flex items-center justify-between mb-3">

@@ -3,8 +3,7 @@ import api from "../../api/api";
 import toastr from "toastr";
 import { useNavigate, useParams } from "react-router-dom";
 import { FaPlus, FaTrash, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { PageLoader } from "../../components/ui/Spinner";
+import { PageHeader, PageLoader, Button, EmptyState } from "../../components/ui";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -21,6 +20,7 @@ export default function CourseAdd() {
   });
   const [openAssessments, setOpenAssessments] = useState({});
   const [openQuestions, setOpenQuestions] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -121,6 +121,7 @@ export default function CourseAdd() {
     if (!form.title) return toastr.error("Title is required");
     if (!form.categoryIds.length) return toastr.error("Select at least one category");
     try {
+      setSubmitting(true);
       let res;
       if (editId) {
         res = await api.put(`/courses/${editId}`, form);
@@ -136,6 +137,8 @@ export default function CourseAdd() {
       navigate("/dashboard/courses");
     } catch (err) {
       toastr.error(err.response?.data?.message || "Save failed");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -144,13 +147,16 @@ export default function CourseAdd() {
   return (
     <div className="space-y-5">
       <PageHeader title={editId ? "Edit Course" : "Add Course"} subtitle="Create or update a course with assessments">
-        <button
+        <Button
           type="button"
-          className="flex items-center justify-center w-8 h-8 bg-charcoal-light hover:bg-charcoal-muted text-white/60 rounded-lg transition-colors"
+          variant="ghost"
+          size="sm"
+          className="!text-white !border-white/20 hover:!bg-white/10"
+          leadingIcon={<i className="fa fa-arrow-left text-xs" />}
           onClick={() => navigate("/dashboard/courses")}
         >
-          <i className="fa fa-arrow-left text-xs"></i>
-        </button>
+          Back
+        </Button>
       </PageHeader>
 
       <form onSubmit={handleSubmit}>
@@ -186,12 +192,9 @@ export default function CourseAdd() {
                 <option value="published">Published</option>
               </select>
             </div>
-            <button
-              className="bg-emerald hover:bg-emerald-hover text-white font-semibold text-sm uppercase tracking-wide px-6 py-2.5 rounded-lg transition-colors"
-              type="submit"
-            >
+            <Button type="submit" variant="primary" size="lg" loading={submitting}>
               {editId ? "Update Course" : "Create Course"}
-            </button>
+            </Button>
           </div>
 
           {/* Right: assessments */}
@@ -199,25 +202,34 @@ export default function CourseAdd() {
             <div className="flex items-center justify-between border-b border-brand-border pb-2">
               <h3 className="text-xs font-semibold text-brand-muted uppercase tracking-wide">Assessments</h3>
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
-                  className="flex items-center gap-1.5 text-xs font-semibold text-brand-muted border border-brand-border rounded-lg px-3 py-1.5 hover:border-emerald hover:text-emerald transition-colors"
+                  variant="ghost"
+                  size="sm"
+                  leadingIcon={<FaPlus size={8} />}
                   onClick={() => addAssessment("quiz")}
                 >
-                  <FaPlus size={8} /> Quiz
-                </button>
-                <button
+                  Quiz
+                </Button>
+                <Button
                   type="button"
-                  className="flex items-center gap-1.5 text-xs font-semibold text-brand-muted border border-brand-border rounded-lg px-3 py-1.5 hover:border-emerald hover:text-emerald transition-colors"
+                  variant="ghost"
+                  size="sm"
+                  leadingIcon={<FaPlus size={8} />}
                   onClick={() => addAssessment("practical")}
                 >
-                  <FaPlus size={8} /> Practical
-                </button>
+                  Practical
+                </Button>
               </div>
             </div>
 
             {form.assessments.length === 0 && (
-              <p className="text-brand-muted text-sm text-center py-6">No assessments added yet.</p>
+              <EmptyState
+                compact
+                icon={<i className="fa-solid fa-clipboard-list" />}
+                title="No assessments yet"
+                description="Add a quiz or practical to evaluate learners."
+              />
             )}
 
             <div className="space-y-3">

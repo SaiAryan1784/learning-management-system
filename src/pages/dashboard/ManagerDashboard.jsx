@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import api from "../../api/api";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { StatCard } from "../../components/ui/StatCard";
-import { PageLoader } from "../../components/ui/Spinner";
+import {
+  PageHeader,
+  StatCard,
+  Card,
+  Badge,
+  Button,
+  SkeletonCard,
+  EmptyState,
+} from "../../components/ui";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
@@ -37,80 +44,136 @@ export default function ManagerDashboard() {
       : 0;
   const totalOverdue = staffData.reduce((acc, s) => acc + s.overdueCourses, 0);
 
-  if (loading) return <PageLoader />;
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <PageHeader title="Manager Dashboard" subtitle="Staff training performance overview">
-        <span className="text-3xl font-bold text-white">
+        <span className="text-3xl font-bold text-white tabular-nums">
           {avgProgress}%
           <span className="text-sm font-normal text-white/60 ml-1">avg</span>
         </span>
       </PageHeader>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon="fa-users" label="Total Staff" value={totalStaff} />
-        <StatCard icon="fa-chart-line" label="Avg Completion" value={`${avgProgress}%`} />
-        <StatCard icon="fa-triangle-exclamation" label="Overdue Courses" value={totalOverdue} danger />
-      </div>
-
-      {/* Staff Progress Cards */}
-      <div>
-        <h2 className="text-lg font-semibold text-brand-text mb-4">Staff & Their Progress</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {staffData.map((staff) => (
-            <div
-              key={staff.staffId}
-              className="bg-surface border border-brand-border rounded-xl p-4"
-            >
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-sm font-semibold text-brand-text leading-tight pr-2">
-                  {staff.staffName}
-                </span>
-                <span className="text-sm font-bold text-emerald flex-shrink-0">
-                  {staff.avgProgressPercent}%
-                </span>
-              </div>
-
-              <div className="h-1.5 bg-brand-border rounded-full overflow-hidden mb-2">
-                <div
-                  className="h-full bg-emerald rounded-full transition-all duration-500"
-                  style={{ width: `${staff.avgProgressPercent}%` }}
-                />
-              </div>
-
-              <p className="text-xs text-brand-muted">
-                {staff.staffEmail} • {staff.trackedCourses} Courses •{" "}
-                <span className={staff.overdueCourses > 0 ? "text-brand-danger" : ""}>
-                  {staff.overdueCourses} Overdue
-                </span>
-              </p>
-            </div>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} />
           ))}
         </div>
+      ) : (
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+        >
+          {[
+            { icon: "fa-users", label: "Total Staff", value: totalStaff },
+            { icon: "fa-chart-line", label: "Avg Completion", value: `${avgProgress}%` },
+            { icon: "fa-triangle-exclamation", label: "Overdue Courses", value: totalOverdue, danger: true },
+          ].map((s) => (
+            <motion.div
+              key={s.label}
+              variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <StatCard {...s} />
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
+      <div>
+        <h2 className="text-subheading text-brand-text mb-4">Staff & Their Progress</h2>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : staffData.length === 0 ? (
+          <Card padded={false}>
+            <EmptyState
+              icon={<i className="fa-solid fa-user-group" />}
+              title="No staff to show"
+              description="Once staff are added and tracked, they will appear here."
+            />
+          </Card>
+        ) : (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }}
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+          >
+            {staffData.map((staff) => (
+              <motion.div
+                key={staff.staffId}
+                variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <Card
+                  interactive
+                  onClick={() => navigate(`/dashboard/staff-progress/${staff.staffId}`)}
+                >
+                  <div className="flex justify-between items-start mb-2 gap-2">
+                    <div className="min-w-0">
+                      <p className="text-body font-semibold text-brand-text leading-tight truncate">
+                        {staff.staffName}
+                      </p>
+                      <p className="text-caption text-brand-muted truncate">{staff.staffEmail}</p>
+                    </div>
+                    <span className="text-body font-bold text-emerald-hover flex-shrink-0 tabular-nums">
+                      {staff.avgProgressPercent}%
+                    </span>
+                  </div>
+
+                  <div className="h-1.5 bg-brand-border rounded-full overflow-hidden mb-3">
+                    <motion.div
+                      className="h-full bg-emerald rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${staff.avgProgressPercent}%` }}
+                      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge tone="neutral" size="sm">
+                      {staff.trackedCourses} courses
+                    </Badge>
+                    {staff.overdueCourses > 0 && (
+                      <Badge tone="danger" dot size="sm">
+                        {staff.overdueCourses} overdue
+                      </Badge>
+                    )}
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
       </div>
 
-      {/* Pagination */}
       <div className="flex items-center justify-between mt-2">
-        <button
-          className="px-4 py-2 bg-surface border border-brand-border text-sm font-medium text-brand-text rounded-lg hover:bg-canvas disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        <Button
+          variant="secondary"
+          size="sm"
           disabled={page === 1}
+          leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
           onClick={() => setPage((p) => p - 1)}
         >
           Previous
-        </button>
-        <span className="text-sm text-brand-muted">Page {pagination.page}</span>
-        <button
-          className="px-4 py-2 bg-surface border border-brand-border text-sm font-medium text-brand-text rounded-lg hover:bg-canvas disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          disabled={page * pagination.limit >= pagination.total}
+        </Button>
+        <span className="text-caption text-brand-muted">Page {pagination.page || 1}</span>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={pagination.total ? page * pagination.limit >= pagination.total : true}
+          trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />}
           onClick={() => setPage((p) => p + 1)}
         >
           Next
-        </button>
+        </Button>
       </div>
-
     </div>
   );
 }
