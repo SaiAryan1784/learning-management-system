@@ -94,6 +94,7 @@ export default function ChatWidget() {
       const msg =
         status === 429 ? "Too many messages — please wait a moment before sending more."
         : status === 504 ? "AI is taking too long to respond. Please try again."
+        : status === 503 ? "Service unavailable. Please try again later."
         : status === 403 ? "You are not authorised to use chat."
         : status === 400 ? (err?.response?.data?.message || "Invalid message.")
         : "Something went wrong. Please try again.";
