@@ -35,7 +35,7 @@ export function StatCard({ icon, label, value, danger = false, trend = null }) {
     <motion.div
       whileHover={{ y: -2 }}
       transition={{ type: "spring", stiffness: 360, damping: 26 }}
-      className="bg-surface border border-brand-border rounded-xl p-5 flex items-center gap-4 shadow-soft hover:shadow-elevated transition-shadow duration-250 ease-smooth"
+      className="h-full bg-surface border border-brand-border rounded-xl p-5 flex items-center gap-4 shadow-soft hover:shadow-elevated transition-shadow duration-250 ease-smooth"
     >
       <div
         className={[

@@ -111,7 +111,7 @@ export default function DashboardLayout() {
       {({ isActive }) => (
         <div
           className={[
-            "relative flex items-center gap-3 rounded-lg px-3 py-2.5 mb-1 transition-colors duration-200",
+            "relative flex items-center gap-3 rounded-lg px-3 py-2.5 mb-1 transition-colors duration-200 overflow-hidden",
             sidebarOpen ? "" : "justify-center",
             isActive ? "text-white" : "text-white/60 hover:bg-white/10 hover:text-white",
           ].join(" ")}
@@ -132,7 +132,7 @@ export default function DashboardLayout() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -6 }}
                 transition={{ duration: 0.18 }}
-                className="text-xs font-medium tracking-wide uppercase whitespace-nowrap relative z-10"
+                className="text-xs font-medium tracking-wide uppercase whitespace-nowrap overflow-hidden text-ellipsis relative z-10 min-w-0"
               >
                 {label}
               </motion.span>
@@ -181,7 +181,7 @@ export default function DashboardLayout() {
     <div className="flex min-h-screen">
       {/* ================= SIDEBAR ================= */}
       <motion.nav
-        animate={{ width: sidebarOpen ? 220 : 64 }}
+        animate={{ width: sidebarOpen ? 256 : 64 }}
         transition={{ type: "spring", stiffness: 280, damping: 32 }}
         className="sticky top-0 h-screen flex flex-col overflow-y-auto overflow-x-hidden bg-charcoal flex-shrink-0"
         style={{ scrollbarWidth: "thin", scrollbarColor: "#3A3A3C #1C1C1E" }}
