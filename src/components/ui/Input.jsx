@@ -5,7 +5,7 @@ const Input = forwardRef(function Input(
   ref
 ) {
   const base =
-    "w-full bg-surface text-charcoal placeholder:text-brand-muted rounded-lg border px-3 py-2 text-body outline-none transition-shadow transition-colors duration-250 ease-smooth disabled:opacity-60 disabled:cursor-not-allowed";
+    "w-full bg-surface text-charcoal placeholder:text-brand-muted rounded-lg border py-2 text-body outline-none transition-shadow transition-colors duration-250 ease-smooth disabled:opacity-60 disabled:cursor-not-allowed";
   const state = invalid
     ? "border-brand-danger focus:shadow-ring-danger focus:border-brand-danger"
     : "border-brand-border focus:border-emerald focus:shadow-ring-emerald hover:border-charcoal-muted";
@@ -20,7 +20,7 @@ const Input = forwardRef(function Input(
         )}
         <input
           ref={ref}
-          className={`${base} ${state} ${leadingIcon ? "pl-10" : ""} ${trailingIcon ? "pr-10" : ""} ${className}`}
+          className={`${base} ${state} ${leadingIcon ? "pl-10" : "pl-3"} ${trailingIcon ? "pr-10" : "pr-3"} ${className}`}
           {...rest}
         />
         {trailingIcon && (
@@ -32,7 +32,7 @@ const Input = forwardRef(function Input(
     );
   }
 
-  return <input ref={ref} className={`${base} ${state} ${className}`} {...rest} />;
+  return <input ref={ref} className={`${base} ${state} px-3 ${className}`} {...rest} />;
 });
 
 const Textarea = forwardRef(function Textarea(
