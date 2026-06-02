@@ -14,17 +14,17 @@ const Input = forwardRef(function Input(
     return (
       <div className="relative w-full">
         {leadingIcon && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted pointer-events-none">
+          <span className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center text-brand-muted pointer-events-none z-10">
             {leadingIcon}
           </span>
         )}
         <input
           ref={ref}
-          className={`${base} ${state} ${leadingIcon ? "pl-9" : ""} ${trailingIcon ? "pr-9" : ""} ${className}`}
+          className={`${base} ${state} ${leadingIcon ? "pl-10" : ""} ${trailingIcon ? "pr-10" : ""} ${className}`}
           {...rest}
         />
         {trailingIcon && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted">
+          <span className="absolute right-0 top-0 bottom-0 w-10 flex items-center justify-center text-brand-muted z-10">
             {trailingIcon}
           </span>
         )}
