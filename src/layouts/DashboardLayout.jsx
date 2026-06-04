@@ -195,7 +195,7 @@ export default function DashboardLayout() {
         >
           <img
             src="/images/lms-white.png"
-            className={sidebarOpen ? "w-32 object-contain" : "w-8 object-contain"}
+            className={sidebarOpen ? "w-40 object-contain" : "w-8 object-contain"}
             alt="Brand Logo"
           />
         </div>

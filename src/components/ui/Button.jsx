@@ -40,7 +40,6 @@ const Button = forwardRef(function Button(
   },
   ref
 ) {
-  const isDisabled = disabled || loading;
   const base =
     "inline-flex items-center justify-center font-semibold select-none outline-none transition-colors transition-shadow duration-250 ease-smooth disabled:opacity-60 disabled:cursor-not-allowed";
   const classes = [
@@ -48,6 +47,7 @@ const Button = forwardRef(function Button(
     VARIANTS[variant] || VARIANTS.primary,
     SIZES[size] || SIZES.md,
     fullWidth ? "w-full" : "",
+    loading ? "pointer-events-none cursor-wait" : "",
     className,
   ]
     .filter(Boolean)
@@ -58,9 +58,9 @@ const Button = forwardRef(function Button(
       ref={ref}
       type={type}
       onClick={onClick}
-      disabled={isDisabled}
-      whileHover={isDisabled ? undefined : { y: -1 }}
-      whileTap={isDisabled ? undefined : { scale: 0.97 }}
+      disabled={disabled}
+      whileHover={disabled || loading ? undefined : { y: -1 }}
+      whileTap={disabled || loading ? undefined : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 420, damping: 28 }}
       className={classes}
       {...rest}

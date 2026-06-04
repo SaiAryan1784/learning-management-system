@@ -68,22 +68,38 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-charcoal relative overflow-hidden">
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="fixed inset-0 w-full h-full object-cover opacity-20 pointer-events-none"
-      >
-        <source src="/images/rl-bnr.mp4" type="video/mp4" />
-      </video>
+      <style>{`
+        @keyframes orb-drift-1 {
+          0%, 100% { transform: translate(0px, 0px); }
+          33%       { transform: translate(40px, -60px); }
+          66%       { transform: translate(-30px, 30px); }
+        }
+        @keyframes orb-drift-2 {
+          0%, 100% { transform: translate(0px, 0px); }
+          40%       { transform: translate(-50px, 40px); }
+          70%       { transform: translate(30px, -30px); }
+        }
+        @keyframes orb-drift-3 {
+          0%, 100% { transform: translate(0px, 0px); }
+          50%       { transform: translate(20px, 50px); }
+        }
+      `}</style>
+
+      {/* Background orbs */}
+      <div style={{ position:"fixed", top:"-15%", left:"-10%", width:"550px", height:"550px", borderRadius:"50%", background:"radial-gradient(circle, rgba(16,185,129,0.13) 0%, transparent 70%)", filter:"blur(48px)", animation:"orb-drift-1 28s ease-in-out infinite", pointerEvents:"none" }} />
+      <div style={{ position:"fixed", bottom:"-20%", right:"-8%", width:"650px", height:"650px", borderRadius:"50%", background:"radial-gradient(circle, rgba(16,185,129,0.09) 0%, transparent 70%)", filter:"blur(64px)", animation:"orb-drift-2 35s ease-in-out infinite", pointerEvents:"none" }} />
+      <div style={{ position:"fixed", top:"30%", right:"5%", width:"380px", height:"380px", borderRadius:"50%", background:"radial-gradient(circle, rgba(44,44,46,0.9) 0%, transparent 70%)", filter:"blur(56px)", animation:"orb-drift-3 22s ease-in-out infinite", pointerEvents:"none" }} />
 
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-sm mx-4 bg-surface rounded-2xl border border-brand-border p-8 shadow-floating"
+        className="relative z-10 w-full max-w-md mx-4 bg-surface rounded-3xl border border-brand-border shadow-floating overflow-hidden"
       >
+        {/* Top accent strip */}
+        <div className="h-1 w-full bg-gradient-to-r from-emerald to-emerald-hover" />
+
+        <div className="px-10 py-10">
         <img
           src="/images/lms.png"
           className="w-40 mx-auto mb-2 block"
@@ -204,6 +220,7 @@ export default function Register() {
             Login
           </Link>
         </p>
+        </div>
       </motion.div>
     </div>
   );

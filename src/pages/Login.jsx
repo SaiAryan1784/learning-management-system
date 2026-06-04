@@ -142,7 +142,7 @@ export default function Login() {
                 trailingIcon={
                   <button
                     type="button"
-                    className="text-brand-muted hover:text-charcoal transition-colors p-1"
+                    className="text-brand-muted hover:text-charcoal transition-colors border-0 bg-transparent outline-none"
                     onClick={() => setShowPwd((s) => !s)}
                     tabIndex={-1}
                   >
