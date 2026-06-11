@@ -4,6 +4,7 @@ import api from "../../api/api";
 import toastr from "toastr";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  useDraggable, useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext, useSortable, verticalListSortingStrategy,
@@ -34,6 +35,49 @@ const upsertBlock = (setBlocks, newBlock) => {
     return [...prev, newBlock];
   });
 };
+
+function DraggableSidebarField({ field, inCanvas, onAdd }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: "sidebar-" + field.id,
+    data: { fromSidebar: true, fieldId: field.id },
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      type="button"
+      style={{ opacity: isDragging ? 0.45 : 1, cursor: "grab" }}
+      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors select-none ${
+        inCanvas
+          ? "border-emerald bg-emerald/5 text-emerald"
+          : "border-brand-border text-brand-muted hover:border-emerald/40 hover:text-emerald/70"
+      }`}
+      onClick={() => onAdd(field.id)}
+    >
+      <i className={`fa-solid ${field.icon} text-[11px]`}></i>
+      {field.label}
+    </button>
+  );
+}
+
+function CanvasDropZone() {
+  const { setNodeRef, isOver } = useDroppable({ id: "canvas-drop" });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
+        isOver ? "border-emerald bg-emerald/5" : "border-brand-border"
+      }`}
+    >
+      <i className={`fa-solid fa-hand-pointer text-2xl mb-2 block ${isOver ? "text-emerald" : "text-brand-muted"}`}></i>
+      <p className={`text-sm ${isOver ? "text-emerald font-semibold" : "text-brand-muted"}`}>
+        {isOver ? "Drop here to add" : "Click or drag fields from the right to add them here"}
+      </p>
+    </div>
+  );
+}
 
 function SortableItem({ id, renderField, onRemove }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } = useSortable({ id });
@@ -92,10 +136,29 @@ export default function ModuleLessons() {
 
   function handleDragEnd(event) {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over) return;
+
+    if (active.data.current?.fromSidebar) {
+      const fieldId = active.data.current.fieldId;
+      if (canvasFields.includes(fieldId)) return;
+      if (over.id === "canvas-drop" || !canvasFields.includes(over.id)) {
+        setCanvasFields((prev) => [...prev, fieldId]);
+      } else {
+        const overIndex = canvasFields.indexOf(over.id);
+        setCanvasFields((prev) => {
+          const next = [...prev];
+          next.splice(overIndex, 0, fieldId);
+          return next;
+        });
+      }
+      return;
+    }
+
+    if (active.id === over.id) return;
     const items = [...canvasFields];
     const oldIndex = items.indexOf(active.id);
     const newIndex = items.indexOf(over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
     items.splice(oldIndex, 1);
     items.splice(newIndex, 0, active.id);
     setCanvasFields(items);
@@ -310,12 +373,7 @@ export default function ModuleLessons() {
                 </SortableContext>
               </DndContext>
 
-              {canvasFields.length === 0 && (
-                <div className="border-2 border-dashed border-brand-border rounded-xl p-12 text-center">
-                  <i className="fa-solid fa-hand-pointer text-brand-muted text-2xl mb-2 block"></i>
-                  <p className="text-brand-muted text-sm">Click fields on the right to add them here</p>
-                </div>
-              )}
+              {canvasFields.length === 0 && <CanvasDropZone />}
 
               {canvasFields.length > 0 && (
                 <button
@@ -330,32 +388,26 @@ export default function ModuleLessons() {
 
           {/* Sidebar */}
           <div className="w-52 flex-shrink-0">
-            <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-3">Fields</p>
+            <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Fields</p>
+            <p className="text-[10px] text-brand-muted mb-3">Click or drag into canvas</p>
             <div className="space-y-2">
               {sidebarFields.map((field) => (
-                <button
+                <DraggableSidebarField
                   key={field.id}
-                  type="button"
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${
-                    canvasFields.includes(field.id)
-                      ? "border-emerald bg-emerald/5 text-emerald"
-                      : "border-brand-border text-brand-muted hover:border-emerald/40 hover:text-emerald/70"
-                  }`}
-                  onClick={() => {
-                    if (!canvasFields.includes(field.id)) {
-                      setCanvasFields((prev) => [...prev, field.id]);
+                  field={field}
+                  inCanvas={canvasFields.includes(field.id)}
+                  onAdd={(id) => {
+                    if (!canvasFields.includes(id)) {
+                      setCanvasFields((prev) => [...prev, id]);
                     }
-                    if (["video", "image", "pdf", "text"].includes(field.id)) {
-                      setSelectedType(field.id);
-                      setForm((prev) => ({ ...prev, type: field.id, publicUrl: "", textContent: "" }));
+                    if (["video", "image", "pdf", "text"].includes(id)) {
+                      setSelectedType(id);
+                      setForm((prev) => ({ ...prev, type: id, publicUrl: "", textContent: "" }));
                       setFilePreview("");
                       setUploadedFileName("");
                     }
                   }}
-                >
-                  <i className={`fa-solid ${field.icon} text-[11px]`}></i>
-                  {field.label}
-                </button>
+                />
               ))}
             </div>
           </div>

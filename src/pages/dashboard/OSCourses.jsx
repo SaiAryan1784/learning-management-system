@@ -471,6 +471,15 @@ export default function CourseManager() {
     );
   }
 
+  const openAddForm = () => {
+    if (dtRef.current) { dtRef.current.destroy(); dtRef.current = null; }
+    setEditId(null);
+    setForm({ title: "", description: "", categoryIds: [], status: "draft", assessments: [] });
+    setView("form");
+  };
+
+  const filteredCount = courses.filter((c) => c.status === activeTab).length;
+
   /* LIST VIEW */
   return (
     <div className="space-y-5">
@@ -479,12 +488,7 @@ export default function CourseManager() {
           variant="primary"
           size="sm"
           leadingIcon={<i className="fa-solid fa-plus text-xs" />}
-          onClick={() => {
-            if (dtRef.current) { dtRef.current.destroy(); dtRef.current = null; }
-            setEditId(null);
-            setForm({ title: "", description: "", categoryIds: [], status: "draft", assessments: [] });
-            setView("form");
-          }}
+          onClick={openAddForm}
         >
           Add Course
         </Button>
@@ -511,19 +515,67 @@ export default function CourseManager() {
         ))}
       </div>
 
-      <TableContainer>
-        <table ref={tableRef} width="100%">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </TableContainer>
+      {filteredCount === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center justify-center py-20 bg-surface border border-brand-border rounded-xl text-center"
+        >
+          <div className="w-16 h-16 rounded-full bg-emerald/10 flex items-center justify-center mb-4">
+            <i className="fa-solid fa-book-open text-emerald text-2xl" />
+          </div>
+          <h3 className="text-lg font-semibold text-brand-text mb-1">
+            No {activeTab} courses yet
+          </h3>
+          <p className="text-sm text-brand-muted mb-6 max-w-xs">
+            {activeTab === "published"
+              ? "Publish a draft course to see it here."
+              : "Create your first course to get started."}
+          </p>
+          {activeTab === "draft" && (
+            <Button
+              variant="primary"
+              size="md"
+              leadingIcon={<i className="fa-solid fa-plus" />}
+              onClick={openAddForm}
+            >
+              Create your first course
+            </Button>
+          )}
+        </motion.div>
+      )}
+
+      {/* Table always in DOM so DataTable can initialize; hidden when empty */}
+      <div className={filteredCount === 0 ? "hidden" : ""}>
+        <TableContainer>
+          <table ref={tableRef} width="100%">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </TableContainer>
+      </div>
+
+      {/* Floating Action Button */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 28, delay: 0.2 }}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
+        onClick={openAddForm}
+        className="fixed bottom-8 right-8 z-50 flex items-center gap-2.5 bg-emerald hover:bg-emerald-hover text-white font-semibold text-sm px-5 py-3 rounded-full shadow-floating transition-colors"
+        aria-label="Add new course"
+      >
+        <i className="fa-solid fa-plus text-base" />
+        New Course
+      </motion.button>
     </div>
   );
 }

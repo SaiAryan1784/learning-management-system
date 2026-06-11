@@ -49,6 +49,9 @@ const ComplianceSettings = lazy(() => import("./pages/compliance/ComplianceSetti
 const CompliancePolicies = lazy(() => import("./pages/compliance/CompliancePolicies"));
 const RunAssignments     = lazy(() => import("./pages/compliance/RunAssignments"));
 
+/* ── Settings ────────────────────────────────────────── */
+const BrandSettings = lazy(() => import("./pages/dashboard/BrandSettings"));
+
 /* ── Reports ──────────────────────────────────────────── */
 const ComplianceOverview     = lazy(() => import("./pages/reports/ComplianceOverview"));
 const StaffComplianceReports = lazy(() => import("./pages/reports/StaffComplianceReports"));
@@ -149,6 +152,9 @@ function AppContent() {
           <Route path="reports/audit-trail"        element={<PermissionRoute><AuditTrail /></PermissionRoute>} />
           <Route path="reports/notification-logs"  element={<PermissionRoute><NotificationLogs /></PermissionRoute>} />
           <Route path="reports/certificate-expiry" element={<PermissionRoute><CertificateExpiry /></PermissionRoute>} />
+
+          {/* Settings */}
+          <Route path="settings" element={<PermissionRoute><BrandSettings /></PermissionRoute>} />
         </Route>
 
       </Routes>

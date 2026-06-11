@@ -186,19 +186,8 @@ export default function DashboardLayout() {
         className="sticky top-0 h-screen flex flex-col overflow-y-auto overflow-x-hidden bg-charcoal flex-shrink-0"
         style={{ scrollbarWidth: "thin", scrollbarColor: "#3A3A3C #1C1C1E" }}
       >
-        {/* Logo */}
-        <div
-          className={[
-            "flex items-center px-3 py-4 border-b border-charcoal-light",
-            sidebarOpen ? "justify-start gap-3" : "justify-center",
-          ].join(" ")}
-        >
-          <img
-            src="/images/lms-white.png"
-            className={sidebarOpen ? "w-40 object-contain" : "w-8 object-contain"}
-            alt="Brand Logo"
-          />
-        </div>
+        {/* Sidebar top spacer (logo removed — now in topbar) */}
+        <div className="h-14 border-b border-charcoal-light flex-shrink-0" />
 
         {/* Nav Items */}
         <div className="flex-1 px-2 py-3">
@@ -224,6 +213,9 @@ export default function DashboardLayout() {
               {reportsMenu.map((item) => (
                 <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
               ))}
+
+              <SectionLabel>System</SectionLabel>
+              <NavItem to="/dashboard/settings" icon="fa-gear" label="Settings" />
             </>
           )}
 
@@ -241,7 +233,7 @@ export default function DashboardLayout() {
       <div className="flex-1 min-w-0 flex flex-col bg-canvas">
 
         {/* TOPBAR */}
-        <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-brand-border h-14 flex items-center px-4 gap-2 flex-shrink-0">
+        <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-brand-border h-14 flex items-center px-4 gap-3 flex-shrink-0">
 
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -251,6 +243,13 @@ export default function DashboardLayout() {
           >
             <i className="fa-solid fa-bars text-sm"></i>
           </motion.button>
+
+          {/* Logo — visible on all screen sizes, prominent in header */}
+          <img
+            src="/images/lms-logo.png"
+            className="h-9 object-contain flex-shrink-0"
+            alt="Brand Logo"
+          />
 
           <div className="flex-1" />
 

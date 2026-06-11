@@ -8,9 +8,15 @@
    legacy CSS rules below stay in sync.
    ================================================ */
 :root {
+  /* Brand primary — space-separated RGB for Tailwind alpha-value compatibility */
+  --brand-primary:       16 185 129;   /* #10B981 emerald default */
+  --brand-primary-dark:  5 150 105;    /* #059669 emerald hover  */
+  --brand-primary-light: 209 250 229;  /* #D1FAE5 emerald light  */
+
   --color-charcoal: #1C1C1E;
   --color-charcoal-light: #2C2C2E;
   --color-charcoal-muted: #3A3A3C;
+  /* Legacy hex vars kept for any var(--color-emerald) usages; updated by BrandContext */
   --color-emerald: #10B981;
   --color-emerald-hover: #059669;
   --color-emerald-light: #D1FAE5;
