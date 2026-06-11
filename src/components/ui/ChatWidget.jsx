@@ -144,13 +144,13 @@ export default function ChatWidget() {
                   className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ring-emerald/30"
                   style={{ background: "linear-gradient(135deg, #10B981 0%, #059669 100%)" }}
                 >
-                  AI
+                  L
                 </div>
                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-charcoal bg-emerald" />
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-white leading-tight">LMS Assistant</p>
+                <p className="text-sm font-semibold text-white leading-tight">Lucy</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald animate-pulse" />
                   <span className="text-[11px] text-white/50">Online · Powered by Groq</span>
@@ -182,9 +182,9 @@ export default function ChatWidget() {
                     boxShadow: "0 0 24px rgba(16,185,129,0.35)",
                   }}
                 >
-                  AI
+                  L
                 </div>
-                <p className="mb-1 text-sm font-semibold text-brand-text">LMS Assistant</p>
+                <p className="mb-1 text-sm font-semibold text-brand-text">Lucy</p>
                 <p className="mb-5 px-4 text-xs text-brand-muted leading-relaxed">
                   Ask me about courses, progress, certificates, compliance, or team performance.
                 </p>
@@ -245,7 +245,7 @@ export default function ChatWidget() {
                         className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
                         style={{ background: "linear-gradient(135deg, #10B981 0%, #059669 100%)" }}
                       >
-                        AI
+                        L
                       </div>
                       <div
                         className="max-w-[82%] rounded-2xl rounded-bl-sm border border-brand-border bg-surface px-3.5 py-2.5 text-sm leading-relaxed text-brand-text whitespace-pre-wrap"
@@ -268,7 +268,7 @@ export default function ChatWidget() {
                     className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
                     style={{ background: "linear-gradient(135deg, #10B981 0%, #059669 100%)" }}
                   >
-                    AI
+                    L
                   </div>
                   <div
                     className="rounded-2xl rounded-bl-sm border border-brand-border bg-surface px-4 py-3"
@@ -322,7 +322,7 @@ export default function ChatWidget() {
       {/* ── FAB Toggle Button ── */}
       <button
         onClick={() => setOpen((v) => !v)}
-        title={open ? "Close chat" : "Open LMS Assistant"}
+        title={open ? "Close chat" : "Chat with Lucy"}
         className={`flex h-14 w-14 items-center justify-center rounded-full text-white shadow-xl transition-all duration-300 hover:scale-110 ${
           open ? "ring-2 ring-emerald/40" : ""
         }`}
