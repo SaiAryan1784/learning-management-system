@@ -53,12 +53,6 @@ function BrandPanel() {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center text-center px-16 py-12 max-w-lg">
-        <img
-          src="/images/lms-white.png"
-          className="h-12 object-contain mb-10"
-          alt="Logo"
-        />
-
         <h2 className="text-3xl font-bold text-white leading-tight mb-4">
           Your workforce<br />learning platform
         </h2>
@@ -98,7 +92,7 @@ export default function AuthLayout({ children }) {
         </div>
 
         {/* Form — vertically centered */}
-        <div className="flex-1 flex flex-col justify-center px-8 lg:px-14 py-10">
+        <div className="flex-1 flex flex-col justify-center px-8 lg:px-14 py-6">
           <div className="w-full max-w-sm mx-auto lg:mx-0">
             {children}
           </div>

@@ -7,11 +7,11 @@ import { Button } from "../components/ui";
 import AuthLayout from "../components/ui/AuthLayout";
 
 const inputClass =
-  "w-full px-4 py-2.5 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent transition-colors";
+  "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent transition-colors";
 
 function FieldLabel({ children, required }) {
   return (
-    <label className="block text-sm font-semibold text-brand-text mb-1.5">
+    <label className="block text-sm font-semibold text-brand-text mb-1">
       {children}
       {required && <span className="text-brand-danger ml-1">*</span>}
     </label>
@@ -25,9 +25,9 @@ const STEPS = [
 
 function StepIndicator({ current }) {
   return (
-    <div className="flex items-center gap-0 mb-8">
+    <div className="flex items-start gap-0 mb-5">
       {STEPS.map((s, i) => (
-        <div key={s.n} className="flex items-center">
+        <div key={s.n} className="flex items-start">
           <div className="flex flex-col items-center">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
@@ -54,7 +54,7 @@ function StepIndicator({ current }) {
           </div>
           {i < STEPS.length - 1 && (
             <div
-              className={`h-0.5 w-16 mx-2 mb-5 rounded-full transition-colors ${
+              className={`h-0.5 w-16 mx-2 mt-4 rounded-full transition-colors ${
                 current > s.n ? "bg-emerald" : "bg-brand-border"
               }`}
             />
@@ -136,14 +136,14 @@ export default function Register() {
         <StepIndicator current={step} />
 
         {/* Heading */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-brand-text tracking-tight">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-brand-text tracking-tight">
             {step === 1 ? "Create an account" : "Set up workspace"}
           </h1>
-          <p className="text-sm text-brand-muted mt-2">
+          <p className="text-sm text-brand-muted mt-1">
             {step === 1
               ? "Enter your work email to get started"
-              : `Verify your email and set up your organisation`}
+              : "Verify your email and set up your organisation"}
           </p>
         </div>
 
@@ -183,19 +183,21 @@ export default function Register() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="space-y-4"
+              className="space-y-3"
             >
               <div>
                 <FieldLabel required>OTP</FieldLabel>
                 <input
                   type="text"
                   name="otp"
-                  placeholder="Enter the code sent to your email"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  placeholder="6-digit code"
                   value={form.otp}
                   onChange={handleChange}
                   className={inputClass}
                 />
-                <p className="text-xs text-brand-muted mt-1">Sent to {form.email}</p>
+                <p className="text-xs text-brand-muted mt-0.5">Sent to {form.email}</p>
               </div>
 
               <div>
@@ -203,6 +205,7 @@ export default function Register() {
                 <input
                   type="text"
                   name="organizationName"
+                  autoComplete="organization"
                   placeholder="Acme Inc."
                   value={form.organizationName}
                   onChange={handleChange}
@@ -215,6 +218,7 @@ export default function Register() {
                 <input
                   type="text"
                   name="ownerName"
+                  autoComplete="name"
                   placeholder="Jane Doe"
                   value={form.ownerName}
                   onChange={handleChange}
@@ -228,6 +232,7 @@ export default function Register() {
                   <input
                     type={showPwd ? "text" : "password"}
                     name="password"
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     value={form.password}
                     onChange={handleChange}
@@ -263,7 +268,7 @@ export default function Register() {
         </AnimatePresence>
 
         {/* Footer */}
-        <p className="text-sm text-brand-muted text-center mt-8">
+        <p className="text-sm text-brand-muted text-center mt-5">
           Already have an account?{" "}
           <Link
             to="/login"
