@@ -7,7 +7,7 @@ import { SectionLoader } from "../../components/ui/Spinner";
 
 export default function LocationsView() {
   const [locations, setLocations] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { isSuperAdmin } = useAuth();
 
   const loadLocations = async () => {

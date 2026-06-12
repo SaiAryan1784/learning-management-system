@@ -5,7 +5,7 @@ import App from './App'
 import "toastr/build/toastr.min.css";
 import toastr from "toastr";
 import './css/style.css'
-import "datatables.net";
+import "./utils/datatables-setup";
 import { BrandProvider } from './contexts/BrandContext';
 
 toastr.options = {

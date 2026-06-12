@@ -5,6 +5,27 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SectionLoader } from "../components/ui/Spinner";
 import ChatWidget from "../components/ui/ChatWidget";
 
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "Just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return "Yesterday";
+  if (d < 7) return `${d}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function notifIcon(type) {
+  if (!type) return { icon: "fa-bell", bg: "bg-blue-100", color: "text-blue-500" };
+  if (type.includes("assign")) return { icon: "fa-user-plus", bg: "bg-emerald/10", color: "text-emerald" };
+  if (type.includes("expir") || type.includes("certif")) return { icon: "fa-clock", bg: "bg-amber-100", color: "text-amber-500" };
+  if (type.includes("compli")) return { icon: "fa-shield-halved", bg: "bg-violet-100", color: "text-violet-500" };
+  return { icon: "fa-bell", bg: "bg-blue-100", color: "text-blue-500" };
+}
+
 export default function DashboardLayout() {
   const { logout, user, access, loading } = useAuth();
   const navigate = useNavigate();
@@ -111,7 +132,7 @@ export default function DashboardLayout() {
       {({ isActive }) => (
         <div
           className={[
-            "relative flex items-center gap-3 rounded-lg px-3 py-2.5 mb-1 transition-colors duration-200 overflow-hidden",
+            "relative flex items-center gap-3 rounded-lg px-3 py-3 mb-0.5 transition-colors duration-200 overflow-hidden",
             sidebarOpen ? "" : "justify-center",
             isActive ? "text-white" : "text-white/60 hover:bg-white/10 hover:text-white",
           ].join(" ")}
@@ -123,7 +144,7 @@ export default function DashboardLayout() {
               transition={{ type: "spring", stiffness: 400, damping: 32 }}
             />
           )}
-          <i className={`fa-solid ${icon} text-base flex-shrink-0 relative z-10`}></i>
+          <i className={`fa-solid ${icon} text-[15px] flex-shrink-0 relative z-10`}></i>
           <AnimatePresence initial={false}>
             {sidebarOpen && (
               <motion.span
@@ -132,7 +153,7 @@ export default function DashboardLayout() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -6 }}
                 transition={{ duration: 0.18 }}
-                className="text-xs font-medium tracking-wide uppercase whitespace-nowrap overflow-hidden text-ellipsis relative z-10 min-w-0"
+                className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis relative z-10 min-w-0"
               >
                 {label}
               </motion.span>
@@ -149,7 +170,7 @@ export default function DashboardLayout() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1 mt-5 mb-2"
+        className="text-xs font-semibold text-white/40 px-1 mt-5 mb-1.5"
       >
         {children}
       </motion.h3>
@@ -186,7 +207,7 @@ export default function DashboardLayout() {
         className="sticky top-0 h-screen flex flex-col overflow-y-auto overflow-x-hidden bg-charcoal flex-shrink-0"
         style={{ scrollbarWidth: "thin", scrollbarColor: "#3A3A3C #1C1C1E" }}
       >
-        {/* Sidebar top spacer (logo removed — now in topbar) */}
+        {/* Sidebar top spacer (logo in topbar) */}
         <div className="h-14 border-b border-charcoal-light flex-shrink-0" />
 
         {/* Nav Items */}
@@ -244,10 +265,10 @@ export default function DashboardLayout() {
             <i className="fa-solid fa-bars text-sm"></i>
           </motion.button>
 
-          {/* Logo — visible on all screen sizes, prominent in header */}
+          {/* Logo */}
           <img
             src="/images/lms-logo.png"
-            className="h-9 object-contain flex-shrink-0"
+            className="h-11 object-contain flex-shrink-0"
             alt="Brand Logo"
           />
 
@@ -257,7 +278,7 @@ export default function DashboardLayout() {
           <div className="relative" ref={notifRef}>
             <motion.button
               whileTap={{ scale: 0.92 }}
-              className="relative flex items-center justify-center w-9 h-9 rounded-lg text-brand-muted hover:bg-brand-border/60 hover:text-brand-text transition-colors"
+              className="relative flex items-center justify-center w-9 h-9 rounded-lg text-brand-muted hover:bg-brand-border/60 hover:text-brand-text transition-colors outline-none focus:outline-none"
               onClick={(e) => {
                 e.preventDefault();
                 setOpen(!open);
@@ -292,12 +313,18 @@ export default function DashboardLayout() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.97 }}
                   transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute top-full right-0 mt-2 w-80 bg-surface border border-brand-border rounded-xl shadow-floating z-50 overflow-hidden origin-top-right"
+                  className="absolute top-full right-0 mt-2 w-96 bg-surface border border-brand-border rounded-xl shadow-floating z-50 overflow-hidden origin-top-right"
                 >
+                  {/* Header */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border">
-                    <span className="text-xs font-bold text-brand-text uppercase tracking-wide">
-                      Notifications
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-brand-text">Notifications</span>
+                      {unreadCount > 0 && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-danger text-white">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
                     {notifications.length > 0 && (
                       <button
                         className="text-xs font-semibold text-emerald hover:text-emerald-hover transition-colors"
@@ -307,33 +334,56 @@ export default function DashboardLayout() {
                       </button>
                     )}
                   </div>
+
+                  {/* List */}
                   <div className="max-h-80 overflow-y-auto divide-y divide-brand-border">
                     {notifications.length === 0 && (
-                      <div className="text-center py-8 px-4">
-                        <div className="w-10 h-10 rounded-full bg-canvas flex items-center justify-center mx-auto mb-2">
-                          <i className="fa-regular fa-bell text-brand-muted text-sm" />
+                      <div className="text-center py-10 px-4">
+                        <div className="w-12 h-12 rounded-full bg-canvas flex items-center justify-center mx-auto mb-3">
+                          <i className="fa-regular fa-bell-slash text-brand-muted text-lg" />
                         </div>
-                        <p className="text-xs text-brand-muted uppercase tracking-wide">
-                          You're all caught up
-                        </p>
+                        <p className="text-sm font-medium text-brand-text mb-1">All caught up</p>
+                        <p className="text-xs text-brand-muted">No new notifications right now</p>
                       </div>
                     )}
-                    {notifications.map((n, i) => (
-                      <motion.button
-                        key={n._id}
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.03, duration: 0.18 }}
-                        className="w-full text-left px-4 py-3 hover:bg-canvas transition-colors block"
-                        onClick={() => markAsRead(n._id)}
-                      >
-                        <p className="text-xs font-semibold text-brand-text">{n.title}</p>
-                        <p className="text-xs text-brand-muted mt-0.5 leading-relaxed">{n.message}</p>
-                        <p className="text-[10px] text-brand-muted/60 mt-1">
-                          {new Date(n.createdAt).toLocaleString()}
-                        </p>
-                      </motion.button>
-                    ))}
+                    {notifications.map((n, i) => {
+                      const isUnread = !n.readAt;
+                      const { icon, bg, color } = notifIcon(n.type);
+                      return (
+                        <motion.button
+                          key={n._id}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.03, duration: 0.18 }}
+                          className={`w-full text-left px-4 py-3 hover:bg-canvas transition-colors flex items-start gap-3 ${isUnread ? "bg-emerald/[0.03] border-l-2 border-emerald" : ""}`}
+                          onClick={() => markAsRead(n._id)}
+                        >
+                          <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                            <i className={`fa-solid ${icon} text-[11px] ${color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={`text-xs font-semibold text-brand-text leading-snug ${isUnread ? "font-bold" : ""}`}>{n.title}</p>
+                              {isUnread && <span className="w-2 h-2 rounded-full bg-emerald flex-shrink-0 mt-1" />}
+                            </div>
+                            <p className="text-xs text-brand-muted mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
+                            <p className="text-[10px] text-brand-muted/60 mt-1">{timeAgo(n.createdAt)}</p>
+                          </div>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="border-t border-brand-border px-4 py-2.5">
+                    <NavLink
+                      to="/dashboard/reports/notification-logs"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald hover:text-emerald-hover transition-colors no-underline"
+                    >
+                      View all notifications
+                      <i className="fa-solid fa-arrow-right text-[10px]" />
+                    </NavLink>
                   </div>
                 </motion.div>
               )}
@@ -344,13 +394,13 @@ export default function DashboardLayout() {
           <div className="relative" ref={profileRef}>
             <motion.button
               whileTap={{ scale: 0.96 }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-brand-border/60 transition-colors"
+              className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-brand-border hover:border-emerald/40 hover:bg-emerald/5 transition-all outline-none focus:outline-none"
               onClick={() => setProfileOpen(!profileOpen)}
             >
               <div className="w-7 h-7 rounded-full bg-emerald flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 {user?.name?.[0]?.toUpperCase() || "U"}
               </div>
-              <span className="text-sm font-medium text-brand-text hidden sm:block max-w-[120px] truncate">
+              <span className="text-sm font-medium text-brand-text hidden sm:block max-w-[200px] truncate">
                 {user?.name || "User"}
               </span>
               <i className="fa-solid fa-chevron-down text-[10px] text-brand-muted"></i>
@@ -363,11 +413,11 @@ export default function DashboardLayout() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.97 }}
                   transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute top-full right-0 mt-1 bg-surface border border-brand-border rounded-xl shadow-floating w-44 z-50 overflow-hidden origin-top-right"
+                  className="absolute top-full right-0 mt-1 bg-surface border border-brand-border rounded-xl shadow-floating w-56 z-50 overflow-hidden origin-top-right"
                 >
                   <div className="px-4 py-3 border-b border-brand-border">
-                    <p className="text-xs font-semibold text-brand-text truncate">{user?.name || "User"}</p>
-                    <p className="text-[10px] text-brand-muted truncate">{user?.email || ""}</p>
+                    <p className="text-sm font-semibold text-brand-text">{user?.name || "User"}</p>
+                    <p className="text-xs text-brand-muted truncate mt-0.5">{user?.email || ""}</p>
                   </div>
                   <button
                     onClick={handleLogout}

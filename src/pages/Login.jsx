@@ -60,7 +60,7 @@ export default function Login() {
         className="space-y-0"
       >
         {/* Heading */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-3xl font-bold text-brand-text tracking-tight">
             Welcome back
           </h1>
@@ -134,6 +134,7 @@ export default function Login() {
             </label>
             <button
               type="button"
+              onClick={() => toastr.info("Password reset — coming soon")}
               className="text-sm font-semibold text-emerald hover:text-emerald-hover transition-colors bg-transparent border-0 outline-none cursor-pointer"
             >
               Forgot password?
@@ -173,7 +174,7 @@ export default function Login() {
         </motion.div>
 
         {/* Footer */}
-        <p className="text-sm text-brand-muted text-center mt-8">
+        <p className="text-sm text-brand-muted text-center mt-6">
           Don&apos;t have an account?{" "}
           <Link
             to="/register"

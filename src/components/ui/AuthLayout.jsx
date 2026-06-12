@@ -81,19 +81,19 @@ export default function AuthLayout({ children }) {
       {/* Left — form panel */}
       <div className="flex-1 lg:max-w-[50%] flex flex-col bg-surface">
         {/* Logo strip */}
-        <div className="px-8 lg:px-14 pt-8 pb-0">
+        <div className="px-10 lg:px-16 pt-8 pb-0">
           <Link to="/" className="inline-flex items-center gap-2.5 no-underline">
             <img
               src="/images/lms-logo.png"
-              className="h-8 object-contain"
+              className="h-14 object-contain"
               alt="Brand Logo"
             />
           </Link>
         </div>
 
         {/* Form — vertically centered */}
-        <div className="flex-1 flex flex-col justify-center px-8 lg:px-14 py-6">
-          <div className="w-full max-w-sm mx-auto lg:mx-0">
+        <div className="flex-1 flex flex-col justify-center px-10 lg:px-16 py-6">
+          <div className="w-full max-w-md mx-auto lg:mx-0">
             {children}
           </div>
         </div>
