@@ -4,7 +4,7 @@ import "datatables.net";
 $.extend($.fn.dataTable.defaults, {
   layout: {
     topStart: "search",
-    topEnd: "length",
+    topEnd: "pageLength",
     bottomStart: "info",
     bottomEnd: "paging",
   },

@@ -11,6 +11,7 @@ import {
   Input,
   FormField,
 } from "../../components/ui";
+import { SectionLoader } from "../../components/ui/Spinner";
 
 export default function OwnerLocations() {
   const [locations, setLocations] = useState([]);
@@ -18,9 +19,11 @@ export default function OwnerLocations() {
   const [editId, setEditId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const loadLocations = async () => {
     try {
+      setLoading(true);
       if ($.fn.DataTable.isDataTable("#locationsTable")) {
         $("#locationsTable").DataTable().destroy();
       }
@@ -29,6 +32,8 @@ export default function OwnerLocations() {
     } catch (err) {
       console.error("Error loading locations:", err);
       toastr.error("Failed to load locations.", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,6 +113,8 @@ export default function OwnerLocations() {
         </Link>
       </PageHeader>
 
+      {loading && <SectionLoader />}
+      <div className={loading ? "hidden" : ""}>
       <TableContainer>
         <table id="locationsTable" width="100%">
           <thead>
@@ -142,6 +149,7 @@ export default function OwnerLocations() {
           </tbody>
         </table>
       </TableContainer>
+      </div>
 
       <Modal
         isOpen={openPop}
