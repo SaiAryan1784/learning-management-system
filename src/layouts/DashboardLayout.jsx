@@ -211,8 +211,17 @@ export default function DashboardLayout() {
         className="sticky top-0 h-screen flex flex-col overflow-y-auto overflow-x-hidden bg-charcoal flex-shrink-0"
         style={{ scrollbarWidth: "thin", scrollbarColor: "#3A3A3C #1C1C1E" }}
       >
-        {/* Sidebar top spacer (logo in topbar) */}
-        <div className="h-14 border-b border-charcoal-light flex-shrink-0" />
+        {/* Sidebar top — toggle button aligned with topbar height */}
+        <div className="h-14 border-b border-charcoal-light flex-shrink-0 flex items-center justify-center px-2">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="w-full flex items-center justify-center h-9 rounded-lg bg-white/8 hover:bg-emerald hover:text-white text-white/70 transition-all"
+            aria-label="Toggle sidebar"
+          >
+            <i className={`fa-solid ${sidebarOpen ? "fa-angles-left" : "fa-angles-right"} text-sm`} />
+          </motion.button>
+        </div>
 
         {/* Nav Items */}
         <div className="flex-1 px-2 py-3 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
@@ -253,31 +262,6 @@ export default function DashboardLayout() {
           )}
         </div>
 
-        {/* Sidebar toggle button — bottom */}
-        <div className="flex-shrink-0 border-t border-charcoal-light px-2 py-3">
-          <motion.button
-            whileTap={{ scale: 0.94 }}
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-white/50 hover:bg-white/10 hover:text-white transition-colors ${!sidebarOpen ? "justify-center" : ""}`}
-            aria-label="Toggle sidebar"
-          >
-            <i className={`fa-solid ${sidebarOpen ? "fa-angles-left" : "fa-angles-right"} text-[14px] flex-shrink-0`} />
-            <AnimatePresence initial={false}>
-              {sidebarOpen && (
-                <motion.span
-                  key="collapse-label"
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -6 }}
-                  transition={{ duration: 0.18 }}
-                  className="text-sm font-medium whitespace-nowrap"
-                >
-                  Collapse
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
-        </div>
       </motion.nav>
 
       {/* ================= MAIN CONTENT ================= */}
