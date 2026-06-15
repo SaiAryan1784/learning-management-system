@@ -1,12 +1,12 @@
 export function PageHeader({ title, subtitle, children }) {
   return (
-    <div className="flex items-center justify-between bg-charcoal rounded-xl px-5 py-4 mb-5">
+    <div className="flex items-center justify-between bg-charcoal rounded-xl px-6 py-5 mb-5">
       <div>
-        <h1 className="text-xl font-semibold text-white uppercase tracking-wide">
+        <h1 className="text-3xl font-extrabold text-white uppercase tracking-wide leading-tight">
           {title}
         </h1>
         {subtitle && (
-          <p className="text-sm text-white/60 mt-0.5">{subtitle}</p>
+          <p className="text-sm font-medium text-white/80 mt-1">{subtitle}</p>
         )}
       </div>
       {children && (

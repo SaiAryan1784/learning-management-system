@@ -109,10 +109,14 @@ export default function StaffDashboard() {
     <div className="space-y-6">
       <PageHeader title="My Dashboard" subtitle="Track your learning progress and achievements">
         {summary && (
-          <span className="text-3xl font-bold text-white tabular-nums">
-            {summary.completedCourses || 0}
-            <span className="text-sm font-normal text-white/60 ml-1">completed</span>
-          </span>
+          <div className="text-right">
+            <div className="text-5xl font-black text-white tabular-nums leading-none">
+              {summary.completedCourses || 0}
+            </div>
+            <div className="text-xs font-semibold text-emerald uppercase tracking-widest mt-1">
+              courses completed
+            </div>
+          </div>
         )}
       </PageHeader>
 
