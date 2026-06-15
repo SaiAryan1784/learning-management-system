@@ -38,6 +38,7 @@ export default function DashboardLayout() {
   const [prevUnread, setPrevUnread] = useState(0);
   const [bellPulse, setBellPulse] = useState(false);
   const [open, setOpen] = useState(false);
+  const [notifFilter, setNotifFilter] = useState("all");
 
   const notifRef = useRef();
   const profileRef = useRef();
@@ -307,86 +308,124 @@ export default function DashboardLayout() {
             </motion.button>
 
             <AnimatePresence>
-              {open && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute top-full right-0 mt-2 w-96 bg-surface border border-brand-border rounded-xl shadow-floating z-50 overflow-hidden origin-top-right"
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-brand-text">Notifications</span>
-                      {unreadCount > 0 && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-danger text-white">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </div>
-                    {notifications.length > 0 && (
-                      <button
-                        className="text-xs font-semibold text-emerald hover:text-emerald-hover transition-colors"
-                        onClick={markAllAsRead}
-                      >
-                        Mark all read
-                      </button>
-                    )}
-                  </div>
-
-                  {/* List */}
-                  <div className="max-h-80 overflow-y-auto divide-y divide-brand-border">
-                    {notifications.length === 0 && (
-                      <div className="text-center py-10 px-4">
-                        <div className="w-12 h-12 rounded-full bg-canvas flex items-center justify-center mx-auto mb-3">
-                          <i className="fa-regular fa-bell-slash text-brand-muted text-lg" />
+              {open && (() => {
+                const filtered = notifFilter === "unread"
+                  ? notifications.filter(n => !n.readAt)
+                  : notifications;
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    className="absolute top-full right-0 mt-2 w-[380px] bg-surface border border-brand-border/60 rounded-2xl shadow-2xl z-50 overflow-hidden origin-top-right"
+                  >
+                    {/* Header */}
+                    <div className="px-4 pt-4 pb-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[15px] font-bold text-brand-text tracking-tight">Notifications</span>
+                          {unreadCount > 0 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald text-white">
+                              {unreadCount}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-sm font-medium text-brand-text mb-1">All caught up</p>
-                        <p className="text-xs text-brand-muted">No new notifications right now</p>
+                        {notifications.length > 0 && (
+                          <button
+                            onClick={markAllAsRead}
+                            className="flex items-center gap-1 text-[11px] font-medium text-brand-muted hover:text-brand-text transition-colors outline-none focus:outline-none"
+                          >
+                            <i className="fa-solid fa-check-double text-[10px]" />
+                            Mark all read
+                          </button>
+                        )}
                       </div>
-                    )}
-                    {notifications.map((n, i) => {
-                      const isUnread = !n.readAt;
-                      const { icon, bg, color } = notifIcon(n.type);
-                      return (
-                        <motion.button
-                          key={n._id}
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.03, duration: 0.18 }}
-                          className={`w-full text-left px-4 py-3 hover:bg-canvas transition-colors flex items-start gap-3 ${isUnread ? "bg-emerald/[0.03] border-l-2 border-emerald" : ""}`}
-                          onClick={() => markAsRead(n._id)}
-                        >
-                          <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                            <i className={`fa-solid ${icon} text-[11px] ${color}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className={`text-xs font-semibold text-brand-text leading-snug ${isUnread ? "font-bold" : ""}`}>{n.title}</p>
-                              {isUnread && <span className="w-2 h-2 rounded-full bg-emerald flex-shrink-0 mt-1" />}
-                            </div>
-                            <p className="text-xs text-brand-muted mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
-                            <p className="text-[10px] text-brand-muted/60 mt-1">{timeAgo(n.createdAt)}</p>
-                          </div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
+                      {/* Filter tabs */}
+                      <div className="flex items-center gap-1 bg-canvas rounded-lg p-0.5">
+                        {["all", "unread"].map(f => (
+                          <button
+                            key={f}
+                            onClick={() => setNotifFilter(f)}
+                            className={`flex-1 py-1 text-[11px] font-semibold rounded-md transition-all capitalize outline-none focus:outline-none ${
+                              notifFilter === f
+                                ? "bg-surface text-brand-text shadow-sm"
+                                : "text-brand-muted hover:text-brand-text"
+                            }`}
+                          >
+                            {f === "unread" && unreadCount > 0 ? `Unread (${unreadCount})` : f.charAt(0).toUpperCase() + f.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-                  {/* Footer */}
-                  <div className="border-t border-brand-border px-4 py-2.5">
-                    <NavLink
-                      to="/dashboard/reports/notification-logs"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald hover:text-emerald-hover transition-colors no-underline"
-                    >
-                      View all notifications
-                      <i className="fa-solid fa-arrow-right text-[10px]" />
-                    </NavLink>
-                  </div>
-                </motion.div>
-              )}
+                    {/* List */}
+                    <div className="max-h-[340px] overflow-y-auto px-2 pb-2" style={{ scrollbarWidth: "thin", scrollbarColor: "#E5E7EB transparent" }}>
+                      {filtered.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                          <div className="w-14 h-14 rounded-2xl bg-canvas flex items-center justify-center mb-3">
+                            <i className="fa-regular fa-bell text-brand-muted text-xl" />
+                          </div>
+                          <p className="text-sm font-semibold text-brand-text mb-1">
+                            {notifFilter === "unread" ? "No unread notifications" : "All caught up"}
+                          </p>
+                          <p className="text-xs text-brand-muted leading-relaxed">
+                            {notifFilter === "unread" ? "Switch to All to see past notifications" : "You'll see new alerts here as they arrive"}
+                          </p>
+                        </div>
+                      )}
+                      {filtered.map((n, i) => {
+                        const isUnread = !n.readAt;
+                        const { icon, color } = notifIcon(n.type);
+                        return (
+                          <motion.button
+                            key={n._id}
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.025, duration: 0.16 }}
+                            onClick={() => markAsRead(n._id)}
+                            className={`w-full text-left rounded-xl px-3 py-3 flex items-start gap-3 transition-colors group outline-none focus:outline-none ${
+                              isUnread ? "bg-emerald/[0.05] hover:bg-emerald/[0.08]" : "hover:bg-canvas"
+                            }`}
+                          >
+                            {/* Icon */}
+                            <div className="relative flex-shrink-0 mt-0.5">
+                              <div className={`w-9 h-9 rounded-xl bg-emerald/10 flex items-center justify-center`}>
+                                <i className={`fa-solid ${icon} text-[12px] text-emerald`} />
+                              </div>
+                              {isUnread && (
+                                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald border-2 border-surface" />
+                              )}
+                            </div>
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className={`text-[13px] leading-snug text-brand-text ${isUnread ? "font-semibold" : "font-medium"}`}>
+                                  {n.title}
+                                </p>
+                                <span className="text-[10px] text-brand-muted/60 flex-shrink-0 mt-0.5">{timeAgo(n.createdAt)}</span>
+                              </div>
+                              <p className="text-[12px] text-brand-muted mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
+                            </div>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="border-t border-brand-border/60 px-4 py-3">
+                      <NavLink
+                        to="/dashboard/reports/notification-logs"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-center gap-1.5 text-[12px] font-semibold text-brand-muted hover:text-emerald transition-colors no-underline"
+                      >
+                        View all notifications
+                        <i className="fa-solid fa-arrow-right text-[10px]" />
+                      </NavLink>
+                    </div>
+                  </motion.div>
+                );
+              })()}
             </AnimatePresence>
           </div>
 
