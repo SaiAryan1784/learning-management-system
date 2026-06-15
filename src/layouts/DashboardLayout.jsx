@@ -20,12 +20,13 @@ function timeAgo(dateStr) {
 }
 
 function notifIcon(type) {
-  if (!type) return { icon: "fa-bell", bg: "bg-blue-100 dark:bg-blue-900/30", color: "text-blue-500", accent: "bg-blue-400" };
+  if (!type) return { icon: "fa-bell", bg: "bg-blue-500/10", color: "text-blue-400", accent: "bg-blue-400" };
   if (type.includes("assign")) return { icon: "fa-user-plus", bg: "bg-emerald/10", color: "text-emerald", accent: "bg-emerald" };
-  if (type.includes("expir") || type.includes("certif")) return { icon: "fa-clock", bg: "bg-amber-100", color: "text-amber-500", accent: "bg-amber-400" };
-  if (type.includes("compli")) return { icon: "fa-shield-halved", bg: "bg-violet-100", color: "text-violet-500", accent: "bg-violet-400" };
+  if (type.includes("expir") || type.includes("certif")) return { icon: "fa-clock", bg: "bg-amber-400/10", color: "text-amber-400", accent: "bg-amber-400" };
+  if (type.includes("compli")) return { icon: "fa-shield-halved", bg: "bg-violet-400/10", color: "text-violet-400", accent: "bg-violet-400" };
   if (type.includes("complet")) return { icon: "fa-circle-check", bg: "bg-emerald/10", color: "text-emerald", accent: "bg-emerald" };
-  return { icon: "fa-bell", bg: "bg-blue-100", color: "text-blue-500", accent: "bg-blue-400" };
+  if (type.includes("remind")) return { icon: "fa-bell-ring", bg: "bg-orange-400/10", color: "text-orange-400", accent: "bg-orange-400" };
+  return { icon: "fa-bell", bg: "bg-blue-500/10", color: "text-blue-400", accent: "bg-blue-400" };
 }
 
 export default function DashboardLayout() {
@@ -374,23 +375,27 @@ export default function DashboardLayout() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
                     transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute top-full right-0 mt-2 w-[400px] bg-surface border border-brand-border/60 rounded-2xl shadow-2xl z-50 overflow-hidden origin-top-right"
+                    className="absolute top-full right-0 mt-2 w-[420px] bg-surface border border-brand-border/60 rounded-2xl shadow-2xl z-50 overflow-hidden origin-top-right"
                   >
-                    {/* Header */}
-                    <div className="px-4 pt-4 pb-3 border-b border-brand-border/40">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[15px] font-bold text-brand-text tracking-tight">Notifications</span>
-                          {unreadCount > 0 && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-danger text-white">
-                              {unreadCount}
-                            </span>
-                          )}
+                    {/* Header — gradient accent strip */}
+                    <div className="relative px-4 pt-4 pb-3 border-b border-brand-border/40 overflow-hidden">
+                      <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.06) 0%, transparent 60%)" }} />
+                      <div className="relative flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-emerald/10 flex items-center justify-center">
+                            <i className="fa-solid fa-bell text-emerald text-[13px]" />
+                          </div>
+                          <div>
+                            <span className="text-[15px] font-bold text-brand-text tracking-tight block leading-tight">Notifications</span>
+                            {unreadCount > 0 && (
+                              <span className="text-[10px] text-brand-muted">{unreadCount} unread</span>
+                            )}
+                          </div>
                         </div>
                         {notifications.some(n => !n.readAt) && (
                           <button
                             onClick={markAllAsRead}
-                            className="flex items-center gap-1 text-[11px] font-medium text-brand-muted hover:text-emerald transition-colors outline-none focus:outline-none"
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-brand-muted hover:text-emerald hover:bg-emerald/8 transition-all outline-none focus:outline-none"
                           >
                             <i className="fa-solid fa-check-double text-[10px]" />
                             Mark all read
@@ -398,18 +403,23 @@ export default function DashboardLayout() {
                         )}
                       </div>
                       {/* Filter tabs */}
-                      <div className="flex items-center gap-1 bg-canvas rounded-lg p-0.5">
+                      <div className="relative flex items-center gap-1 bg-canvas rounded-lg p-0.5">
                         {["all", "unread"].map(f => (
                           <button
                             key={f}
                             onClick={() => setNotifFilter(f)}
-                            className={`flex-1 py-1 text-[11px] font-semibold rounded-md transition-all outline-none focus:outline-none ${
+                            className={`flex-1 py-1.5 text-[11px] font-semibold rounded-md transition-all outline-none focus:outline-none ${
                               notifFilter === f
                                 ? "bg-surface text-brand-text shadow-sm"
                                 : "text-brand-muted hover:text-brand-text"
                             }`}
                           >
-                            {f === "unread" && unreadCount > 0 ? `Unread (${unreadCount})` : f.charAt(0).toUpperCase() + f.slice(1)}
+                            {f === "unread" && unreadCount > 0 ? (
+                              <span className="flex items-center justify-center gap-1.5">
+                                Unread
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-brand-danger/90 text-white leading-none">{unreadCount}</span>
+                              </span>
+                            ) : f.charAt(0).toUpperCase() + f.slice(1)}
                           </button>
                         ))}
                       </div>
@@ -418,15 +428,22 @@ export default function DashboardLayout() {
                     {/* List */}
                     <div className="max-h-[380px] overflow-y-auto" style={{ scrollbarWidth: "thin", scrollbarColor: "#E5E7EB transparent" }}>
                       {filtered.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-14 px-4 text-center">
-                          <div className="w-16 h-16 rounded-2xl bg-canvas flex items-center justify-center mb-4 shadow-sm">
-                            <i className="fa-regular fa-bell-slash text-brand-muted text-2xl" />
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                          <div className="relative mb-4">
+                            <div className="w-16 h-16 rounded-2xl bg-emerald/5 border border-emerald/10 flex items-center justify-center">
+                              <i className="fa-regular fa-bell-slash text-brand-muted text-xl" />
+                            </div>
+                            {notifFilter === "unread" && (
+                              <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald flex items-center justify-center">
+                                <i className="fa-solid fa-check text-white text-[8px]" />
+                              </div>
+                            )}
                           </div>
-                          <p className="text-sm font-semibold text-brand-text mb-1">
-                            {notifFilter === "unread" ? "All caught up!" : "No notifications yet"}
+                          <p className="text-sm font-bold text-brand-text mb-1">
+                            {notifFilter === "unread" ? "You're all caught up!" : "No notifications yet"}
                           </p>
-                          <p className="text-xs text-brand-muted leading-relaxed max-w-[220px]">
-                            {notifFilter === "unread" ? "No unread alerts. Switch to All to see history." : "New alerts will appear here as they arrive."}
+                          <p className="text-xs text-brand-muted leading-relaxed max-w-[200px]">
+                            {notifFilter === "unread" ? "No unread alerts right now." : "Alerts will appear here as they arrive."}
                           </p>
                         </div>
                       ) : (
