@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
 import toastr from "toastr";
-import "toastr/build/toastr.min.css";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
 import { SectionLoader } from "../../components/ui/Spinner";

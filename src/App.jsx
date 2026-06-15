@@ -5,6 +5,7 @@ import useIdleLogout from "./pages/UserIdleLogout";
 import { PageLoader } from "./components/ui/Spinner";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { Toaster } from "sonner";
 
 /* ── Public pages ─────────────────────────────────────── */
 const Landing               = lazy(() => import("./pages/Landing"));
@@ -172,6 +173,20 @@ export default function App() {
       <BrowserRouter>
         <AppContent />
       </BrowserRouter>
+      <Toaster
+        position="top-right"
+        duration={3500}
+        richColors
+        closeButton
+        toastOptions={{
+          style: {
+            fontFamily: "inherit",
+            fontSize: "13px",
+            borderRadius: "12px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)",
+          },
+        }}
+      />
     </AuthProvider>
   );
 }
