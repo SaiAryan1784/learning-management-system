@@ -376,11 +376,11 @@ export default function ModuleLessons() {
       </div>
 
       {activeTab === "addLesson" && (
-        <div className="flex gap-5">
-          {/* Canvas */}
-          <div className="flex-1 min-w-0">
-            <form onSubmit={handleSubmit} className="space-y-0">
-              <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <div className="flex gap-5">
+            {/* Canvas */}
+            <div className="flex-1 min-w-0">
+              <form onSubmit={handleSubmit} className="space-y-0">
                 <CanvasDropZone empty={canvasFields.length === 0}>
                   <SortableContext items={canvasFields} strategy={verticalListSortingStrategy}>
                     {canvasFields.map((id) => (
@@ -394,53 +394,53 @@ export default function ModuleLessons() {
                   </SortableContext>
                 </CanvasDropZone>
 
-                <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
-                  {activeDragItem ? (
-                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-emerald bg-emerald/10 text-emerald text-xs font-semibold shadow-xl cursor-grabbing select-none">
-                      <i className={`fa-solid ${activeDragItem.icon} text-[11px]`} />
-                      {activeDragItem.label}
-                    </div>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
+                {canvasFields.length > 0 && (
+                  <button
+                    type="submit"
+                    className="mt-3 bg-emerald hover:bg-emerald-hover text-white font-semibold text-sm uppercase tracking-wide px-6 py-2.5 rounded-lg transition-colors"
+                  >
+                    {editId ? "Update Lesson" : "Save Lesson"}
+                  </button>
+                )}
+              </form>
+            </div>
 
-              {canvasFields.length > 0 && (
-                <button
-                  type="submit"
-                  className="mt-3 bg-emerald hover:bg-emerald-hover text-white font-semibold text-sm uppercase tracking-wide px-6 py-2.5 rounded-lg transition-colors"
-                >
-                  {editId ? "Update Lesson" : "Save Lesson"}
-                </button>
-              )}
-            </form>
-          </div>
-
-          {/* Sidebar */}
-          <div className="w-52 flex-shrink-0">
-            <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Fields</p>
-            <p className="text-[10px] text-brand-muted mb-3">Click or drag into canvas</p>
-            <div className="space-y-2">
-              {sidebarFields.map((field) => (
-                <DraggableSidebarField
-                  key={field.id}
-                  field={field}
-                  inCanvas={canvasFields.includes(field.id)}
-                  onAdd={(id) => {
-                    if (!canvasFields.includes(id)) {
-                      setCanvasFields((prev) => [...prev, id]);
-                    }
-                    if (["video", "image", "pdf", "text"].includes(id)) {
-                      setSelectedType(id);
-                      setForm((prev) => ({ ...prev, type: id, publicUrl: "", textContent: "" }));
-                      setFilePreview("");
-                      setUploadedFileName("");
-                    }
-                  }}
-                />
-              ))}
+            {/* Sidebar */}
+            <div className="w-52 flex-shrink-0">
+              <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Fields</p>
+              <p className="text-[10px] text-brand-muted mb-3">Click or drag into canvas</p>
+              <div className="space-y-2">
+                {sidebarFields.map((field) => (
+                  <DraggableSidebarField
+                    key={field.id}
+                    field={field}
+                    inCanvas={canvasFields.includes(field.id)}
+                    onAdd={(id) => {
+                      if (!canvasFields.includes(id)) {
+                        setCanvasFields((prev) => [...prev, id]);
+                      }
+                      if (["video", "image", "pdf", "text"].includes(id)) {
+                        setSelectedType(id);
+                        setForm((prev) => ({ ...prev, type: id, publicUrl: "", textContent: "" }));
+                        setFilePreview("");
+                        setUploadedFileName("");
+                      }
+                    }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+
+          <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
+            {activeDragItem ? (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-emerald bg-emerald/10 text-emerald text-xs font-semibold shadow-xl cursor-grabbing select-none">
+                <i className={`fa-solid ${activeDragItem.icon} text-[11px]`} />
+                {activeDragItem.label}
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {activeTab === "lessonList" && (
