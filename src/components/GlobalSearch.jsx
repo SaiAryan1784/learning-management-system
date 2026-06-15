@@ -76,10 +76,10 @@ export default function GlobalSearch() {
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-brand-border bg-canvas hover:border-emerald/40 focus-within:border-emerald/60 focus-within:bg-surface transition-all w-52 lg:w-64">
+      <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-brand-border/30 hover:bg-brand-border/50 focus-within:bg-surface focus-within:ring-1 focus-within:ring-emerald/40 transition-all w-56 lg:w-72">
         {loading
-          ? <i className="fa-solid fa-circle-notch animate-spin text-[11px] text-brand-muted" />
-          : <i className="fa-solid fa-magnifying-glass text-[11px] text-brand-muted" />
+          ? <i className="fa-solid fa-circle-notch animate-spin text-[11px] text-brand-muted flex-shrink-0" />
+          : <i className="fa-solid fa-magnifying-glass text-[11px] text-brand-muted flex-shrink-0" />
         }
         <input
           ref={inputRef}
@@ -91,7 +91,7 @@ export default function GlobalSearch() {
           className="flex-1 bg-transparent outline-none text-xs text-brand-text placeholder-brand-muted min-w-0"
         />
         {query && (
-          <button onClick={() => { setQuery(""); setResults(null); setOpen(false); }} className="text-brand-muted hover:text-brand-text transition-colors outline-none">
+          <button onClick={() => { setQuery(""); setResults(null); setOpen(false); }} className="text-brand-muted hover:text-brand-text transition-colors outline-none flex-shrink-0">
             <i className="fa-solid fa-xmark text-[10px]" />
           </button>
         )}
