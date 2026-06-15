@@ -88,7 +88,7 @@ export default function GlobalSearch() {
           onKeyDown={handleKey}
           onFocus={() => query.length >= 2 && setOpen(true)}
           placeholder="Search courses, staff…"
-          className="flex-1 bg-transparent outline-none text-xs text-brand-text placeholder-brand-muted min-w-0"
+          className="flex-1 bg-transparent outline-none border-0 text-xs text-brand-text placeholder-brand-muted min-w-0"
         />
         {query && (
           <button onClick={() => { setQuery(""); setResults(null); setOpen(false); }} className="text-brand-muted hover:text-brand-text transition-colors outline-none flex-shrink-0">

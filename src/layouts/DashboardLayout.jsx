@@ -215,7 +215,7 @@ export default function DashboardLayout() {
         <div className="h-14 border-b border-charcoal-light flex-shrink-0" />
 
         {/* Nav Items */}
-        <div className="flex-1 px-2 py-3">
+        <div className="flex-1 px-2 py-3 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
           <NavItem to="/dashboard" end icon="fa-house" label="Dashboard" />
 
           {isSuperAdmin && (
@@ -252,33 +252,54 @@ export default function DashboardLayout() {
             </>
           )}
         </div>
+
+        {/* Sidebar toggle button — bottom */}
+        <div className="flex-shrink-0 border-t border-charcoal-light px-2 py-3">
+          <motion.button
+            whileTap={{ scale: 0.94 }}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-white/50 hover:bg-white/10 hover:text-white transition-colors ${!sidebarOpen ? "justify-center" : ""}`}
+            aria-label="Toggle sidebar"
+          >
+            <i className={`fa-solid ${sidebarOpen ? "fa-angles-left" : "fa-angles-right"} text-[14px] flex-shrink-0`} />
+            <AnimatePresence initial={false}>
+              {sidebarOpen && (
+                <motion.span
+                  key="collapse-label"
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -6 }}
+                  transition={{ duration: 0.18 }}
+                  className="text-sm font-medium whitespace-nowrap"
+                >
+                  Collapse
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </div>
       </motion.nav>
 
       {/* ================= MAIN CONTENT ================= */}
       <div className="flex-1 min-w-0 flex flex-col bg-canvas">
 
         {/* TOPBAR */}
-        <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-brand-border h-14 flex items-center px-4 gap-3 flex-shrink-0">
+        <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-brand-border h-14 flex-shrink-0 grid grid-cols-[auto_1fr_auto] items-center px-4 gap-3">
 
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            className="flex items-center justify-center w-9 h-9 rounded-lg text-brand-muted hover:bg-brand-border/60 hover:text-brand-text transition-colors flex-shrink-0"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label="Toggle sidebar"
-          >
-            <i className="fa-solid fa-bars text-sm"></i>
-          </motion.button>
-
-          {/* Logo */}
+          {/* Left — logo */}
           <img
             src="/images/lms-logo.png"
             className="h-11 object-contain flex-shrink-0"
             alt="Brand Logo"
           />
 
-          <div className="flex-1 hidden md:block">
+          {/* Center — search */}
+          <div className="hidden md:flex justify-center">
             <GlobalSearch />
           </div>
+
+          {/* Right — bell + profile */}
+          <div className="flex items-center gap-2 justify-end">
 
           {/* Notification Bell */}
           <div className="relative" ref={notifRef}>
@@ -521,6 +542,8 @@ export default function DashboardLayout() {
               )}
             </AnimatePresence>
           </div>
+
+          </div>{/* end right wrapper */}
         </header>
 
         {/* PAGE CONTENT */}
