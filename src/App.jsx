@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import useIdleLogout from "./pages/UserIdleLogout";
 import { PageLoader } from "./components/ui/Spinner";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 /* ── Public pages ─────────────────────────────────────── */
 const Landing               = lazy(() => import("./pages/Landing"));
@@ -95,6 +96,7 @@ function AppContent() {
   });
 
   return (
+    <ErrorBoundary>
     <Suspense fallback={<PageLoader />}>
       <Routes>
 
@@ -159,6 +161,7 @@ function AppContent() {
 
       </Routes>
     </Suspense>
+    </ErrorBoundary>
   );
 }
 

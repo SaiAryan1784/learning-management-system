@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../../api/api";
@@ -10,6 +10,7 @@ import {
   Badge,
   EmptyState,
   SkeletonCard,
+  ProgressBar,
 } from "../../components/ui";
 
 function ProgressRing({ percent = 0, size = 56, stroke = 5 }) {
@@ -45,18 +46,19 @@ export default function StaffDashboard() {
   const [loading, setLoading] = useState(false);
   const [resumingId, setResumingId] = useState(null);
 
-  const fetchDashboard = useCallback(async () => {
+  const lastFetchRef = useRef(0);
+
+  const fetchDashboard = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
-      const res = await api.get("/progress/me/dashboard", {
-        params: { t: Date.now() },
-      });
+      if (!silent) setLoading(true);
+      const res = await api.get("/progress/me/dashboard");
+      lastFetchRef.current = Date.now();
       setSummary(res.data.summary);
       setCourses(res.data.courses);
     } catch (err) {
       console.error("Dashboard load failed", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -65,7 +67,11 @@ export default function StaffDashboard() {
   }, [fetchDashboard]);
 
   useEffect(() => {
-    const handleFocus = () => fetchDashboard();
+    const handleFocus = () => {
+      if (Date.now() - lastFetchRef.current > 60_000) {
+        fetchDashboard({ silent: true });
+      }
+    };
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
   }, [fetchDashboard]);
@@ -74,9 +80,7 @@ export default function StaffDashboard() {
     try {
       if (!course?.courseId || course.totalLessons === 0) return;
       setResumingId(course.courseId);
-      const res = await api.get(`/progress/courses/${course.courseId}/resume`, {
-        params: { t: Date.now() },
-      });
+      const res = await api.get(`/progress/courses/${course.courseId}/resume`);
       const lessonId = res.data?.resumeLesson?._id;
       if (!lessonId) return;
       navigate(`/dashboard/staff/course/${course.courseId}/lesson/${lessonId}`);
@@ -174,32 +178,41 @@ export default function StaffDashboard() {
                   transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <Card className="flex flex-col h-full" padded>
-                    <div className="flex items-start gap-3 mb-3">
-                      <ProgressRing percent={course.progressPercent} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <p className="text-body font-semibold text-brand-text leading-snug line-clamp-2">
-                            {course.title}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge tone={status.tone} dot size="sm">
-                            {status.label}
-                          </Badge>
-                          <span className="text-caption text-brand-muted">
-                            {course.completedLessons}/{course.totalLessons} lessons
-                          </span>
-                        </div>
-                      </div>
+                    {/* Title + status */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="text-body font-semibold text-brand-text leading-snug line-clamp-2 flex-1">
+                        {course.title}
+                      </p>
+                      <Badge tone={status.tone} dot size="sm" className="flex-shrink-0">
+                        {status.label}
+                      </Badge>
                     </div>
 
-                    {course.dueDate && (
-                      <p className="text-caption text-brand-muted mb-3">
-                        <i className="fa-regular fa-calendar mr-1.5" />
-                        Due {new Date(course.dueDate).toLocaleDateString()}
-                      </p>
-                    )}
+                    {/* Meta row */}
+                    <div className="flex items-center gap-3 text-caption text-brand-muted mb-3 flex-wrap">
+                      <span>
+                        <i className="fa-solid fa-book-open mr-1" />
+                        {course.completedLessons}/{course.totalLessons} lessons
+                      </span>
+                      {course.dueDate && (
+                        <span className={course.overdue ? "text-brand-danger font-medium" : ""}>
+                          <i className="fa-regular fa-calendar mr-1" />
+                          Due {new Date(course.dueDate).toLocaleDateString()}
+                          {course.overdue && " · Overdue"}
+                        </span>
+                      )}
+                    </div>
 
+                    {/* Progress bar */}
+                    <div className="mb-4">
+                      <ProgressBar
+                        percent={course.progressPercent}
+                        size="sm"
+                        showLabel
+                      />
+                    </div>
+
+                    {/* Actions */}
                     <div className="flex gap-2 mt-auto">
                       <Button
                         variant="primary"
@@ -209,6 +222,7 @@ export default function StaffDashboard() {
                         disabled={course.totalLessons === 0}
                         onClick={() => handleStartOrResume(course)}
                       >
+                        <i className="fa-solid fa-play mr-1.5 text-[10px]" />
                         {getButtonText(course)}
                       </Button>
                       {course.progressPercent === 100 && (

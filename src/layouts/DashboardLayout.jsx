@@ -1,8 +1,9 @@
 import { Outlet, useNavigate, NavLink, useLocation } from "react-router-dom";
+import GlobalSearch from "../components/GlobalSearch";
 import { useAuth } from "../auth/AuthContext";
 import { useEffect, useState, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SectionLoader } from "../components/ui/Spinner";
+import { PageLoader, SectionLoader } from "../components/ui/Spinner";
 import ChatWidget from "../components/ui/ChatWidget";
 
 function timeAgo(dateStr) {
@@ -19,11 +20,12 @@ function timeAgo(dateStr) {
 }
 
 function notifIcon(type) {
-  if (!type) return { icon: "fa-bell", bg: "bg-blue-100", color: "text-blue-500" };
-  if (type.includes("assign")) return { icon: "fa-user-plus", bg: "bg-emerald/10", color: "text-emerald" };
-  if (type.includes("expir") || type.includes("certif")) return { icon: "fa-clock", bg: "bg-amber-100", color: "text-amber-500" };
-  if (type.includes("compli")) return { icon: "fa-shield-halved", bg: "bg-violet-100", color: "text-violet-500" };
-  return { icon: "fa-bell", bg: "bg-blue-100", color: "text-blue-500" };
+  if (!type) return { icon: "fa-bell", bg: "bg-blue-100 dark:bg-blue-900/30", color: "text-blue-500", accent: "bg-blue-400" };
+  if (type.includes("assign")) return { icon: "fa-user-plus", bg: "bg-emerald/10", color: "text-emerald", accent: "bg-emerald" };
+  if (type.includes("expir") || type.includes("certif")) return { icon: "fa-clock", bg: "bg-amber-100", color: "text-amber-500", accent: "bg-amber-400" };
+  if (type.includes("compli")) return { icon: "fa-shield-halved", bg: "bg-violet-100", color: "text-violet-500", accent: "bg-violet-400" };
+  if (type.includes("complet")) return { icon: "fa-circle-check", bg: "bg-emerald/10", color: "text-emerald", accent: "bg-emerald" };
+  return { icon: "fa-bell", bg: "bg-blue-100", color: "text-blue-500", accent: "bg-blue-400" };
 }
 
 export default function DashboardLayout() {
@@ -116,7 +118,7 @@ export default function DashboardLayout() {
     }
   };
 
-  if (loading) return null;
+  if (loading) return <PageLoader />;
 
   const roleName = user?.role?.name?.trim().toLowerCase();
   const isSuperAdmin = user?.isPlatformAdmin === true;
@@ -273,7 +275,9 @@ export default function DashboardLayout() {
             alt="Brand Logo"
           />
 
-          <div className="flex-1" />
+          <div className="flex-1 hidden md:block">
+            <GlobalSearch />
+          </div>
 
           {/* Notification Bell */}
           <div className="relative" ref={notifRef}>
@@ -312,29 +316,81 @@ export default function DashboardLayout() {
                 const filtered = notifFilter === "unread"
                   ? notifications.filter(n => !n.readAt)
                   : notifications;
+
+                const today = new Date().toDateString();
+                const todayItems = filtered.filter(n => new Date(n.createdAt).toDateString() === today);
+                const earlierItems = filtered.filter(n => new Date(n.createdAt).toDateString() !== today);
+
+                const NotifItem = ({ n, i }) => {
+                  const isUnread = !n.readAt;
+                  const { icon, bg, color, accent } = notifIcon(n.type);
+                  return (
+                    <motion.button
+                      key={n._id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.02, duration: 0.15 }}
+                      onClick={() => markAsRead(n._id)}
+                      className={`relative w-full text-left rounded-xl px-3 py-3 flex items-start gap-3 transition-all group outline-none focus:outline-none overflow-hidden ${
+                        isUnread ? "bg-emerald/[0.04] hover:bg-emerald/[0.07]" : "hover:bg-canvas"
+                      }`}
+                    >
+                      {/* Left accent bar for unread */}
+                      {isUnread && (
+                        <span className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-full ${accent}`} />
+                      )}
+                      {/* Type icon */}
+                      <div className="relative flex-shrink-0 mt-0.5 ml-1">
+                        <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center`}>
+                          <i className={`fa-solid ${icon} text-[12px] ${color}`} />
+                        </div>
+                        {isUnread && (
+                          <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${accent} border-2 border-surface`} />
+                        )}
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={`text-[13px] leading-snug text-brand-text ${isUnread ? "font-semibold" : "font-medium"}`}>
+                            {n.title}
+                          </p>
+                          <span className="text-[10px] text-brand-muted/60 flex-shrink-0 mt-0.5 whitespace-nowrap">{timeAgo(n.createdAt)}</span>
+                        </div>
+                        <p className="text-[12px] text-brand-muted mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
+                      </div>
+                      {/* Mark-read hover action */}
+                      {isUnread && (
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5 text-[10px] font-semibold text-brand-muted hover:text-emerald">
+                          <i className="fa-solid fa-check" />
+                        </span>
+                      )}
+                    </motion.button>
+                  );
+                };
+
                 return (
                   <motion.div
                     initial={{ opacity: 0, y: -8, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
                     transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute top-full right-0 mt-2 w-[380px] bg-surface border border-brand-border/60 rounded-2xl shadow-2xl z-50 overflow-hidden origin-top-right"
+                    className="absolute top-full right-0 mt-2 w-[400px] bg-surface border border-brand-border/60 rounded-2xl shadow-2xl z-50 overflow-hidden origin-top-right"
                   >
                     {/* Header */}
-                    <div className="px-4 pt-4 pb-3">
+                    <div className="px-4 pt-4 pb-3 border-b border-brand-border/40">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <span className="text-[15px] font-bold text-brand-text tracking-tight">Notifications</span>
                           {unreadCount > 0 && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald text-white">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-danger text-white">
                               {unreadCount}
                             </span>
                           )}
                         </div>
-                        {notifications.length > 0 && (
+                        {notifications.some(n => !n.readAt) && (
                           <button
                             onClick={markAllAsRead}
-                            className="flex items-center gap-1 text-[11px] font-medium text-brand-muted hover:text-brand-text transition-colors outline-none focus:outline-none"
+                            className="flex items-center gap-1 text-[11px] font-medium text-brand-muted hover:text-emerald transition-colors outline-none focus:outline-none"
                           >
                             <i className="fa-solid fa-check-double text-[10px]" />
                             Mark all read
@@ -347,7 +403,7 @@ export default function DashboardLayout() {
                           <button
                             key={f}
                             onClick={() => setNotifFilter(f)}
-                            className={`flex-1 py-1 text-[11px] font-semibold rounded-md transition-all capitalize outline-none focus:outline-none ${
+                            className={`flex-1 py-1 text-[11px] font-semibold rounded-md transition-all outline-none focus:outline-none ${
                               notifFilter === f
                                 ? "bg-surface text-brand-text shadow-sm"
                                 : "text-brand-muted hover:text-brand-text"
@@ -360,60 +416,39 @@ export default function DashboardLayout() {
                     </div>
 
                     {/* List */}
-                    <div className="max-h-[340px] overflow-y-auto px-2 pb-2" style={{ scrollbarWidth: "thin", scrollbarColor: "#E5E7EB transparent" }}>
-                      {filtered.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                          <div className="w-14 h-14 rounded-2xl bg-canvas flex items-center justify-center mb-3">
-                            <i className="fa-regular fa-bell text-brand-muted text-xl" />
+                    <div className="max-h-[380px] overflow-y-auto" style={{ scrollbarWidth: "thin", scrollbarColor: "#E5E7EB transparent" }}>
+                      {filtered.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-14 px-4 text-center">
+                          <div className="w-16 h-16 rounded-2xl bg-canvas flex items-center justify-center mb-4 shadow-sm">
+                            <i className="fa-regular fa-bell-slash text-brand-muted text-2xl" />
                           </div>
                           <p className="text-sm font-semibold text-brand-text mb-1">
-                            {notifFilter === "unread" ? "No unread notifications" : "All caught up"}
+                            {notifFilter === "unread" ? "All caught up!" : "No notifications yet"}
                           </p>
-                          <p className="text-xs text-brand-muted leading-relaxed">
-                            {notifFilter === "unread" ? "Switch to All to see past notifications" : "You'll see new alerts here as they arrive"}
+                          <p className="text-xs text-brand-muted leading-relaxed max-w-[220px]">
+                            {notifFilter === "unread" ? "No unread alerts. Switch to All to see history." : "New alerts will appear here as they arrive."}
                           </p>
                         </div>
+                      ) : (
+                        <div className="px-2 py-2 space-y-0.5">
+                          {todayItems.length > 0 && (
+                            <>
+                              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest px-3 pt-1 pb-1.5">Today</p>
+                              {todayItems.map((n, i) => <NotifItem key={n._id} n={n} i={i} />)}
+                            </>
+                          )}
+                          {earlierItems.length > 0 && (
+                            <>
+                              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest px-3 pt-2 pb-1.5">Earlier</p>
+                              {earlierItems.map((n, i) => <NotifItem key={n._id} n={n} i={i + todayItems.length} />)}
+                            </>
+                          )}
+                        </div>
                       )}
-                      {filtered.map((n, i) => {
-                        const isUnread = !n.readAt;
-                        const { icon, color } = notifIcon(n.type);
-                        return (
-                          <motion.button
-                            key={n._id}
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.025, duration: 0.16 }}
-                            onClick={() => markAsRead(n._id)}
-                            className={`w-full text-left rounded-xl px-3 py-3 flex items-start gap-3 transition-colors group outline-none focus:outline-none ${
-                              isUnread ? "bg-emerald/[0.05] hover:bg-emerald/[0.08]" : "hover:bg-canvas"
-                            }`}
-                          >
-                            {/* Icon */}
-                            <div className="relative flex-shrink-0 mt-0.5">
-                              <div className={`w-9 h-9 rounded-xl bg-emerald/10 flex items-center justify-center`}>
-                                <i className={`fa-solid ${icon} text-[12px] text-emerald`} />
-                              </div>
-                              {isUnread && (
-                                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald border-2 border-surface" />
-                              )}
-                            </div>
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <p className={`text-[13px] leading-snug text-brand-text ${isUnread ? "font-semibold" : "font-medium"}`}>
-                                  {n.title}
-                                </p>
-                                <span className="text-[10px] text-brand-muted/60 flex-shrink-0 mt-0.5">{timeAgo(n.createdAt)}</span>
-                              </div>
-                              <p className="text-[12px] text-brand-muted mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
-                            </div>
-                          </motion.button>
-                        );
-                      })}
                     </div>
 
                     {/* Footer */}
-                    <div className="border-t border-brand-border/60 px-4 py-3">
+                    <div className="border-t border-brand-border/40 px-4 py-3">
                       <NavLink
                         to="/dashboard/reports/notification-logs"
                         onClick={() => setOpen(false)}
@@ -439,7 +474,7 @@ export default function DashboardLayout() {
               <div className="w-7 h-7 rounded-full bg-emerald flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 {user?.name?.[0]?.toUpperCase() || "U"}
               </div>
-              <span className="text-sm font-medium text-brand-text hidden sm:block max-w-[200px] truncate">
+              <span className="text-sm font-medium text-brand-text hidden sm:block max-w-[280px]">
                 {user?.name || "User"}
               </span>
               <i className="fa-solid fa-chevron-down text-[10px] text-brand-muted"></i>
@@ -452,7 +487,7 @@ export default function DashboardLayout() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.97 }}
                   transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute top-full right-0 mt-1 bg-surface border border-brand-border rounded-xl shadow-floating w-56 z-50 overflow-hidden origin-top-right"
+                  className="absolute top-full right-0 mt-1 bg-surface border border-brand-border rounded-xl shadow-floating z-50 overflow-hidden origin-top-right min-w-full w-max"
                 >
                   <div className="px-4 py-3 border-b border-brand-border">
                     <p className="text-sm font-semibold text-brand-text">{user?.name || "User"}</p>
@@ -460,7 +495,7 @@ export default function DashboardLayout() {
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 w-full px-4 py-3 text-sm text-brand-danger hover:bg-brand-danger/5 transition-colors outline-none focus:outline-none"
+                    className="flex items-center gap-2 w-full px-4 py-3 text-sm text-brand-danger hover:bg-brand-danger/5 transition-colors outline-none focus:outline-none border-0 bg-transparent"
                   >
                     <i className="fa-solid fa-sign-out text-xs"></i>
                     Logout

@@ -12,3 +12,4 @@ export { PageHeader } from "./PageHeader";
 export { StatCard } from "./StatCard";
 export { TableContainer } from "./TableContainer";
 export { Spinner, PageLoader, SectionLoader } from "./Spinner";
+export { ProgressBar } from "./ProgressBar";

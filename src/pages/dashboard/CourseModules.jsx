@@ -139,10 +139,11 @@ export default function CourseModules() {
                       </button>
                       <Link
                         to={`/dashboard/courses/${courseId}/modules/${m._id}/lessons`}
-                        className={actionBtn}
-                        title="Add lessons"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-brand-border text-xs font-semibold text-brand-muted hover:border-emerald hover:text-emerald transition-colors"
+                        title="Manage lessons"
                       >
                         <i className="fa fa-list text-xs"></i>
+                        <span>Lessons</span>
                       </Link>
                     </div>
                   </td>

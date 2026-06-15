@@ -3,12 +3,10 @@ import { useParams } from "react-router-dom";
 import api from "../../api/api";
 import toastr from "toastr";
 import {
-  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
-  useDraggable, useDroppable,
+  DndContext, pointerWithin, PointerSensor, TouchSensor, KeyboardSensor,
+  useSensor, useSensors, useDraggable, useDroppable,
 } from "@dnd-kit/core";
-import {
-  SortableContext, useSortable, verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { sortableKeyboardCoordinates, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -62,19 +60,27 @@ function DraggableSidebarField({ field, inCanvas, onAdd }) {
   );
 }
 
-function CanvasDropZone() {
+function CanvasDropZone({ empty, children }) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas-drop" });
   return (
     <div
       ref={setNodeRef}
-      className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
-        isOver ? "border-emerald bg-emerald/5" : "border-brand-border"
+      className={`rounded-xl transition-colors ${
+        empty
+          ? `border-2 border-dashed p-12 text-center ${isOver ? "border-emerald bg-emerald/5" : "border-brand-border"}`
+          : `p-1 ${isOver ? "bg-emerald/5 ring-2 ring-emerald/30" : ""}`
       }`}
     >
-      <i className={`fa-solid fa-hand-pointer text-2xl mb-2 block ${isOver ? "text-emerald" : "text-brand-muted"}`}></i>
-      <p className={`text-sm ${isOver ? "text-emerald font-semibold" : "text-brand-muted"}`}>
-        {isOver ? "Drop here to add" : "Click or drag fields from the right to add them here"}
-      </p>
+      {empty ? (
+        <>
+          <i className={`fa-solid fa-hand-pointer text-2xl mb-2 block ${isOver ? "text-emerald" : "text-brand-muted"}`}></i>
+          <p className={`text-sm ${isOver ? "text-emerald font-semibold" : "text-brand-muted"}`}>
+            {isOver ? "Drop here to add" : "Click or drag fields from the right to add them here"}
+          </p>
+        </>
+      ) : (
+        children
+      )}
     </div>
   );
 }
@@ -124,7 +130,11 @@ export default function ModuleLessons() {
   const [loading, setLoading] = useState(false);
   const [canvasFields, setCanvasFields] = useState([]);
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
   const sidebarFields = [
     { id: "title", label: "Lesson Title", icon: "fa-heading" },
     { id: "video", label: "Add Video", icon: "fa-video" },
@@ -360,20 +370,20 @@ export default function ModuleLessons() {
           {/* Canvas */}
           <div className="flex-1 min-w-0">
             <form onSubmit={handleSubmit} className="space-y-0">
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={canvasFields} strategy={verticalListSortingStrategy}>
-                  {canvasFields.map((id) => (
-                    <SortableItem
-                      key={id}
-                      id={id}
-                      renderField={renderField}
-                      onRemove={(f) => setCanvasFields((prev) => prev.filter((x) => x !== f))}
-                    />
-                  ))}
-                </SortableContext>
+              <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+                <CanvasDropZone empty={canvasFields.length === 0}>
+                  <SortableContext items={canvasFields} strategy={verticalListSortingStrategy}>
+                    {canvasFields.map((id) => (
+                      <SortableItem
+                        key={id}
+                        id={id}
+                        renderField={renderField}
+                        onRemove={(f) => setCanvasFields((prev) => prev.filter((x) => x !== f))}
+                      />
+                    ))}
+                  </SortableContext>
+                </CanvasDropZone>
               </DndContext>
-
-              {canvasFields.length === 0 && <CanvasDropZone />}
 
               {canvasFields.length > 0 && (
                 <button

@@ -39,8 +39,10 @@ export default function StaffComplianceReport() {
       serverSide: true,
       ajax: async (data, callback) => {
         try {
+          const page = Math.floor(data.start / data.length) + 1;
+          const q = encodeURIComponent(data.search?.value || "");
           const res = await api.get(
-            `/reports/compliance/staff?format=json&page=${Math.floor(data.start / data.length) + 1}&limit=${data.length}`
+            `/reports/compliance/staff?format=json&page=${page}&limit=${data.length}&search=${q}`
           );
           callback({
             data: res.data.rows,

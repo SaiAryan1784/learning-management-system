@@ -5,6 +5,7 @@ import toastr from "toastr";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatCard } from "../../components/ui/StatCard";
 import { PageLoader } from "../../components/ui/Spinner";
+import { ProgressBar } from "../../components/ui/ProgressBar";
 
 export default function ManagerStaffDetails() {
   const { staffId } = useParams();
@@ -85,11 +86,8 @@ export default function ManagerStaffDetails() {
                   </div>
                   <span className="text-sm font-bold text-emerald">{percent}%</span>
                 </div>
-                <div className="h-1.5 bg-brand-border rounded-full overflow-hidden mb-3">
-                  <div
-                    className="h-full bg-emerald rounded-full transition-all duration-500"
-                    style={{ width: `${percent}%` }}
-                  />
+                <div className="mb-3">
+                  <ProgressBar percent={percent} size="sm" />
                 </div>
                 <button
                   className="text-xs font-semibold text-brand-muted border border-brand-border rounded-lg px-3 py-1.5 hover:border-emerald hover:text-emerald transition-colors"

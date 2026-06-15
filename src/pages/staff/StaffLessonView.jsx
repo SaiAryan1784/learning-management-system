@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../api/api";
 import { PageLoader } from "../../components/ui/Spinner";
-import { Button, Badge, Card } from "../../components/ui";
+import { Button, Badge, Card, ProgressBar } from "../../components/ui";
 
 export default function StaffLessonView() {
   const { courseId, lessonId } = useParams();
@@ -100,14 +100,7 @@ export default function StaffLessonView() {
             {progressPercent}%
           </Badge>
         </div>
-        <div className="h-1.5 bg-brand-border rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPercent}%` }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="h-full bg-emerald rounded-full"
-          />
-        </div>
+        <ProgressBar percent={progressPercent} size="sm" />
       </div>
 
       <Card padded>

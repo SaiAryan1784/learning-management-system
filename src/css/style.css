@@ -140,17 +140,10 @@ div.dt-container .dt-paging .dt-paging-button.disabled, div.dt-container .dt-pag
 .dash-container{background-color: #fff;padding:20px 0;position:sticky;top:0;z-index: 99;box-shadow:rgba(0, 0, 0, 0.08) 0px 6px 12px -4px, rgba(0, 0, 0, 0.08) 0px 1px 2px 0px, rgba(0, 0, 0, 0.32) 0px 0px 1px 0px}
 .inr-wp{display:flex;align-items:center;justify-content:space-between;}
 .main-img{width: 250px;}
-.logout-btn {background: color-mix(in srgb, #10B981, transparent 92%);text-align: center;font-family: 'Montserrat', sans-serif;color: #db767c;border:1px solid rgba(154, 154, 154, 0.3);padding: 10px;border-radius: 8px;display: block;width: max-content;transition: all .5s;position: relative;}
-.tooltiptext{ visibility: hidden;width: 120px;background-color: #fff;color: #1C1C1E;text-align: center;border-radius: 6px;padding: 5px 0;position: absolute;z-index: 1;bottom: 117%;left: 50%;margin-left: -60px;box-shadow: 0 0 1px rgba(0, 0, 0, .125), 0 1px 3px rgba(0, 0, 0, .2);}
-.tooltiptext::after {content: "";position: absolute;top: 100%;left: 50%;margin-left: -5px;border-width: 5px;border-style: solid;border-color: #fff transparent transparent transparent;}
-.logout-btn:hover .tooltiptext {visibility: visible;}
 .act-btns{display: flex;align-items: center;justify-content: center;gap:10px;}
-.logout-btn:hover{color:#fff;cursor: pointer;background:#10B981;transition: all .5s;}
 .frm-cntr{position:relative;background-color: #fff;padding:20px;border-radius: 12px;box-shadow:0 0 0 100000px rgba(0,0,0,.9);width: 50%;top: 10%;position: fixed;left: 0;right: 0;margin: 0 auto;display: none;z-index: 999;}
 .frm-cntr.open{display:block;}
-.frm-cntr.open .logout-btn{position: absolute;right: 20px;top: 10px;}
 .tp-sc{display: flex;align-items: center;justify-content: space-between;width:100%;}
-.tp-sc .logout-btn{position: relative;top: 5px;}
 .file-up{border: 2px dashed #999;text-align: center;padding:40px 20px;}
 .file-up:hover{border:2px dashed #fe5d70;cursor: pointer;}
 .file-up i{display: block;margin-bottom: 20px;}
