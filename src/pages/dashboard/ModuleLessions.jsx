@@ -4,9 +4,9 @@ import api from "../../api/api";
 import toastr from "toastr";
 import {
   DndContext, pointerWithin, PointerSensor, TouchSensor, KeyboardSensor,
-  useSensor, useSensors, useDraggable, useDroppable,
+  useSensor, useSensors, useDraggable, useDroppable, DragOverlay,
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { sortableKeyboardCoordinates, SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -90,7 +90,7 @@ function SortableItem({ id, renderField, onRemove }) {
   const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
-    <div ref={setNodeRef} style={style} className="border border-brand-border rounded-xl p-4 mb-3 bg-surface relative">
+    <div ref={setNodeRef} style={style} className="border border-brand-border rounded-xl p-5 mb-4 bg-surface relative">
       <div
         ref={setActivatorNodeRef}
         {...attributes}
@@ -129,6 +129,7 @@ export default function ModuleLessons() {
   const [activeTab, setActiveTab] = useState("addLesson");
   const [loading, setLoading] = useState(false);
   const [canvasFields, setCanvasFields] = useState([]);
+  const [activeDragItem, setActiveDragItem] = useState(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -144,17 +145,29 @@ export default function ModuleLessons() {
     { id: "order", label: "Display Order", icon: "fa-sort" },
   ];
 
+  function handleDragStart(event) {
+    const { active } = event;
+    if (active.data.current?.fromSidebar) {
+      const field = sidebarFields.find(f => f.id === active.data.current.fieldId);
+      setActiveDragItem(field || null);
+    } else {
+      const field = sidebarFields.find(f => f.id === String(active.id));
+      setActiveDragItem(field || { id: active.id, label: String(active.id), icon: "fa-grip-vertical" });
+    }
+  }
+
   function handleDragEnd(event) {
+    setActiveDragItem(null);
     const { active, over } = event;
     if (!over) return;
 
     if (active.data.current?.fromSidebar) {
       const fieldId = active.data.current.fieldId;
       if (canvasFields.includes(fieldId)) return;
-      if (over.id === "canvas-drop" || !canvasFields.includes(over.id)) {
+      if (over.id === "canvas-drop" || !canvasFields.includes(String(over.id))) {
         setCanvasFields((prev) => [...prev, fieldId]);
       } else {
-        const overIndex = canvasFields.indexOf(over.id);
+        const overIndex = canvasFields.indexOf(String(over.id));
         setCanvasFields((prev) => {
           const next = [...prev];
           next.splice(overIndex, 0, fieldId);
@@ -165,13 +178,10 @@ export default function ModuleLessons() {
     }
 
     if (active.id === over.id) return;
-    const items = [...canvasFields];
-    const oldIndex = items.indexOf(active.id);
-    const newIndex = items.indexOf(over.id);
+    const oldIndex = canvasFields.indexOf(String(active.id));
+    const newIndex = canvasFields.indexOf(String(over.id));
     if (oldIndex === -1 || newIndex === -1) return;
-    items.splice(oldIndex, 1);
-    items.splice(newIndex, 0, active.id);
-    setCanvasFields(items);
+    setCanvasFields(arrayMove(canvasFields, oldIndex, newIndex));
   }
 
   const loadLessons = async () => {
@@ -370,7 +380,7 @@ export default function ModuleLessons() {
           {/* Canvas */}
           <div className="flex-1 min-w-0">
             <form onSubmit={handleSubmit} className="space-y-0">
-              <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+              <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <CanvasDropZone empty={canvasFields.length === 0}>
                   <SortableContext items={canvasFields} strategy={verticalListSortingStrategy}>
                     {canvasFields.map((id) => (
@@ -383,6 +393,15 @@ export default function ModuleLessons() {
                     ))}
                   </SortableContext>
                 </CanvasDropZone>
+
+                <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
+                  {activeDragItem ? (
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-emerald bg-emerald/10 text-emerald text-xs font-semibold shadow-xl cursor-grabbing select-none">
+                      <i className={`fa-solid ${activeDragItem.icon} text-[11px]`} />
+                      {activeDragItem.label}
+                    </div>
+                  ) : null}
+                </DragOverlay>
               </DndContext>
 
               {canvasFields.length > 0 && (

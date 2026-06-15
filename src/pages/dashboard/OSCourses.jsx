@@ -107,10 +107,17 @@ export default function CourseManager() {
           data: null,
           orderable: false,
           render: (d) =>
+            `<button class="module-btn" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:7px;border:1px solid #10B981;color:#10B981;background:rgba(16,185,129,0.06);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+              <i class="fa-solid fa-layer-group" style="font-size:11px;"></i> Modules
+            </button>`,
+        },
+        {
+          data: null,
+          orderable: false,
+          render: (d) =>
             `<div style="display:flex;align-items:center;gap:4px;">
               ${actionBtnHtml("fa-edit", "edit-btn", "Edit")}
               ${d.status === "draft" ? actionBtnHtml("fa-check", "publish-btn", "Publish") : ""}
-              ${actionBtnHtml("fa-book", "module-btn", "Modules")}
               ${actionBtnHtml("fa-user-plus", "assign-btn", "Assign")}
             </div>`,
         },
