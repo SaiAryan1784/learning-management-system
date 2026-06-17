@@ -226,7 +226,7 @@ export default function DashboardLayout() {
         <button
           onClick={handleToggle}
           className={[
-            "relative group w-full flex items-center gap-3 rounded-lg px-3 py-3 mb-0.5 transition-colors duration-200",
+            "relative group w-full flex items-center gap-3 rounded-lg px-3 py-3 mb-0.5 transition-colors duration-200 bg-transparent border-0 outline-none cursor-pointer",
             sidebarOpen ? "overflow-hidden" : "overflow-visible justify-center",
             isAnyActive ? "text-white bg-emerald/20" : "text-white/40 hover:bg-white/10 hover:text-white/80",
           ].join(" ")}
