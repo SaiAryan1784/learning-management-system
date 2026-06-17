@@ -35,6 +35,7 @@ export default function DashboardLayout() {
   const location = useLocation();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [reportsOpen, setReportsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -136,9 +137,9 @@ export default function DashboardLayout() {
       {({ isActive }) => (
         <div
           className={[
-            "relative flex items-center gap-3 rounded-lg px-3 py-3 mb-0.5 transition-colors duration-200 overflow-hidden",
-            sidebarOpen ? "" : "justify-center",
-            isActive ? "text-white" : "text-white/60 hover:bg-white/10 hover:text-white",
+            "relative group flex items-center gap-3 rounded-lg px-3 py-3 mb-0.5 transition-colors duration-200",
+            sidebarOpen ? "overflow-hidden" : "overflow-visible justify-center",
+            isActive ? "text-white" : "text-white/40 hover:bg-white/10 hover:text-white/80",
           ].join(" ")}
         >
           {isActive && (
@@ -163,6 +164,11 @@ export default function DashboardLayout() {
               </motion.span>
             )}
           </AnimatePresence>
+          {!sidebarOpen && (
+            <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-gray-900 border border-white/10 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap z-50 pointer-events-none opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150">
+              {label}
+            </span>
+          )}
         </div>
       )}
     </NavLink>
@@ -185,7 +191,8 @@ export default function DashboardLayout() {
   const managementMenu = [
     { label: "Locations", icon: "fa-location-dot", path: "/dashboard/locations" },
     { label: "Staff", icon: "fa-users", path: "/dashboard/staff" },
-    { label: "Course Category", icon: "fa-book-open-reader", path: "/dashboard/course-categories" },
+    { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses" },
+    { label: "Categories", icon: "fa-layer-group", path: "/dashboard/course-categories" },
     { label: "Certificates", icon: "fa-certificate", path: "/dashboard/certificates" },
   ];
 
@@ -201,6 +208,81 @@ export default function DashboardLayout() {
     { label: "Notification Logs", icon: "fa-bell", path: "/dashboard/reports/notification-logs" },
     { label: "Audit Trail", icon: "fa-list", path: "/dashboard/reports/audit-trail" },
   ];
+
+  const ReportsNavGroup = () => {
+    const isAnyActive = reportsMenu.some((item) => location.pathname.startsWith(item.path));
+
+    const handleToggle = () => {
+      if (!sidebarOpen) {
+        setSidebarOpen(true);
+        setReportsOpen(true);
+      } else {
+        setReportsOpen((prev) => !prev);
+      }
+    };
+
+    return (
+      <div>
+        <button
+          onClick={handleToggle}
+          className={[
+            "relative group w-full flex items-center gap-3 rounded-lg px-3 py-3 mb-0.5 transition-colors duration-200",
+            sidebarOpen ? "overflow-hidden" : "overflow-visible justify-center",
+            isAnyActive ? "text-white bg-emerald/20" : "text-white/40 hover:bg-white/10 hover:text-white/80",
+          ].join(" ")}
+        >
+          <i className="fa-solid fa-chart-line text-[15px] flex-shrink-0 relative z-10" />
+          <AnimatePresence initial={false}>
+            {sidebarOpen && (
+              <motion.span
+                key="reports-label"
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -6 }}
+                transition={{ duration: 0.18 }}
+                className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis relative z-10 flex-1 text-left"
+              >
+                Reports
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <AnimatePresence initial={false}>
+            {sidebarOpen && (
+              <motion.i
+                key="chevron"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, rotate: reportsOpen ? 180 : 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fa-solid fa-chevron-down text-[10px] flex-shrink-0 relative z-10"
+              />
+            )}
+          </AnimatePresence>
+          {!sidebarOpen && (
+            <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-gray-900 border border-white/10 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap z-50 pointer-events-none opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150">
+              Reports
+            </span>
+          )}
+        </button>
+
+        <AnimatePresence initial={false}>
+          {reportsOpen && sidebarOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden pl-3 border-l border-white/10 ml-4"
+            >
+              {reportsMenu.map((item) => (
+                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -218,6 +300,7 @@ export default function DashboardLayout() {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="w-full flex items-center justify-center h-9 rounded-lg bg-white/8 hover:bg-emerald hover:text-white text-white/70 transition-all"
             aria-label="Toggle sidebar"
+            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
             <i className={`fa-solid ${sidebarOpen ? "fa-angles-left" : "fa-angles-right"} text-sm`} />
           </motion.button>
@@ -244,9 +327,7 @@ export default function DashboardLayout() {
               ))}
 
               <SectionLabel>Reports</SectionLabel>
-              {reportsMenu.map((item) => (
-                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
-              ))}
+              <ReportsNavGroup />
 
               <SectionLabel>System</SectionLabel>
               <NavItem to="/dashboard/settings" icon="fa-gear" label="Settings" />

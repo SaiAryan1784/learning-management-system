@@ -17,6 +17,7 @@ import {
 
 export default function CourseCategories() {
   const [categories, setCategories] = useState([]);
+  const [courseCounts, setCourseCounts] = useState({});
   const [form, setForm] = useState({ name: "", description: "" });
   const [editId, setEditId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
@@ -29,8 +30,21 @@ export default function CourseCategories() {
       if ($.fn.DataTable.isDataTable("#catTable")) {
         $("#catTable").DataTable().destroy();
       }
-      const res = await api.get("/course-categories?active=true&page=1&limit=20");
-      setCategories(res.data.categories || []);
+      const [catRes, courseRes] = await Promise.all([
+        api.get("/course-categories?active=true&page=1&limit=200"),
+        api.get("/courses?page=1&limit=200").catch(() => ({ data: { courses: [] } })),
+      ]);
+      const cats = catRes.data.categories || [];
+      const courses = courseRes.data.courses || [];
+      const counts = {};
+      courses.forEach((course) => {
+        (course.categories || []).forEach((cat) => {
+          const id = typeof cat === "object" ? cat._id : cat;
+          counts[id] = (counts[id] || 0) + 1;
+        });
+      });
+      setCategories(cats);
+      setCourseCounts(counts);
     } catch {
       toastr.error("Failed to load categories");
     } finally {
@@ -113,18 +127,24 @@ export default function CourseCategories() {
             <tr>
               <th>Name</th>
               <th>Description</th>
+              <th>Courses</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {categories.length === 0 ? (
-              <tr><td colSpan="4" className="text-center text-brand-muted py-8">No categories found</td></tr>
+              <tr><td colSpan="5" className="text-center text-brand-muted py-8">No categories found</td></tr>
             ) : (
               categories.map((c, i) => (
                 <tr key={`${c._id}-${i}`}>
                   <td>{c.name}</td>
                   <td>{c.description}</td>
+                  <td>
+                    <Badge tone="neutral" size="sm">
+                      {courseCounts[c._id] || 0} courses
+                    </Badge>
+                  </td>
                   <td>
                     <Badge tone={c.active ? "success" : "neutral"} dot size="sm">
                       {c.active ? "Active" : "Inactive"}

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
 import { motion } from "framer-motion";
 import api from "../../api/api";
 import {
@@ -40,6 +41,7 @@ function ProgressRing({ percent = 0, size = 56, stroke = 5 }) {
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [summary, setSummary] = useState(null);
   const [courses, setCourses] = useState([]);
@@ -107,18 +109,7 @@ export default function StaffDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My Dashboard" subtitle="Track your learning progress and achievements">
-        {summary && (
-          <div className="text-right">
-            <div className="text-5xl font-black text-white tabular-nums leading-none">
-              {summary.completedCourses || 0}
-            </div>
-            <div className="text-xs font-semibold text-emerald uppercase tracking-widest mt-1">
-              courses completed
-            </div>
-          </div>
-        )}
-      </PageHeader>
+      <PageHeader title="My Dashboard" subtitle="Track your learning progress and achievements" />
 
       {loading && !summary ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -248,15 +239,31 @@ export default function StaffDashboard() {
             })}
           </motion.div>
         </div>
-      ) : (
-        <Card padded={false}>
-          <EmptyState
-            icon={<i className="fa-solid fa-book-open" />}
-            title="No courses assigned yet"
-            description="Once your admin assigns courses, they will show up here so you can start learning."
-          />
-        </Card>
-      )}
+      ) : (() => {
+        const roleName = user?.role?.name?.trim().toLowerCase();
+        const isAdmin = roleName === "owner" || roleName === "admin";
+        return (
+          <Card padded={false}>
+            <EmptyState
+              icon={<i className="fa-solid fa-book-open" />}
+              title={isAdmin ? "No courses created yet" : "No courses assigned yet"}
+              description={
+                isAdmin
+                  ? "Create your first course and assign it to staff."
+                  : "Once your admin assigns courses, they will show up here so you can start learning."
+              }
+              action={
+                isAdmin ? (
+                  <Button variant="primary" size="sm" onClick={() => navigate("/dashboard/course-add")}>
+                    Create a Course
+                    <i className="fa-solid fa-arrow-right ml-1.5 text-xs" />
+                  </Button>
+                ) : null
+              }
+            />
+          </Card>
+        );
+      })()}
     </div>
   );
 }

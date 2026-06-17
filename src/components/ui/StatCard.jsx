@@ -28,8 +28,17 @@ function useCountUp(target) {
   return display;
 }
 
-export function StatCard({ icon, label, value, danger = false, trend = null }) {
+const TONE_CLASSES = {
+  default: { bg: "bg-emerald-muted", text: "text-emerald" },
+  info:    { bg: "bg-blue-100",       text: "text-blue-500" },
+  warning: { bg: "bg-amber-100",      text: "text-amber-500" },
+  danger:  { bg: "bg-brand-danger/10",text: "text-brand-danger" },
+  neutral: { bg: "bg-canvas",         text: "text-brand-muted" },
+};
+
+export function StatCard({ icon, label, value, danger = false, tone = "default", trend = null }) {
   const animated = useCountUp(value);
+  const { bg, text } = danger ? TONE_CLASSES.danger : (TONE_CLASSES[tone] ?? TONE_CLASSES.default);
 
   return (
     <motion.div
@@ -37,18 +46,8 @@ export function StatCard({ icon, label, value, danger = false, trend = null }) {
       transition={{ type: "spring", stiffness: 360, damping: 26 }}
       className="h-full bg-surface border border-brand-border rounded-xl p-5 flex items-center gap-4 shadow-soft hover:shadow-elevated transition-shadow duration-250 ease-smooth"
     >
-      <div
-        className={[
-          "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
-          danger ? "bg-brand-danger/10" : "bg-emerald-muted",
-        ].join(" ")}
-      >
-        <i
-          className={[
-            `fa-solid ${icon} text-base`,
-            danger ? "text-brand-danger" : "text-emerald",
-          ].join(" ")}
-        ></i>
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${bg}`}>
+        <i className={`fa-solid ${icon} text-base ${text}`}></i>
       </div>
       <div className="min-w-0">
         <p className="text-caption text-brand-muted uppercase tracking-wide">{label}</p>

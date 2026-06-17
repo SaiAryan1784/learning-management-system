@@ -5,15 +5,28 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import api from "../../api/api";
+import { useAuth } from "../../auth/AuthContext";
 import {
   PageHeader, StatCard, Card, Badge, Button, SkeletonCard, EmptyState, ProgressBar,
 } from "../../components/ui";
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatToday() {
+  return new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+}
 
 const EMERALD = "#10B981";
 const EMERALD_MUTED = "#6EE7B7";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const lastFetchRef = useRef(0);
 
   const [overview, setOverview] = useState(null);
@@ -49,16 +62,41 @@ export default function ManagerDashboard() {
     ? Math.round(staffData.reduce((a, s) => a + s.avgProgressPercent, 0) / staffData.length)
     : 0;
 
+  const firstName = user?.name?.split(" ")[0] || "there";
+
   return (
     <div className="space-y-8">
-      <PageHeader title="Owner Dashboard" subtitle="Organization-wide learning performance">
-        {overview && (
-          <span className="text-3xl font-bold text-white tabular-nums">
-            {overview.summary.totalUsers}
-            <span className="text-sm font-normal text-white/60 ml-1">users</span>
-          </span>
-        )}
-      </PageHeader>
+      <PageHeader
+        title={`${getGreeting()}, ${firstName}`}
+        subtitle={formatToday()}
+      />
+
+      {/* Quick Actions */}
+      <Card padded={false}>
+        <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
+          <Button
+            variant="primary" size="sm"
+            leadingIcon={<i className="fa-solid fa-plus text-xs" />}
+            onClick={() => navigate("/dashboard/course-add")}
+          >
+            Add Course
+          </Button>
+          <Button
+            variant="secondary" size="sm"
+            leadingIcon={<i className="fa-solid fa-user-plus text-xs" />}
+            onClick={() => navigate("/dashboard/staff")}
+          >
+            Invite Staff
+          </Button>
+          <Button
+            variant="ghost" size="sm"
+            leadingIcon={<i className="fa-solid fa-chart-line text-xs" />}
+            onClick={() => navigate("/dashboard/reports/compliance")}
+          >
+            View Reports
+          </Button>
+        </div>
+      </Card>
 
       {/* ── Org-wide stat cards ──────────────────────── */}
       {loading ? (
@@ -71,13 +109,13 @@ export default function ManagerDashboard() {
           className="grid grid-cols-2 lg:grid-cols-4 gap-4"
         >
           {[
-            { icon: "fa-users", label: "Total Users", value: overview.summary.totalUsers },
-            { icon: "fa-circle-dot", label: "Logged In Today", value: overview.summary.usersLoggedInToday },
-            { icon: "fa-book-open", label: "Total Courses", value: overview.summary.totalCourses },
-            { icon: "fa-circle-check", label: "Completions", value: overview.summary.coursesCompleted },
+            { icon: "fa-users",        label: "Total Users",      value: overview.summary.totalUsers,          tone: "info" },
+            { icon: "fa-circle-dot",   label: "Logged In Today",  value: overview.summary.usersLoggedInToday,  tone: "default" },
+            { icon: "fa-book-open",    label: "Total Courses",    value: overview.summary.totalCourses,        tone: "neutral" },
+            { icon: "fa-circle-check", label: "Completions",      value: overview.summary.coursesCompleted,    tone: "default" },
           ].map((s) => (
             <motion.div key={s.label} variants={fadeUp} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
-              <StatCard {...s} />
+              <StatCard {...s} tone={s.tone} />
             </motion.div>
           ))}
         </motion.div>

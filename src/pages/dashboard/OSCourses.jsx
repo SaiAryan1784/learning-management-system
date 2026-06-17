@@ -13,9 +13,16 @@ import { SectionLoader } from "../../components/ui/Spinner";
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
 
-const actionBtnHtml = (icon, cls, title) =>
-  `<button class="${cls} action-icon-btn" title="${title}" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;border:1px solid #E5E7EB;color:#6B7280;background:transparent;cursor:pointer;margin-right:4px;">
-    <i class="fa ${icon}" style="font-size:11px;"></i>
+const COURSE_COLORS = ["#10B981","#3B82F6","#8B5CF6","#F59E0B","#EF4444","#06B6D4","#EC4899","#F97316"];
+function getCourseColor(title = "") {
+  let h = 0;
+  for (let i = 0; i < title.length; i++) h = title.charCodeAt(i) + ((h << 5) - h);
+  return COURSE_COLORS[Math.abs(h) % COURSE_COLORS.length];
+}
+
+const labelBtn = (cls, icon, label, style) =>
+  `<button class="${cls} course-action-btn" title="${label}" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;${style}">
+    <i class="fa-solid ${icon}" style="font-size:10px;"></i>${label}
   </button>`;
 
 export default function CourseManager() {
@@ -40,6 +47,7 @@ export default function CourseManager() {
   const [openQuestions, setOpenQuestions] = useState({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [tableView, setTableView] = useState(() => localStorage.getItem("coursesViewPref") || "table");
 
   /* LOAD */
   const loadCategories = async () => {
@@ -83,7 +91,7 @@ export default function CourseManager() {
 
   /* DATATABLE */
   useEffect(() => {
-    if (view !== "list") return;
+    if (view !== "list" || tableView !== "table") return;
 
     const filtered = courses.filter((c) => c.status === activeTab);
 
@@ -107,18 +115,11 @@ export default function CourseManager() {
           data: null,
           orderable: false,
           render: (d) =>
-            `<button class="module-btn" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:7px;border:1px solid #10B981;color:#10B981;background:rgba(16,185,129,0.06);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
-              <i class="fa-solid fa-layer-group" style="font-size:11px;"></i> Modules
-            </button>`,
-        },
-        {
-          data: null,
-          orderable: false,
-          render: (d) =>
-            `<div style="display:flex;align-items:center;gap:4px;">
-              ${actionBtnHtml("fa-edit", "edit-btn", "Edit")}
-              ${d.status === "draft" ? actionBtnHtml("fa-check", "publish-btn", "Publish") : ""}
-              ${actionBtnHtml("fa-user-plus", "assign-btn", "Assign")}
+            `<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+              ${labelBtn("module-btn", "fa-layer-group", "Modules", "border:1px solid #10B981;color:#10B981;background:rgba(16,185,129,0.06);")}
+              ${labelBtn("edit-btn", "fa-pen", "Edit", "border:1px solid #E5E7EB;color:#6B7280;background:transparent;")}
+              ${d.status === "draft" ? labelBtn("publish-btn", "fa-check", "Publish", "border:1px solid #E5E7EB;color:#6B7280;background:transparent;") : ""}
+              ${labelBtn("assign-btn", "fa-user-plus", "Assign", "border:1px solid #E5E7EB;color:#6B7280;background:transparent;")}
             </div>`,
         },
       ],
@@ -193,7 +194,7 @@ export default function CourseManager() {
       const rowData = dtRef.current.row($(this).closest("tr")).data();
       window.location.href = `/dashboard/courses/${rowData._id}/assign`;
     });
-  }, [courses, activeTab, view]);
+  }, [courses, activeTab, view, tableView]);
 
   /* FORM HELPERS */
   const handleChange = (e) => {
@@ -492,6 +493,15 @@ export default function CourseManager() {
 
   const filteredCount = courses.filter((c) => c.status === activeTab).length;
 
+  const switchView = (v) => {
+    setTableView(v);
+    localStorage.setItem("coursesViewPref", v);
+    if (v === "grid" && dtRef.current) {
+      dtRef.current.destroy();
+      dtRef.current = null;
+    }
+  };
+
   /* LIST VIEW */
   return (
     <div className="space-y-5">
@@ -506,8 +516,9 @@ export default function CourseManager() {
         </Button>
       </PageHeader>
 
-      <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-max">
-        {["published", "draft"].map((tab) => (
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-max">
+          {["published", "draft"].map((tab) => (
           <button
             key={tab}
             className={`relative px-4 py-1.5 rounded-md text-xs font-semibold transition-colors capitalize ${
@@ -525,6 +536,26 @@ export default function CourseManager() {
             <span className="relative z-10">{tab}</span>
           </button>
         ))}
+        </div>
+
+        {/* View toggle */}
+        <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 ml-auto">
+          {[
+            { id: "table", icon: "fa-list" },
+            { id: "grid",  icon: "fa-grip" },
+          ].map(({ id, icon }) => (
+            <button
+              key={id}
+              onClick={() => switchView(id)}
+              className={`flex items-center justify-center w-8 h-7 rounded-md transition-colors ${
+                tableView === id ? "bg-charcoal text-white" : "text-brand-muted hover:text-brand-text"
+              }`}
+              title={id === "table" ? "Table view" : "Grid view"}
+            >
+              <i className={`fa-solid ${icon} text-xs`} />
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -561,8 +592,8 @@ export default function CourseManager() {
             </motion.div>
           )}
 
-          {/* Table always in DOM so DataTable can initialize; hidden when empty */}
-          <div className={filteredCount === 0 ? "hidden" : ""}>
+          {/* Table view */}
+          <div className={tableView !== "table" || filteredCount === 0 ? "hidden" : ""}>
             <TableContainer>
               <table ref={tableRef} width="100%">
                 <thead>
@@ -577,6 +608,90 @@ export default function CourseManager() {
               </table>
             </TableContainer>
           </div>
+
+          {/* Grid view */}
+          {tableView === "grid" && filteredCount > 0 && (() => {
+            const filtered = courses.filter((c) => c.status === activeTab);
+            return (
+              <motion.div
+                initial="hidden" animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }}
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+              >
+                {filtered.map((course) => {
+                  const color = getCourseColor(course.title);
+                  const cats = (course.categories || []).map((c) => c.name).join(", ");
+                  return (
+                    <motion.div
+                      key={course._id}
+                      variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+                      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                      className="bg-surface border border-brand-border rounded-xl overflow-hidden hover:shadow-elevated transition-shadow duration-200"
+                    >
+                      {/* Thumbnail strip */}
+                      <div className="h-2 w-full" style={{ backgroundColor: color }} />
+                      <div className="p-4">
+                        {/* Avatar + title */}
+                        <div className="flex items-start gap-3 mb-3">
+                          <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                            style={{ backgroundColor: color }}
+                          >
+                            {course.title?.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-brand-text leading-snug line-clamp-2">{course.title}</p>
+                            {cats && <p className="text-xs text-brand-muted mt-0.5 truncate">{cats}</p>}
+                          </div>
+                          <span
+                            className="flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                            style={{
+                              background: course.status === "published" ? "rgba(16,185,129,0.1)" : "rgba(107,114,128,0.1)",
+                              color: course.status === "published" ? "#10B981" : "#6B7280",
+                            }}
+                          >
+                            {course.status}
+                          </span>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-brand-border">
+                          <Button variant="outline" size="sm" leadingIcon={<i className="fa-solid fa-layer-group text-[10px]" />}
+                            onClick={() => { window.location.href = `/dashboard/courses/${course._id}/modules`; }}>
+                            Modules
+                          </Button>
+                          <Button variant="ghost" size="sm" leadingIcon={<i className="fa-solid fa-pen text-[10px]" />}
+                            onClick={() => {
+                              if (dtRef.current) { dtRef.current.destroy(); dtRef.current = null; }
+                              setOpenAssessments({});
+                              setOpenQuestions({});
+                              const normalizedAssessments = (course.assessments || [])
+                                .filter((a) => a.active !== false)
+                                .map((a) => ({
+                                  type: a.type, title: a.title, description: a.description || "",
+                                  passPercent: a.passPercent || 70, maxAttempts: a.maxAttempts || 3,
+                                  certificateValidityDays: 365, renewalWindowDays: 30,
+                                  questions: (a.questions || []).map((q) => ({ prompt: q.prompt, correctOptionKeys: q.correctOptionKeys || [], options: (q.options || []).map((o) => ({ key: o.key, text: o.text })) })),
+                                  practicalInstructions: a.practicalInstructions || "",
+                                }));
+                              setEditId(course._id);
+                              setForm({ title: course.title, description: course.description, categoryIds: course.categories?.map((c) => c._id) || [], status: course.status, assessments: normalizedAssessments });
+                              setView("form");
+                            }}>
+                            Edit
+                          </Button>
+                          <Button variant="ghost" size="sm" leadingIcon={<i className="fa-solid fa-user-plus text-[10px]" />}
+                            onClick={() => { window.location.href = `/dashboard/courses/${course._id}/assign`; }}>
+                            Assign
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            );
+          })()}
         </>
       )}
     </div>

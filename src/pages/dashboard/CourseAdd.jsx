@@ -1,29 +1,75 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../../api/api";
 import toastr from "toastr";
 import { useNavigate, useParams } from "react-router-dom";
-import { FaPlus, FaTrash, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { PageHeader, PageLoader, Button, EmptyState } from "../../components/ui";
+import { motion, AnimatePresence } from "framer-motion";
+import { PageHeader, PageLoader, Button } from "../../components/ui";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
 
+const COURSE_COLORS = ["#10B981","#3B82F6","#8B5CF6","#F59E0B","#EF4444","#06B6D4","#EC4899","#F97316"];
+function getCourseColor(title = "") {
+  let h = 0;
+  for (let i = 0; i < title.length; i++) h = title.charCodeAt(i) + ((h << 5) - h);
+  return COURSE_COLORS[Math.abs(h) % COURSE_COLORS.length];
+}
+
+const STEPS = ["Course Details", "Build Content", "Assign & Publish"];
+
+function StepIndicator({ current }) {
+  return (
+    <div className="flex items-center gap-0">
+      {STEPS.map((label, i) => {
+        const n = i + 1;
+        const done = current > n;
+        const active = current === n;
+        return (
+          <div key={n} className="flex items-center flex-1 last:flex-none">
+            <div className="flex items-center gap-2">
+              <div className={[
+                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 flex-shrink-0 transition-colors",
+                done ? "bg-emerald border-emerald text-white" :
+                active ? "border-emerald text-emerald bg-emerald/10" :
+                "border-brand-border text-brand-muted",
+              ].join(" ")}>
+                {done ? <i className="fa-solid fa-check text-[10px]" /> : n}
+              </div>
+              <span className={`text-xs font-semibold hidden sm:block whitespace-nowrap ${active ? "text-brand-text" : "text-brand-muted"}`}>
+                {label}
+              </span>
+            </div>
+            {n < STEPS.length && (
+              <div className={`flex-1 h-px mx-3 transition-colors ${done ? "bg-emerald" : "bg-brand-border"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function CourseAdd() {
   const navigate = useNavigate();
   const { courseId } = useParams();
+  const fileInputRef = useRef();
 
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({
-    title: "", description: "", categoryIds: [], status: "draft", assessments: [],
-  });
-  const [openAssessments, setOpenAssessments] = useState({});
-  const [openQuestions, setOpenQuestions] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+
+  const [step, setStep] = useState(1);
+  const [savedCourseId, setSavedCourseId] = useState(courseId || null);
+
+  const [form, setForm] = useState({
+    title: "", description: "", categoryIds: [], status: "draft",
+  });
+  const [coverFile, setCoverFile] = useState(null);
+  const [coverPreview, setCoverPreview] = useState(null);
 
   useEffect(() => {
-    const loadCategories = async () => {
+    const load = async () => {
       try {
         const res = await api.get("/course-categories?active=true&page=1&limit=100");
         setCategories(res.data.categories || []);
@@ -31,7 +77,7 @@ export default function CourseAdd() {
         toastr.error("Failed to load categories");
       }
     };
-    loadCategories();
+    load();
   }, []);
 
   useEffect(() => {
@@ -40,13 +86,13 @@ export default function CourseAdd() {
       setLoading(true);
       try {
         const res = await api.get(`/courses/${courseId}`);
-        const data = res.data;
+        const d = res.data;
         setForm({
-          title: data.title, description: data.description,
-          categoryIds: data.categories?.map((c) => c._id) || [],
-          status: data.status || "draft", assessments: data.assessments || [],
+          title: d.title, description: d.description,
+          categoryIds: d.categories?.map((c) => c._id) || [],
+          status: d.status || "draft",
         });
-        setEditId(data._id);
+        setSavedCourseId(d._id);
       } catch {
         toastr.error("Failed to load course");
       }
@@ -56,85 +102,34 @@ export default function CourseAdd() {
   }, [courseId]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+    const { name, value } = e.target;
+    setForm((p) => ({ ...p, [name]: value }));
   };
 
-  const addAssessment = (type) => {
-    const newA = type === "quiz"
-      ? { type: "quiz", title: "New Quiz", description: "", passPercent: 70, maxAttempts: 3, questions: [] }
-      : { type: "practical", title: "New Practical", description: "", passPercent: 70, maxAttempts: 3, practicalInstructions: "" };
-    setForm((prev) => ({ ...prev, assessments: [...prev.assessments, newA] }));
-    setOpenAssessments((prev) => ({ ...prev, [form.assessments.length]: true }));
+  const handleCoverChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
   };
 
-  const toggleAssessmentOpen = (index) =>
-    setOpenAssessments((prev) => ({ ...prev, [index]: !prev[index] }));
-
-  const deleteAssessment = (index) => {
-    setForm((prev) => {
-      const a = [...prev.assessments];
-      a.splice(index, 1);
-      return { ...prev, assessments: a };
-    });
-  };
-
-  const updateAssessment = (index, field, value) => {
-    const a = [...form.assessments];
-    a[index][field] = value;
-    setForm((prev) => ({ ...prev, assessments: a }));
-  };
-
-  const addQuizQuestion = (aIndex) => {
-    const a = [...form.assessments];
-    a[aIndex].questions.push({ prompt: "", options: [], correctOptionKeys: [] });
-    setForm((prev) => ({ ...prev, assessments: a }));
-    setOpenQuestions((prev) => ({ ...prev, [`${aIndex}-${a[aIndex].questions.length - 1}`]: true }));
-  };
-
-  const toggleQuestionOpen = (aIndex, qIndex) => {
-    const key = `${aIndex}-${qIndex}`;
-    setOpenQuestions((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const updateQuizQuestion = (aIndex, qIndex, field, value) => {
-    const a = [...form.assessments];
-    a[aIndex].questions[qIndex][field] = value;
-    setForm((prev) => ({ ...prev, assessments: a }));
-  };
-
-  const addQuizOption = (aIndex, qIndex) => {
-    const a = [...form.assessments];
-    const options = a[aIndex].questions[qIndex].options;
-    options.push({ key: String.fromCharCode(65 + options.length), text: "" });
-    setForm((prev) => ({ ...prev, assessments: a }));
-  };
-
-  const updateQuizOption = (aIndex, qIndex, oIndex, value) => {
-    const a = [...form.assessments];
-    a[aIndex].questions[qIndex].options[oIndex].text = value;
-    setForm((prev) => ({ ...prev, assessments: a }));
-  };
-
-  const handleSubmit = async (e) => {
+  const handleStep1Submit = async (e) => {
     e.preventDefault();
-    if (!form.title) return toastr.error("Title is required");
+    if (!form.title.trim()) return toastr.error("Title is required");
     if (!form.categoryIds.length) return toastr.error("Select at least one category");
     try {
       setSubmitting(true);
       let res;
-      if (editId) {
-        res = await api.put(`/courses/${editId}`, form);
+      if (savedCourseId) {
+        res = await api.put(`/courses/${savedCourseId}`, form);
         toastr.success("Course updated");
       } else {
         res = await api.post("/courses", form);
-        toastr.success("Course created");
+        toastr.success("Course saved as draft");
       }
-      if (form.status === "published") {
-        await api.patch(`/courses/${editId || res.data._id}/publish`);
-        toastr.success("Course published");
-      }
-      navigate("/dashboard/courses");
+      const id = savedCourseId || res.data._id;
+      setSavedCourseId(id);
+      setStep(2);
     } catch (err) {
       toastr.error(err.response?.data?.message || "Save failed");
     } finally {
@@ -142,187 +137,231 @@ export default function CourseAdd() {
     }
   };
 
+  const handlePublish = async () => {
+    if (!savedCourseId) return;
+    try {
+      setPublishing(true);
+      await api.patch(`/courses/${savedCourseId}/publish`);
+      toastr.success("Course published");
+      navigate("/dashboard/courses");
+    } catch (err) {
+      toastr.error(err.response?.data?.message || "Publish failed");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   if (loading) return <PageLoader />;
 
+  const avatarColor = getCourseColor(form.title);
+  const initials = form.title ? form.title.slice(0, 2).toUpperCase() : "CO";
+
   return (
-    <div className="space-y-5">
-      <PageHeader title={editId ? "Edit Course" : "Add Course"} subtitle="Create or update a course with assessments">
+    <div className="space-y-6">
+      <PageHeader
+        title={savedCourseId && courseId ? "Edit Course" : "New Course"}
+        subtitle="Set up your course in three steps"
+      >
         <Button
-          type="button"
-          variant="ghost"
-          size="sm"
+          type="button" variant="ghost" size="sm"
           className="!text-white !border-white/20 hover:!bg-white/10"
-          leadingIcon={<i className="fa fa-arrow-left text-xs" />}
+          leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
           onClick={() => navigate("/dashboard/courses")}
         >
           Back
         </Button>
       </PageHeader>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Left: basic info */}
-          <div className="bg-surface border border-brand-border rounded-xl p-6 space-y-4">
-            <h3 className="text-xs font-semibold text-brand-muted uppercase tracking-wide border-b border-brand-border pb-2">Course Info</h3>
-            <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Course Title</label>
-              <input className={inputClass} type="text" name="title" value={form.title} onChange={handleChange} placeholder="Course title" required />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Description</label>
-              <textarea className={inputClass} rows={4} name="description" value={form.description} onChange={handleChange} placeholder="Course description" required />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Category</label>
-              <select
-                className={inputClass}
-                value={form.categoryIds[0] || ""}
-                onChange={(e) => setForm({ ...form, categoryIds: [e.target.value] })}
-              >
-                <option value="">Select Category</option>
-                {categories.map((c) => (
-                  <option key={c._id} value={c._id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Status</label>
-              <select className={inputClass} name="status" value={form.status} onChange={handleChange}>
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-              </select>
-            </div>
-            <Button type="submit" variant="primary" size="lg" loading={submitting}>
-              {editId ? "Update Course" : "Create Course"}
-            </Button>
-          </div>
+      {/* Step indicator */}
+      <div className="bg-surface border border-brand-border rounded-xl p-5">
+        <StepIndicator current={step} />
+      </div>
 
-          {/* Right: assessments */}
-          <div className="bg-surface border border-brand-border rounded-xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-brand-border pb-2">
-              <h3 className="text-xs font-semibold text-brand-muted uppercase tracking-wide">Assessments</h3>
-              <div className="flex gap-2">
+      <AnimatePresence mode="wait">
+        {/* ── STEP 1: Course Details ── */}
+        {step === 1 && (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <form onSubmit={handleStep1Submit}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Cover image */}
+                <div className="lg:col-span-1">
+                  <div className="bg-surface border border-brand-border rounded-xl p-5 space-y-4">
+                    <h3 className="text-xs font-semibold text-brand-muted uppercase tracking-wide">Cover Image</h3>
+                    <div
+                      className="relative w-full aspect-video rounded-xl overflow-hidden cursor-pointer group"
+                      style={{ background: coverPreview ? undefined : avatarColor + "20" }}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {coverPreview ? (
+                        <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                          <div
+                            className="w-14 h-14 rounded-xl flex items-center justify-center text-white text-xl font-bold"
+                            style={{ backgroundColor: avatarColor }}
+                          >
+                            {initials}
+                          </div>
+                          <p className="text-xs text-brand-muted">Click to upload cover</p>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold">
+                          <i className="fa-solid fa-camera mr-1.5" />
+                          {coverPreview ? "Change" : "Upload"}
+                        </span>
+                      </div>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleCoverChange}
+                    />
+                    {coverPreview && (
+                      <button
+                        type="button"
+                        className="text-xs text-brand-danger hover:underline"
+                        onClick={() => { setCoverFile(null); setCoverPreview(null); }}
+                      >
+                        Remove image
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Course info */}
+                <div className="lg:col-span-2 bg-surface border border-brand-border rounded-xl p-6 space-y-4">
+                  <h3 className="text-xs font-semibold text-brand-muted uppercase tracking-wide border-b border-brand-border pb-2">Course Info</h3>
+                  <div>
+                    <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Course Title <span className="text-brand-danger">*</span></label>
+                    <input className={inputClass} type="text" name="title" value={form.title} onChange={handleChange} placeholder="e.g. Fire Safety Fundamentals" required />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Category <span className="text-brand-danger">*</span></label>
+                    <select
+                      className={inputClass}
+                      value={form.categoryIds[0] || ""}
+                      onChange={(e) => setForm({ ...form, categoryIds: [e.target.value] })}
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map((c) => (
+                        <option key={c._id} value={c._id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Description</label>
+                    <textarea className={inputClass} rows={4} name="description" value={form.description} onChange={handleChange} placeholder="What will learners gain from this course?" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Initial Status</label>
+                    <select className={inputClass} name="status" value={form.status} onChange={handleChange}>
+                      <option value="draft">Draft — not visible to staff yet</option>
+                      <option value="published">Published — visible immediately</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-end pt-2 border-t border-brand-border">
+                    <Button type="submit" variant="primary" loading={submitting} trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />}>
+                      Save & Continue
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </motion.div>
+        )}
+
+        {/* ── STEP 2: Build Content ── */}
+        {step === 2 && (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="bg-surface border border-brand-border rounded-xl p-8 text-center space-y-6 max-w-lg mx-auto">
+              <div className="w-16 h-16 rounded-2xl bg-emerald/10 flex items-center justify-center mx-auto">
+                <i className="fa-solid fa-layer-group text-emerald text-2xl" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-brand-text">Course saved!</h2>
+                <p className="text-sm text-brand-muted mt-1">Now build the content — add modules and lessons to give your learners something to work through.</p>
+              </div>
+              <div className="flex flex-col gap-3">
                 <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  leadingIcon={<FaPlus size={8} />}
-                  onClick={() => addAssessment("quiz")}
+                  variant="primary" size="lg" fullWidth
+                  leadingIcon={<i className="fa-solid fa-layer-group" />}
+                  onClick={() => navigate(`/dashboard/courses/${savedCourseId}/modules`)}
                 >
-                  Quiz
+                  Go to Module Builder
                 </Button>
                 <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  leadingIcon={<FaPlus size={8} />}
-                  onClick={() => addAssessment("practical")}
+                  variant="ghost" size="md" fullWidth
+                  onClick={() => setStep(3)}
                 >
-                  Practical
+                  Skip for now — go to Assign & Publish
+                  <i className="fa-solid fa-arrow-right ml-1.5 text-xs" />
                 </Button>
               </div>
             </div>
+          </motion.div>
+        )}
 
-            {form.assessments.length === 0 && (
-              <EmptyState
-                compact
-                icon={<i className="fa-solid fa-clipboard-list" />}
-                title="No assessments yet"
-                description="Add a quiz or practical to evaluate learners."
-              />
-            )}
-
-            <div className="space-y-3">
-              {form.assessments.map((a, ai) => (
-                <div key={ai} className="border border-brand-border rounded-xl overflow-hidden">
-                  <div
-                    className="flex items-center justify-between px-4 py-3 bg-canvas cursor-pointer"
-                    onClick={() => toggleAssessmentOpen(ai)}
+        {/* ── STEP 3: Assign & Publish ── */}
+        {step === 3 && (
+          <motion.div
+            key="step3"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="bg-surface border border-brand-border rounded-xl p-8 space-y-6 max-w-lg mx-auto">
+              <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mx-auto">
+                <i className="fa-solid fa-users text-blue-500 text-2xl" />
+              </div>
+              <div className="text-center">
+                <h2 className="text-lg font-bold text-brand-text">Assign & Publish</h2>
+                <p className="text-sm text-brand-muted mt-1">Assign this course to staff members and publish when you're ready.</p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button
+                  variant="secondary" size="lg" fullWidth
+                  leadingIcon={<i className="fa-solid fa-user-plus" />}
+                  onClick={() => navigate(`/dashboard/courses/${savedCourseId}/assign`)}
+                >
+                  Assign to Staff
+                </Button>
+                {form.status !== "published" && (
+                  <Button
+                    variant="primary" size="lg" fullWidth loading={publishing}
+                    leadingIcon={<i className="fa-solid fa-rocket" />}
+                    onClick={handlePublish}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${a.type === "quiz" ? "bg-emerald/10 text-emerald" : "bg-brand-muted/10 text-brand-muted"}`}>
-                        {a.type}
-                      </span>
-                      <span className="text-sm font-medium text-brand-text">{a.title || "Untitled"}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="flex items-center justify-center w-6 h-6 rounded text-brand-danger hover:bg-brand-danger/10 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); deleteAssessment(ai); }}
-                      >
-                        <FaTrash size={10} />
-                      </button>
-                      {openAssessments[ai] ? <FaChevronUp size={10} className="text-brand-muted" /> : <FaChevronDown size={10} className="text-brand-muted" />}
-                    </div>
-                  </div>
-
-                  {openAssessments[ai] && (
-                    <div className="px-4 py-4 border-t border-brand-border space-y-3">
-                      <input className={inputClass} type="text" placeholder="Assessment Title" value={a.title} onChange={(e) => updateAssessment(ai, "title", e.target.value)} />
-                      <textarea className={inputClass} rows={2} placeholder="Description" value={a.description} onChange={(e) => updateAssessment(ai, "description", e.target.value)} />
-
-                      {a.type === "quiz" && (
-                        <div className="space-y-2">
-                          <h5 className="text-xs font-semibold text-brand-muted uppercase tracking-wide">Questions</h5>
-                          {a.questions.map((q, qi) => {
-                            const key = `${ai}-${qi}`;
-                            return (
-                              <div key={qi} className="border border-brand-border rounded-lg overflow-hidden">
-                                <div
-                                  className="flex items-center justify-between px-3 py-2 bg-canvas cursor-pointer"
-                                  onClick={() => toggleQuestionOpen(ai, qi)}
-                                >
-                                  <span className="text-xs text-brand-text font-medium">Q{qi + 1}: {q.prompt || "New Question"}</span>
-                                  {openQuestions[key] ? <FaChevronUp size={9} className="text-brand-muted" /> : <FaChevronDown size={9} className="text-brand-muted" />}
-                                </div>
-                                {openQuestions[key] && (
-                                  <div className="p-3 border-t border-brand-border space-y-2">
-                                    <input className={inputClass} type="text" placeholder="Question prompt" value={q.prompt} onChange={(e) => updateQuizQuestion(ai, qi, "prompt", e.target.value)} />
-                                    <div className="space-y-1.5">
-                                      {q.options.map((o, oi) => (
-                                        <input key={oi} className={inputClass} type="text" placeholder={`Option ${o.key}`} value={o.text} onChange={(e) => updateQuizOption(ai, qi, oi, e.target.value)} />
-                                      ))}
-                                      <button
-                                        type="button"
-                                        className="flex items-center gap-1.5 text-xs font-semibold text-emerald hover:text-emerald-hover transition-colors"
-                                        onClick={() => addQuizOption(ai, qi)}
-                                      >
-                                        <FaPlus size={8} /> Add Option
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                          <button
-                            type="button"
-                            className="flex items-center gap-1.5 text-xs font-semibold text-brand-muted border border-brand-border rounded-lg px-3 py-1.5 hover:border-emerald hover:text-emerald transition-colors"
-                            onClick={() => addQuizQuestion(ai)}
-                          >
-                            <FaPlus size={8} /> Add Question
-                          </button>
-                        </div>
-                      )}
-
-                      {a.type === "practical" && (
-                        <textarea
-                          className={inputClass}
-                          rows={3}
-                          placeholder="Practical Instructions"
-                          value={a.practicalInstructions}
-                          onChange={(e) => updateAssessment(ai, "practicalInstructions", e.target.value)}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+                    Publish Course
+                  </Button>
+                )}
+                <Button
+                  variant="ghost" size="md" fullWidth
+                  onClick={() => navigate("/dashboard/courses")}
+                >
+                  <i className="fa-solid fa-check mr-1.5 text-xs" />
+                  Done — View All Courses
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
-      </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
