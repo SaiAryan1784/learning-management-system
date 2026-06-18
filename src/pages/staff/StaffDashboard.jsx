@@ -48,6 +48,7 @@ export default function StaffDashboard() {
   const [loading, setLoading] = useState(false);
   const [resumingId, setResumingId] = useState(null);
   const [loggedInToday, setLoggedInToday] = useState(null);
+  const [totalOrgCourses, setTotalOrgCourses] = useState(null);
 
   const lastFetchRef = useRef(0);
 
@@ -63,7 +64,10 @@ export default function StaffDashboard() {
       lastFetchRef.current = Date.now();
       setSummary(res.data.summary);
       setCourses(res.data.courses);
-      if (orgRes) setLoggedInToday(orgRes.data?.summary?.usersLoggedInToday ?? null);
+      if (orgRes) {
+        setLoggedInToday(orgRes.data?.summary?.usersLoggedInToday ?? null);
+        setTotalOrgCourses(orgRes.data?.summary?.totalCourses ?? null);
+      }
     } catch (err) {
       console.error("Dashboard load failed", err);
     } finally {
@@ -136,7 +140,7 @@ export default function StaffDashboard() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
           >
             {[
-              { icon: "fa-book", label: "Total Courses", value: summary.totalAssignedCourses },
+              { icon: "fa-book", label: "Total Courses", value: isAdminUser ? (totalOrgCourses ?? summary.totalAssignedCourses) : summary.totalAssignedCourses },
               { icon: "fa-circle-check", label: "Completed", value: summary.completedCourses },
               { icon: "fa-spinner", label: "In Progress", value: summary.inProgressCourses },
               isAdminUser
@@ -243,16 +247,16 @@ export default function StaffDashboard() {
           <Card padded={false}>
             <EmptyState
               icon={<i className="fa-solid fa-book-open" />}
-              title={isAdmin ? "No courses created yet" : "No courses assigned yet"}
+              title="No courses assigned to you"
               description={
                 isAdmin
-                  ? "Create your first course and assign it to staff."
+                  ? "You have published courses — use the Assign button on any course to assign it to yourself or staff."
                   : "Once your admin assigns courses, they will show up here so you can start learning."
               }
               action={
                 isAdmin ? (
-                  <Button variant="primary" size="sm" onClick={() => navigate("/dashboard/course-add")}>
-                    Create a Course
+                  <Button variant="primary" size="sm" onClick={() => navigate("/dashboard/courses")}>
+                    Go to Courses
                     <i className="fa-solid fa-arrow-right ml-1.5 text-xs" />
                   </Button>
                 ) : null
