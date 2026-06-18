@@ -24,24 +24,9 @@ export default function StaffCertificates() {
       const dashRes = await api.get("/progress/me/dashboard");
       const courses = dashRes.data.courses || [];
 
-      const enriched = await Promise.all(
-        certs.map(async (cert) => {
-          try {
-            const res = await api.get(`/assessments?course=${cert.course?._id}`);
-            const assessments = res.data.assessments || [];
-            const results = await Promise.all(
-              assessments.map((a) => api.get(`/assessments/${a._id}/results/me`))
-            );
-            const hasPassed = results.some((r) =>
-              (r.data.attempts || []).some((a) => a.status === "passed")
-            );
-            return { ...cert, hasPassed };
-          } catch {
-            return { ...cert, hasPassed: false };
-          }
-        })
-      );
-      setCertificates(enriched);
+      // A certificate is only issued after the course is completed and all
+      // quizzes passed, so an issued certificate already implies passing.
+      setCertificates(certs.map((cert) => ({ ...cert, hasPassed: true })));
       setCoursesProgress(courses);
     } catch {
       toastr.error("Failed to load certificates");

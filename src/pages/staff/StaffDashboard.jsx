@@ -229,18 +229,6 @@ export default function StaffDashboard() {
                         <i className="fa-solid fa-play mr-1.5 text-[10px]" />
                         {getButtonText(course)}
                       </Button>
-                      {course.progressPercent === 100 && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          fullWidth
-                          onClick={() =>
-                            navigate(`/dashboard/staff/course/${course.courseId}/assessments`)
-                          }
-                        >
-                          Assessments
-                        </Button>
-                      )}
                     </div>
                   </Card>
                 </motion.div>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import api from "../api/api";
 
 const STORAGE_KEY = "lms-brand";
@@ -64,14 +64,63 @@ export function derivePalette(primaryHex) {
   };
 }
 
+const BRAND_VARS = [
+  "--brand-primary",
+  "--brand-primary-dark",
+  "--brand-primary-light",
+  "--color-emerald",
+  "--color-emerald-hover",
+  "--color-emerald-light",
+];
+
+/** Apply a palette's CSS variables to any element (root for global, a container for scoped). */
+export function applyPaletteToElement(el, palette) {
+  if (!el || !palette?.primary) return;
+  el.style.setProperty("--brand-primary",       hexToRgbComponents(palette.primary));
+  el.style.setProperty("--brand-primary-dark",  hexToRgbComponents(palette.dark));
+  el.style.setProperty("--brand-primary-light", hexToRgbComponents(palette.light));
+  el.style.setProperty("--color-emerald",        palette.primary);
+  el.style.setProperty("--color-emerald-hover",  palette.dark);
+  el.style.setProperty("--color-emerald-light",  palette.light);
+}
+
+function clearPaletteFromElement(el) {
+  if (!el) return;
+  BRAND_VARS.forEach((v) => el.style.removeProperty(v));
+}
+
 function applyToRoot(palette) {
-  const root = document.documentElement;
-  root.style.setProperty("--brand-primary",       hexToRgbComponents(palette.primary));
-  root.style.setProperty("--brand-primary-dark",  hexToRgbComponents(palette.dark));
-  root.style.setProperty("--brand-primary-light", hexToRgbComponents(palette.light));
-  root.style.setProperty("--color-emerald",        palette.primary);
-  root.style.setProperty("--color-emerald-hover",  palette.dark);
-  root.style.setProperty("--color-emerald-light",  palette.light);
+  applyPaletteToElement(document.documentElement, palette);
+}
+
+/**
+ * Scopes a theme palette to its children only (e.g. a single lesson view).
+ * The rest of the site keeps the global brand. Variables are removed on unmount.
+ * Pass a theme object ({ primary, dark, light }) or null to inherit the global brand.
+ */
+export function ThemeScope({ theme, className = "", children }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (theme?.primary) {
+      applyPaletteToElement(el, {
+        primary: theme.primary,
+        dark: theme.dark || theme.primary,
+        light: theme.light || theme.primary,
+      });
+    } else {
+      clearPaletteFromElement(el);
+    }
+    return () => clearPaletteFromElement(el);
+  }, [theme?.primary, theme?.dark, theme?.light]);
+
+  return (
+    <div ref={ref} className={className}>
+      {children}
+    </div>
+  );
 }
 
 /* ─── context ──────────────────────────────────────────── */

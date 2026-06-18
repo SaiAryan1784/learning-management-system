@@ -14,18 +14,19 @@ function getCourseColor(title = "") {
   return COURSE_COLORS[Math.abs(h) % COURSE_COLORS.length];
 }
 
-export default function OSCourses() {
+export default function CourseDrafts() {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [publishingId, setPublishingId] = useState(null);
 
   const loadCourses = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/courses", { params: { status: "published", t: Date.now() } });
+      const res = await api.get("/courses", { params: { status: "draft", t: Date.now() } });
       setCourses(res.data.courses || []);
     } catch {
-      toastr.error("Error loading courses");
+      toastr.error("Error loading drafts");
     } finally {
       setLoading(false);
     }
@@ -35,15 +36,28 @@ export default function OSCourses() {
     loadCourses();
   }, []);
 
+  const publish = async (id) => {
+    try {
+      setPublishingId(id);
+      await api.patch(`/courses/${id}/publish`);
+      toastr.success("Course published");
+      loadCourses();
+    } catch (err) {
+      toastr.error(err.response?.data?.message || "Publish failed");
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <PageHeader title="Courses" subtitle="Published courses visible to staff">
+      <PageHeader title="Draft Courses" subtitle="Courses still in progress — not visible to staff">
         <Link
-          to="/dashboard/courses/drafts"
+          to="/dashboard/courses"
           className="flex items-center gap-2 bg-charcoal-light hover:bg-charcoal-muted text-white/80 text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg transition-colors"
         >
-          <i className="fa-solid fa-pen-ruler text-xs"></i>
-          Drafts
+          <i className="fa-solid fa-arrow-left text-xs"></i>
+          Published
         </Link>
         <Button
           variant="primary"
@@ -60,12 +74,18 @@ export default function OSCourses() {
       ) : courses.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-surface border border-brand-border rounded-xl text-center">
           <div className="w-16 h-16 rounded-full bg-emerald/10 flex items-center justify-center mb-4">
-            <i className="fa-solid fa-book-open text-emerald text-2xl" />
+            <i className="fa-solid fa-pen-ruler text-emerald text-2xl" />
           </div>
-          <h3 className="text-lg font-semibold text-brand-text mb-1">No published courses yet</h3>
-          <p className="text-sm text-brand-muted mb-6 max-w-xs">
-            Build a course in <Link to="/dashboard/courses/drafts" className="text-emerald font-semibold">Drafts</Link> and publish it to see it here.
-          </p>
+          <h3 className="text-lg font-semibold text-brand-text mb-1">No drafts yet</h3>
+          <p className="text-sm text-brand-muted mb-6 max-w-xs">Create your first course to get started.</p>
+          <Button
+            variant="primary"
+            size="md"
+            leadingIcon={<i className="fa-solid fa-plus" />}
+            onClick={() => navigate("/dashboard/course-add")}
+          >
+            Create your first course
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -94,6 +114,9 @@ export default function OSCourses() {
                       {cats && <p className="text-xs text-brand-muted mt-0.5 truncate">{cats}</p>}
                       <p className="text-[11px] text-brand-muted mt-1">{course.lessonCount ?? 0} lessons</p>
                     </div>
+                    <span className="flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-muted/10 text-brand-muted">
+                      draft
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-brand-border">
@@ -114,12 +137,13 @@ export default function OSCourses() {
                       Edit
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="primary"
                       size="sm"
-                      leadingIcon={<i className="fa-solid fa-user-plus text-[10px]" />}
-                      onClick={() => navigate(`/dashboard/courses/${course._id}/assign`)}
+                      loading={publishingId === course._id}
+                      leadingIcon={<i className="fa-solid fa-rocket text-[10px]" />}
+                      onClick={() => publish(course._id)}
                     >
-                      Assign
+                      Publish
                     </Button>
                   </div>
                 </div>

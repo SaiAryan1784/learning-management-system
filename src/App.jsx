@@ -28,10 +28,11 @@ const OwnerLocations    = lazy(() => import("./pages/dashboard/OwnerLocations"))
 const OwnerRoles        = lazy(() => import("./pages/dashboard/OwnerRoles"));
 const OwnerStaff        = lazy(() => import("./pages/dashboard/OwnerStaff"));
 const OSCourses         = lazy(() => import("./pages/dashboard/OSCourses"));
+const CourseDrafts      = lazy(() => import("./pages/dashboard/CourseDrafts"));
 const CourseAdd         = lazy(() => import("./pages/dashboard/CourseAdd"));
 const CourseCategories  = lazy(() => import("./pages/dashboard/CourseCategories"));
-const CourseModules     = lazy(() => import("./pages/dashboard/CourseModules"));
-const ModuleLessions    = lazy(() => import("./pages/dashboard/ModuleLessions"));
+const CourseLessons     = lazy(() => import("./pages/dashboard/CourseLessons"));
+const LessonBuilder     = lazy(() => import("./pages/dashboard/LessonBuilder"));
 const CourseAssignStaff = lazy(() => import("./pages/dashboard/CourseAssignStaff"));
 const ManagerDashboard  = lazy(() => import("./pages/dashboard/ManagerDashboard"));
 const ManagerStaffDetails = lazy(() => import("./pages/dashboard/ManagerStaffDetails"));
@@ -39,12 +40,7 @@ const ManagerStaffDetails = lazy(() => import("./pages/dashboard/ManagerStaffDet
 /* ── Staff ────────────────────────────────────────────── */
 const StaffDashboard    = lazy(() => import("./pages/staff/StaffDashboard"));
 const StaffLessonView   = lazy(() => import("./pages/staff/StaffLessonView"));
-const CourseAssessments = lazy(() => import("./pages/staff/CourseAssessments"));
-const AssessmentAttempt = lazy(() => import("./pages/staff/AssessmentAttempt"));
 const StaffCertificates = lazy(() => import("./pages/staff/StaffCertificates"));
-
-/* ── Assessments ──────────────────────────────────────── */
-const OSAssessment = lazy(() => import("./pages/assessments/OSAssessment"));
 
 /* ── Compliance ───────────────────────────────────────── */
 const ComplianceSettings = lazy(() => import("./pages/compliance/ComplianceSettings"));
@@ -131,18 +127,17 @@ function AppContent() {
 
           <Route path="course-categories"        element={<PermissionRoute><CourseCategories /></PermissionRoute>} />
           <Route path="courses"                  element={<PermissionRoute><OSCourses /></PermissionRoute>} />
+          <Route path="courses/drafts"           element={<PermissionRoute><CourseDrafts /></PermissionRoute>} />
           <Route path="course-add/:courseId?"    element={<PermissionRoute><CourseAdd /></PermissionRoute>} />
-          <Route path="assessments"              element={<PermissionRoute><OSAssessment /></PermissionRoute>} />
 
-          <Route path="courses/:courseId/modules"                          element={<PermissionRoute><CourseModules /></PermissionRoute>} />
-          <Route path="courses/:courseId/modules/:moduleId/lessons"        element={<PermissionRoute><ModuleLessions /></PermissionRoute>} />
-          <Route path="courses/:courseId/assign"                           element={<PermissionRoute><CourseAssignStaff /></PermissionRoute>} />
+          <Route path="courses/:courseId/lessons"                  element={<PermissionRoute><CourseLessons /></PermissionRoute>} />
+          <Route path="courses/:courseId/lessons/new"              element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
+          <Route path="courses/:courseId/lessons/:lessonId/edit"   element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
+          <Route path="courses/:courseId/assign"                   element={<PermissionRoute><CourseAssignStaff /></PermissionRoute>} />
 
           {/* Staff */}
           <Route path="my-dashboard"                                        element={<PermissionRoute><StaffDashboard /></PermissionRoute>} />
           <Route path="staff/course/:courseId/lesson/:lessonId"            element={<PermissionRoute><StaffLessonView /></PermissionRoute>} />
-          <Route path="staff/course/:courseId/assessments"                 element={<PermissionRoute><CourseAssessments /></PermissionRoute>} />
-          <Route path="staff/assessment/:assessmentId/:courseId"           element={<PermissionRoute><AssessmentAttempt /></PermissionRoute>} />
 
           {/* Compliance */}
           <Route path="compliance/settings"       element={<PermissionRoute><ComplianceSettings /></PermissionRoute>} />

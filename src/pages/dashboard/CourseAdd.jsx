@@ -63,7 +63,7 @@ export default function CourseAdd() {
   const [savedCourseId, setSavedCourseId] = useState(courseId || null);
 
   const [form, setForm] = useState({
-    title: "", description: "", categoryIds: [], status: "draft",
+    title: "", description: "", categoryIds: [],
   });
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(null);
@@ -90,7 +90,6 @@ export default function CourseAdd() {
         setForm({
           title: d.title, description: d.description,
           categoryIds: d.categories?.map((c) => c._id) || [],
-          status: d.status || "draft",
         });
         setSavedCourseId(d._id);
       } catch {
@@ -261,13 +260,6 @@ export default function CourseAdd() {
                     <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Description</label>
                     <textarea className={inputClass} rows={4} name="description" value={form.description} onChange={handleChange} placeholder="What will learners gain from this course?" />
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Initial Status</label>
-                    <select className={inputClass} name="status" value={form.status} onChange={handleChange}>
-                      <option value="draft">Draft — not visible to staff yet</option>
-                      <option value="published">Published — visible immediately</option>
-                    </select>
-                  </div>
                   <div className="flex justify-end pt-2 border-t border-brand-border">
                     <Button type="submit" variant="primary" loading={submitting} trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />}>
                       Save & Continue
@@ -293,16 +285,16 @@ export default function CourseAdd() {
                 <i className="fa-solid fa-layer-group text-emerald text-2xl" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-brand-text">Course saved!</h2>
-                <p className="text-sm text-brand-muted mt-1">Now build the content — add modules and lessons to give your learners something to work through.</p>
+                <h2 className="text-lg font-bold text-brand-text">Course saved as draft!</h2>
+                <p className="text-sm text-brand-muted mt-1">Now build the content — a course is a folder of lessons. Add lessons to give your learners something to work through.</p>
               </div>
               <div className="flex flex-col gap-3">
                 <Button
                   variant="primary" size="lg" fullWidth
-                  leadingIcon={<i className="fa-solid fa-layer-group" />}
-                  onClick={() => navigate(`/dashboard/courses/${savedCourseId}/modules`)}
+                  leadingIcon={<i className="fa-solid fa-folder-open" />}
+                  onClick={() => navigate(`/dashboard/courses/${savedCourseId}/lessons`)}
                 >
-                  Go to Module Builder
+                  Go to Lesson Builder
                 </Button>
                 <Button
                   variant="ghost" size="md" fullWidth
@@ -341,15 +333,13 @@ export default function CourseAdd() {
                 >
                   Assign to Staff
                 </Button>
-                {form.status !== "published" && (
-                  <Button
-                    variant="primary" size="lg" fullWidth loading={publishing}
-                    leadingIcon={<i className="fa-solid fa-rocket" />}
-                    onClick={handlePublish}
-                  >
-                    Publish Course
-                  </Button>
-                )}
+                <Button
+                  variant="primary" size="lg" fullWidth loading={publishing}
+                  leadingIcon={<i className="fa-solid fa-rocket" />}
+                  onClick={handlePublish}
+                >
+                  Publish Course
+                </Button>
                 <Button
                   variant="ghost" size="md" fullWidth
                   onClick={() => navigate("/dashboard/courses")}
