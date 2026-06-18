@@ -284,13 +284,12 @@ export default function DashboardLayout() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* ================= SIDEBAR ================= */}
       <motion.nav
         animate={{ width: sidebarOpen ? 256 : 64 }}
         transition={{ type: "spring", stiffness: 280, damping: 32 }}
-        className="sticky top-0 h-screen flex flex-col overflow-y-auto overflow-x-hidden bg-charcoal flex-shrink-0"
-        style={{ scrollbarWidth: "thin", scrollbarColor: "#3A3A3C #1C1C1E" }}
+        className="h-full flex flex-col overflow-hidden bg-charcoal flex-shrink-0"
       >
         {/* Sidebar top — toggle button aligned with topbar height */}
         <div className="h-14 border-b border-charcoal-light flex-shrink-0 flex items-center justify-center px-2">
@@ -306,7 +305,7 @@ export default function DashboardLayout() {
         </div>
 
         {/* Nav Items */}
-        <div className="flex-1 px-2 py-3 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        <div className="flex-1 px-2 py-3 overflow-hidden">
           <NavItem to="/dashboard" end icon="fa-house" label="Dashboard" />
 
           {isSuperAdmin && (
@@ -345,7 +344,7 @@ export default function DashboardLayout() {
       </motion.nav>
 
       {/* ================= MAIN CONTENT ================= */}
-      <div className="flex-1 min-w-0 flex flex-col bg-canvas">
+      <div className="flex-1 min-w-0 flex flex-col bg-canvas overflow-hidden">
 
         {/* TOPBAR */}
         <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-brand-border h-14 flex-shrink-0 grid grid-cols-[auto_1fr_auto] items-center px-4 gap-3">
@@ -611,7 +610,7 @@ export default function DashboardLayout() {
         </header>
 
         {/* PAGE CONTENT */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-y-auto">
           <Suspense fallback={<SectionLoader />}>
             <AnimatePresence mode="wait">
               <motion.div
