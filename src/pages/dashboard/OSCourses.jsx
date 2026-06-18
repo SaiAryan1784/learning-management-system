@@ -71,7 +71,6 @@ export default function OSCourses() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {courses.map((course) => {
             const color = getCourseColor(course.title);
-            const cats = (course.categories || []).map((c) => c.name).join(", ");
             return (
               <motion.div
                 key={course._id}
@@ -91,7 +90,6 @@ export default function OSCourses() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-brand-text leading-snug line-clamp-2">{course.title}</p>
-                      {cats && <p className="text-xs text-brand-muted mt-0.5 truncate">{cats}</p>}
                       <p className="text-[11px] text-brand-muted mt-1">{course.lessonCount ?? 0} lessons</p>
                     </div>
                   </div>

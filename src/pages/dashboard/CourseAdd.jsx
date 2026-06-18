@@ -54,7 +54,6 @@ export default function CourseAdd() {
   const { courseId } = useParams();
   const fileInputRef = useRef();
 
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -63,22 +62,10 @@ export default function CourseAdd() {
   const [savedCourseId, setSavedCourseId] = useState(courseId || null);
 
   const [form, setForm] = useState({
-    title: "", description: "", categoryIds: [],
+    title: "", description: "",
   });
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(null);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await api.get("/course-categories?active=true&page=1&limit=100");
-        setCategories(res.data.categories || []);
-      } catch {
-        toastr.error("Failed to load categories");
-      }
-    };
-    load();
-  }, []);
 
   useEffect(() => {
     if (!courseId) return;
@@ -86,11 +73,8 @@ export default function CourseAdd() {
       setLoading(true);
       try {
         const res = await api.get(`/courses/${courseId}`);
-        const d = res.data;
-        setForm({
-          title: d.title, description: d.description,
-          categoryIds: d.categories?.map((c) => c._id) || [],
-        });
+        const d = res.data.course || res.data;
+        setForm({ title: d.title, description: d.description });
         setSavedCourseId(d._id);
       } catch {
         toastr.error("Failed to load course");
@@ -115,7 +99,6 @@ export default function CourseAdd() {
   const handleStep1Submit = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) return toastr.error("Title is required");
-    if (!form.categoryIds.length) return toastr.error("Select at least one category");
     try {
       setSubmitting(true);
       let res;
@@ -126,7 +109,7 @@ export default function CourseAdd() {
         res = await api.post("/courses", form);
         toastr.success("Course saved as draft");
       }
-      const id = savedCourseId || res.data._id;
+      const id = savedCourseId || res.data.course?._id || res.data._id;
       setSavedCourseId(id);
       setStep(2);
     } catch (err) {
@@ -242,19 +225,6 @@ export default function CourseAdd() {
                   <div>
                     <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Course Title <span className="text-brand-danger">*</span></label>
                     <input className={inputClass} type="text" name="title" value={form.title} onChange={handleChange} placeholder="e.g. Fire Safety Fundamentals" required />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Category <span className="text-brand-danger">*</span></label>
-                    <select
-                      className={inputClass}
-                      value={form.categoryIds[0] || ""}
-                      onChange={(e) => setForm({ ...form, categoryIds: [e.target.value] })}
-                    >
-                      <option value="">Select a category</option>
-                      {categories.map((c) => (
-                        <option key={c._id} value={c._id}>{c.name}</option>
-                      ))}
-                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Description</label>

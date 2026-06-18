@@ -30,7 +30,6 @@ const OwnerStaff        = lazy(() => import("./pages/dashboard/OwnerStaff"));
 const OSCourses         = lazy(() => import("./pages/dashboard/OSCourses"));
 const CourseDrafts      = lazy(() => import("./pages/dashboard/CourseDrafts"));
 const CourseAdd         = lazy(() => import("./pages/dashboard/CourseAdd"));
-const CourseCategories  = lazy(() => import("./pages/dashboard/CourseCategories"));
 const CourseLessons     = lazy(() => import("./pages/dashboard/CourseLessons"));
 const LessonBuilder     = lazy(() => import("./pages/dashboard/LessonBuilder"));
 const CourseAssignStaff = lazy(() => import("./pages/dashboard/CourseAssignStaff"));
@@ -125,7 +124,6 @@ function AppContent() {
           <Route path="locations"        element={<PermissionRoute><OwnerLocations /></PermissionRoute>} />
           <Route path="roles"            element={<PermissionRoute><OwnerRoles /></PermissionRoute>} />
 
-          <Route path="course-categories"        element={<PermissionRoute><CourseCategories /></PermissionRoute>} />
           <Route path="courses"                  element={<PermissionRoute><OSCourses /></PermissionRoute>} />
           <Route path="courses/drafts"           element={<PermissionRoute><CourseDrafts /></PermissionRoute>} />
           <Route path="course-add/:courseId?"    element={<PermissionRoute><CourseAdd /></PermissionRoute>} />

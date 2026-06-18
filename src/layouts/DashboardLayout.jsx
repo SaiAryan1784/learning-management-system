@@ -192,7 +192,6 @@ export default function DashboardLayout() {
     { label: "Locations", icon: "fa-location-dot", path: "/dashboard/locations" },
     { label: "Staff", icon: "fa-users", path: "/dashboard/staff" },
     { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses" },
-    { label: "Categories", icon: "fa-layer-group", path: "/dashboard/course-categories" },
     { label: "Certificates", icon: "fa-certificate", path: "/dashboard/certificates" },
   ];
 
