@@ -47,22 +47,29 @@ export default function StaffDashboard() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [resumingId, setResumingId] = useState(null);
+  const [loggedInToday, setLoggedInToday] = useState(null);
 
   const lastFetchRef = useRef(0);
+
+  const roleName = user?.role?.name?.trim().toLowerCase();
+  const isAdminUser = roleName === "owner" || roleName === "admin";
 
   const fetchDashboard = useCallback(async ({ silent = false } = {}) => {
     try {
       if (!silent) setLoading(true);
-      const res = await api.get("/progress/me/dashboard");
+      const calls = [api.get("/progress/me/dashboard")];
+      if (isAdminUser) calls.push(api.get("/progress/org/overview").catch(() => null));
+      const [res, orgRes] = await Promise.all(calls);
       lastFetchRef.current = Date.now();
       setSummary(res.data.summary);
       setCourses(res.data.courses);
+      if (orgRes) setLoggedInToday(orgRes.data?.summary?.usersLoggedInToday ?? null);
     } catch (err) {
       console.error("Dashboard load failed", err);
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [isAdminUser]);
 
   useEffect(() => {
     fetchDashboard();
@@ -132,7 +139,9 @@ export default function StaffDashboard() {
               { icon: "fa-book", label: "Total Courses", value: summary.totalAssignedCourses },
               { icon: "fa-circle-check", label: "Completed", value: summary.completedCourses },
               { icon: "fa-spinner", label: "In Progress", value: summary.inProgressCourses },
-              { icon: "fa-circle-pause", label: "Not Started", value: summary.notStartedCourses },
+              isAdminUser
+                ? { icon: "fa-circle-dot", label: "Logged In Today", value: loggedInToday ?? "—" }
+                : { icon: "fa-circle-pause", label: "Not Started", value: summary.notStartedCourses },
             ].map((s) => (
               <motion.div
                 key={s.label}
