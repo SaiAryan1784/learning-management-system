@@ -193,6 +193,7 @@ export default function DashboardLayout() {
     { label: "Staff", icon: "fa-users", path: "/dashboard/staff" },
     { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses" },
     { label: "Certificates", icon: "fa-certificate", path: "/dashboard/certificates" },
+    { label: "Badges", icon: "fa-medal", path: "/dashboard/badges" },
   ];
 
   const complianceMenu = [

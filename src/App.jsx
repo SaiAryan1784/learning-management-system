@@ -40,6 +40,7 @@ const ManagerStaffDetails = lazy(() => import("./pages/dashboard/ManagerStaffDet
 const StaffDashboard    = lazy(() => import("./pages/staff/StaffDashboard"));
 const StaffLessonView   = lazy(() => import("./pages/staff/StaffLessonView"));
 const StaffCertificates = lazy(() => import("./pages/staff/StaffCertificates"));
+const StaffBadges       = lazy(() => import("./pages/staff/StaffBadges"));
 
 /* ── Compliance ───────────────────────────────────────── */
 const ComplianceSettings = lazy(() => import("./pages/compliance/ComplianceSettings"));
@@ -121,6 +122,7 @@ function AppContent() {
           {/* Owner / admin */}
           <Route path="staff"            element={<PermissionRoute><OwnerStaff /></PermissionRoute>} />
           <Route path="certificates"     element={<PermissionRoute><StaffCertificates /></PermissionRoute>} />
+          <Route path="badges"           element={<PermissionRoute><StaffBadges /></PermissionRoute>} />
           <Route path="locations"        element={<PermissionRoute><OwnerLocations /></PermissionRoute>} />
           <Route path="roles"            element={<PermissionRoute><OwnerRoles /></PermissionRoute>} />
 

@@ -228,8 +228,9 @@ export default function StaffLessonView() {
   const handleComplete = async () => {
     try {
       setCompleting(true);
-      await api.post(`/progress/lessons/${lessonId}/complete`);
+      const res = await api.post(`/progress/lessons/${lessonId}/complete`);
       await loadProgress();
+      (res.data?.newBadges || []).forEach((b) => toastr.success(`🏅 Badge earned: ${b.name}`));
       goNext();
     } catch (err) {
       toastr.error("Could not mark complete");
@@ -251,6 +252,7 @@ export default function StaffLessonView() {
       await loadProgress();
       if (res.data.attempt.passed) toastr.success(`Passed with ${res.data.attempt.scorePercent}%`);
       else toastr.warning(`Score ${res.data.attempt.scorePercent}% — did not pass`);
+      (res.data?.newBadges || []).forEach((b) => toastr.success(`🏅 Badge earned: ${b.name}`));
     } catch (err) {
       toastr.error(err.response?.data?.message || "Submit failed");
     } finally {
