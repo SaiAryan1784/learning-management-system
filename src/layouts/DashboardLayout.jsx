@@ -192,6 +192,9 @@ export default function DashboardLayout() {
     { label: "Locations", icon: "fa-location-dot", path: "/dashboard/locations" },
     { label: "Staff", icon: "fa-users", path: "/dashboard/staff" },
     { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses" },
+  ];
+
+  const recognitionMenu = [
     { label: "Certificates", icon: "fa-certificate", path: "/dashboard/certificates" },
     { label: "Badges", icon: "fa-medal", path: "/dashboard/badges" },
   ];
@@ -320,6 +323,11 @@ export default function DashboardLayout() {
                 <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
               ))}
 
+              <SectionLabel>Recognition</SectionLabel>
+              {recognitionMenu.map((item) => (
+                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
+              ))}
+
               <SectionLabel>Compliance</SectionLabel>
               {complianceMenu.map((item) => (
                 <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
@@ -336,6 +344,11 @@ export default function DashboardLayout() {
           {isStaff && (
             <>
               {managementMenu.map((item) => (
+                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
+              ))}
+
+              <SectionLabel>Recognition</SectionLabel>
+              {recognitionMenu.map((item) => (
                 <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
               ))}
             </>
