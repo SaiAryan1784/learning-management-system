@@ -146,7 +146,7 @@ export default function ManagerDashboard() {
           <div className="min-w-0">
             <p className="text-sm text-white/55">{formatToday()}</p>
             <h1 className="text-3xl font-extrabold tracking-tight mt-1">
-              {getGreeting()}, <span className="text-emerald">{firstName}</span>
+              {getGreeting()}, <span className="text-[#db767c]">{firstName}</span>
             </h1>
             <p className="text-sm text-white/70 mt-2 max-w-md">{statusLine}</p>
             <div className="flex flex-wrap gap-2 mt-5">
