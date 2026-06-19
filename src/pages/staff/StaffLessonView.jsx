@@ -9,6 +9,7 @@ import { ThemeScope } from "../../contexts/BrandContext";
 import FilePreview from "../../components/lesson/FilePreview";
 import NumberScale from "../../components/lesson/NumberScale";
 import SignaturePad from "../../components/lesson/SignaturePad";
+import "../../components/lesson/lessonContent.css";
 
 const BASE_URL = api.defaults.baseURL || "";
 const FILE_BASE_URL = BASE_URL.replace("/api", "");
@@ -53,7 +54,7 @@ function Accordion({ config }) {
         <span className="text-sm font-semibold text-brand-text">{config.title}</span>
         <i className={`fa-solid fa-chevron-${open ? "up" : "down"} text-xs text-brand-muted`}></i>
       </button>
-      {open && <div className="px-4 py-3 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: config.body || "" }} />}
+      {open && <div className="px-4 py-3 lesson-content" dangerouslySetInnerHTML={{ __html: config.body || "" }} />}
     </div>
   );
 }
@@ -210,10 +211,10 @@ export default function StaffLessonView() {
     const value = responses[block._id];
     switch (kind) {
       case "text":
-        return <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: config.html || "" }} />;
+        return <div className="lesson-content" dangerouslySetInnerHTML={{ __html: config.html || "" }} />;
       case "callout":
         return (
-          <div className="rounded-lg border-l-4 border-emerald bg-emerald-muted/40 p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: config.html || "" }} />
+          <div className="rounded-lg border-l-4 border-emerald bg-emerald-muted/40 p-4 lesson-content" dangerouslySetInnerHTML={{ __html: config.html || "" }} />
         );
       case "divider":
         return <hr className="border-brand-border" />;

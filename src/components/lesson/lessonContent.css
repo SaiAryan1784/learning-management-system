@@ -1,0 +1,75 @@
+/*
+ * Re-asserts rich-text formatting that the app's global reset (src/css/style.css)
+ * strips: the Meyer reset sets `strong,b,em,i,u { font: inherit }` and
+ * `ol,ul,li { list-style:none }`, and there's no Tailwind typography plugin, so both
+ * the Quill editor (.ql-editor) and rendered lesson HTML (.lesson-content) lose bold,
+ * italic, underline and list markers. These rules win on specificity (class + element).
+ */
+
+/* ── Inline marks (editor + rendered output) ── */
+.ql-editor strong,
+.lesson-content strong,
+.ql-editor b,
+.lesson-content b { font-weight: 700; }
+
+.ql-editor em,
+.lesson-content em,
+.ql-editor i,
+.lesson-content i { font-style: italic; }
+
+.ql-editor u,
+.lesson-content u { text-decoration: underline; }
+
+.ql-editor s,
+.lesson-content s { text-decoration: line-through; }
+
+/* ── Lists ── */
+.ql-editor ol,
+.lesson-content ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+
+.ql-editor ul,
+.lesson-content ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
+
+.ql-editor li,
+.lesson-content li { list-style: inherit; display: list-item; margin: 0.15em 0; }
+
+/* Quill indent levels still need their bullet styles */
+.ql-editor ol li { list-style-type: decimal; }
+.ql-editor ul li { list-style-type: disc; }
+
+/* ── Rendered-content typography (.lesson-content) ── */
+.lesson-content { line-height: 1.6; color: inherit; }
+.lesson-content p { margin: 0.5em 0; }
+.lesson-content h1 { font-size: 1.6em; font-weight: 700; margin: 0.6em 0 0.3em; }
+.lesson-content h2 { font-size: 1.35em; font-weight: 700; margin: 0.6em 0 0.3em; }
+.lesson-content h3 { font-size: 1.15em; font-weight: 600; margin: 0.6em 0 0.3em; }
+.lesson-content a { color: #059669; text-decoration: underline; }
+.lesson-content blockquote {
+  border-left: 3px solid #10B981;
+  padding-left: 1em;
+  margin: 0.6em 0;
+  color: #4B5563;
+  font-style: italic;
+}
+.lesson-content img { max-width: 100%; border-radius: 8px; }
+
+/* ── Clean editor chrome (override global .ql-editor{height:200px}) ── */
+.quill-clean .ql-container {
+  border: 0;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+.quill-clean .ql-toolbar {
+  border: 0;
+  border-bottom: 1px solid #E5E7EB;
+  background: #F9FAFB;
+}
+.quill-clean .ql-editor {
+  height: auto;
+  min-height: 132px;
+  line-height: 1.6;
+}
+.quill-clean .ql-editor.ql-blank::before {
+  font-style: normal;
+  color: #9CA3AF;
+}

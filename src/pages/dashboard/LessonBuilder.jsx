@@ -11,6 +11,7 @@ import { sortableKeyboardCoordinates, SortableContext, useSortable, verticalList
 import { CSS } from "@dnd-kit/utilities";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import "../../components/lesson/lessonContent.css";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
 import { ThemeScope } from "../../contexts/BrandContext";
@@ -83,7 +84,7 @@ function defaultConfig(kind) {
     case "text_answer": return { prompt: "" };
     case "mcq": return { prompt: "", multiple: false, options: [{ key: "A", text: "" }, { key: "B", text: "" }] };
     case "survey": return { prompt: "", scaleMax: 5 };
-    case "matching": return { pairs: [{ left: "", right: "" }, { left: "", right: "" }, { left: "", right: "" }, { left: "", right: "" }] };
+    case "matching": return { pairs: [{ left: "", right: "" }, { left: "", right: "" }] };
     case "file_upload": return { prompt: "" };
     case "esignature": return { label: "Sign here" };
     default: return {};
@@ -196,6 +197,35 @@ function PreviewMcq({ config }) {
           <span className="text-sm text-brand-text">{o.text || `Option ${o.key}`}</span>
         </label>
       ))}
+    </div>
+  );
+}
+
+function PreviewFlipCard({ config }) {
+  const [flipped, setFlipped] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => setFlipped((f) => !f)}
+      className="w-full min-h-[140px] rounded-xl border border-emerald/40 bg-emerald-muted/40 p-6 text-left transition-colors hover:bg-emerald-muted/70"
+    >
+      <p className="text-[10px] font-bold uppercase tracking-wide text-emerald mb-2">
+        {flipped ? "Answer" : "Question — tap to flip"}
+      </p>
+      <p className="text-brand-text">{flipped ? config.back : config.front}</p>
+    </button>
+  );
+}
+
+function PreviewAccordion({ config }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-brand-border rounded-xl overflow-hidden">
+      <button type="button" className="w-full flex items-center justify-between px-4 py-3 bg-canvas text-left" onClick={() => setOpen((o) => !o)}>
+        <span className="text-sm font-semibold text-brand-text">{config.title || "Untitled"}</span>
+        <i className={`fa-solid fa-chevron-${open ? "up" : "down"} text-xs text-brand-muted`} />
+      </button>
+      {open && <div className="px-4 py-3 lesson-content" dangerouslySetInnerHTML={{ __html: config.body || "" }} />}
     </div>
   );
 }
@@ -397,18 +427,24 @@ export default function LessonBuilder() {
     setOption(next);
   };
 
-  const addBlock = (kind) => {
-    setBlocks((prev) => [
-      ...prev,
-      {
-        uid: crypto.randomUUID(),
-        kind,
-        category: categoryFor(kind),
-        config: defaultConfig(kind),
-        answerKey: kind === "mcq" ? { correctOptionKeys: [] } : null,
-      },
-    ]);
-  };
+  const makeBlock = (kind) => ({
+    uid: crypto.randomUUID(),
+    kind,
+    category: categoryFor(kind),
+    config: defaultConfig(kind),
+    answerKey: kind === "mcq" ? { correctOptionKeys: [] } : null,
+  });
+
+  const addBlock = (kind) => setBlocks((prev) => [...prev, makeBlock(kind)]);
+
+  // Insert a new block at a specific index (used when dropping between fields).
+  const addBlockAt = (kind, index) =>
+    setBlocks((prev) => {
+      const next = [...prev];
+      const at = index < 0 || index > next.length ? next.length : index;
+      next.splice(at, 0, makeBlock(kind));
+      return next;
+    });
 
   const updateBlock = (uid, patch) => {
     setBlocks((prev) => prev.map((b) => (b.uid === uid ? { ...b, ...patch } : b)));
@@ -433,7 +469,12 @@ export default function LessonBuilder() {
     const { active, over } = event;
     if (!over) return;
     if (active.data.current?.fromSidebar) {
-      addBlock(active.data.current.kind);
+      const kind = active.data.current.kind;
+      // Dropped over an existing block → insert at that block's position; over the
+      // empty canvas drop zone → append to the end.
+      const overIndex = blocks.findIndex((b) => b.uid === over.id);
+      if (overIndex === -1) addBlock(kind);
+      else addBlockAt(kind, overIndex);
       return;
     }
     if (active.id === over.id) return;
@@ -525,7 +566,9 @@ export default function LessonBuilder() {
         return (
           <div className="space-y-2">
             <input className={fieldInputClass} placeholder="Accordion title" value={config.title || ""} onChange={(e) => updateConfig(uid, { title: e.target.value })} />
-            <ReactQuill theme="snow" value={config.body || ""} onChange={(val) => updateConfig(uid, { body: val })} />
+            <div className="rounded-lg border border-brand-border bg-white overflow-hidden quill-clean">
+              <ReactQuill theme="snow" value={config.body || ""} onChange={(val) => updateConfig(uid, { body: val })} />
+            </div>
           </div>
         );
       case "flip_card":
@@ -676,13 +719,13 @@ export default function LessonBuilder() {
     const removePair = (i) => updateConfig(uid, { pairs: config.pairs.filter((_, idx) => idx !== i) });
     return (
       <div className="space-y-2">
-        <p className="text-[11px] text-brand-muted">Define matching pairs (min 4). Learners draw lines to connect them; the correct pairing is stored and hidden.</p>
+        <p className="text-[11px] text-brand-muted">Define matching pairs (min 2). Learners connect each left item to its right match; the correct pairing is stored and hidden.</p>
         {config.pairs.map((p, i) => (
           <div key={i} className="flex items-center gap-2">
             <input className={optionInputClass} placeholder="Left" value={p.left} onChange={(e) => setPair(i, "left", e.target.value)} />
             <i className="fa-solid fa-arrows-left-right text-brand-muted text-xs"></i>
             <input className={optionInputClass} placeholder="Right" value={p.right} onChange={(e) => setPair(i, "right", e.target.value)} />
-            {config.pairs.length > 4 && (
+            {config.pairs.length > 2 && (
               <button type="button" className="text-brand-danger" onClick={() => removePair(i)}><i className="fa-solid fa-xmark"></i></button>
             )}
           </div>
@@ -699,25 +742,15 @@ export default function LessonBuilder() {
     const { kind, config } = b;
     switch (kind) {
       case "text":
-        return <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: config.html || "" }} />;
+        return <div className="lesson-content" dangerouslySetInnerHTML={{ __html: config.html || "" }} />;
       case "callout":
-        return <div className="rounded-lg border-l-4 border-emerald bg-emerald-muted/40 p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: config.html || "" }} />;
+        return <div className="rounded-lg border-l-4 border-emerald bg-emerald-muted/40 p-4 lesson-content" dangerouslySetInnerHTML={{ __html: config.html || "" }} />;
       case "divider":
         return <hr className="border-brand-border" />;
       case "accordion":
-        return (
-          <div className="border border-brand-border rounded-xl overflow-hidden">
-            <div className="px-4 py-3 bg-canvas text-sm font-semibold text-brand-text">{config.title || "Untitled"}</div>
-            <div className="px-4 py-3 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: config.body || "" }} />
-          </div>
-        );
+        return <PreviewAccordion config={config} />;
       case "flip_card":
-        return (
-          <div className="rounded-xl border border-emerald/40 bg-emerald-muted/40 p-6">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald mb-2">Question — tap to flip</p>
-            <p className="text-brand-text">{config.front}</p>
-          </div>
-        );
+        return <PreviewFlipCard config={config} />;
       case "image":
         return <FilePreview src={fileUrl(config)} mimeType={config.mimeType} fileName={config.fileName} height={280} />;
       case "attach_file":
