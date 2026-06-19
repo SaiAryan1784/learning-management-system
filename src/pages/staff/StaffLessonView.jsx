@@ -289,24 +289,25 @@ export default function StaffLessonView() {
 
   return (
     <div className="space-y-5">
-      {/* Sticky progress bar */}
-      <div className="sticky top-14 z-30 -mx-6 px-6 py-3 bg-canvas/95 backdrop-blur border-b border-brand-border">
-        <div className="flex items-center justify-between gap-4 mb-2">
-          <div className="min-w-0">
-            <p className="text-caption text-brand-muted uppercase tracking-wide">Course Progress</p>
-            <p className="text-body font-semibold text-brand-text truncate">
-              Lesson {currentIndex + 1} of {allLessons.length}
+      {/* Sticky header */}
+      <div className="sticky top-0 z-30 -mx-6 -mt-6 bg-surface/95 backdrop-blur border-b border-brand-border">
+        <div className="flex items-center justify-between gap-4 px-6 py-2.5">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base font-bold text-brand-text truncate" title={currentLesson.title}>
+              {currentLesson.title}
+            </h1>
+            <p className="text-xs text-brand-muted">
+              Lesson {currentIndex + 1} of {allLessons.length} &middot; <span className="capitalize">{currentLesson.option}</span>
             </p>
           </div>
-          <Badge tone={progressPercent === 100 ? "success" : "info"} size="lg">{progressPercent}%</Badge>
+          <Badge tone={progressPercent === 100 ? "success" : "info"} size="sm">{progressPercent}%</Badge>
         </div>
-        <ProgressBar percent={progressPercent} size="sm" />
+        <ProgressBar percent={progressPercent} size="xs" />
       </div>
 
       <Card padded>
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-heading text-brand-text">{currentLesson.title}</h1>
-          <Badge tone="info" size="sm">{currentLesson.option}</Badge>
+        <div className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-3">
+          Lessons
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">

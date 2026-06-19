@@ -53,12 +53,22 @@ export default function FilePreview({
   height = 240,
   className = "",
 }) {
-  const [status, setStatus] = useState("loading"); // loading | ready | error
   const kind = resolveFileKind({ mimeType, src, fileName });
+  const [status, setStatus] = useState(() => {
+    if (!src) return "empty";
+    if (kind === "pdf" || kind === "image") return "ready";
+    return "loading";
+  });
 
   useEffect(() => {
-    setStatus(src ? "loading" : "empty");
-  }, [src]);
+    if (!src) {
+      setStatus("empty");
+    } else if (kind === "pdf" || kind === "image") {
+      setStatus("ready");
+    } else {
+      setStatus("loading");
+    }
+  }, [src, kind]);
 
   if (!src) {
     return (
@@ -146,9 +156,8 @@ export default function FilePreview({
         <img
           src={src}
           alt={fileName || "preview"}
-          onLoad={() => setStatus("ready")}
           onError={() => setStatus("error")}
-          className={`block w-full max-h-80 object-contain bg-white ${status === "ready" ? "" : "hidden"}`}
+          className="block w-full max-h-80 object-contain bg-white"
         />
       )}
 
@@ -165,27 +174,41 @@ export default function FilePreview({
 
       {kind === "pdf" && status !== "error" && (
         <>
-          <iframe
-            src={src}
-            title={fileName || "PDF preview"}
-            onLoad={() => setStatus("ready")}
-            onError={() => setStatus("error")}
-            className={`block w-full ${status === "ready" ? "" : "hidden"}`}
+          <object
+            data={src}
+            type="application/pdf"
+            className="block w-full"
             style={{ height }}
-          />
-          {status === "ready" && (
-            <div className="border-t border-brand-border px-3 py-2 bg-surface">
-              <a
-                href={src}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs font-semibold text-emerald hover:underline"
-              >
-                <i className="fa-solid fa-download mr-1" />
-                Download {fileName || "PDF"}
-              </a>
-            </div>
-          )}
+          >
+            <iframe
+              src={src}
+              title={fileName || "PDF preview"}
+              className="block w-full border-0"
+              style={{ height }}
+            />
+          </object>
+          <div className="border-t border-brand-border px-3 py-2 bg-surface flex items-center gap-4">
+            <a
+              href={src}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-semibold text-emerald hover:underline inline-flex items-center gap-1.5"
+            >
+              <i className="fa-solid fa-arrow-up-right-from-square text-[10px]" />
+              Open in new tab
+            </a>
+            <span className="text-brand-border text-xs">|</span>
+            <a
+              href={src}
+              download
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-semibold text-emerald hover:underline inline-flex items-center gap-1.5"
+            >
+              <i className="fa-solid fa-download text-[10px]" />
+              Download {fileName || "PDF"}
+            </a>
+          </div>
         </>
       )}
     </div>
