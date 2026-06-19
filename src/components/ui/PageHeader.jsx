@@ -2,7 +2,7 @@ export function PageHeader({ title, subtitle, children }) {
   return (
     <div className="flex items-center justify-between bg-charcoal rounded-xl px-6 py-5 mb-5">
       <div>
-        <h1 className="text-3xl font-extrabold text-pink-400 uppercase tracking-wide leading-tight">
+        <h1 className="text-3xl font-extrabold text-emerald uppercase tracking-wide leading-tight">
           {title}
         </h1>
         {subtitle && (

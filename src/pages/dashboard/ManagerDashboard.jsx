@@ -24,6 +24,33 @@ function formatToday() {
 const EMERALD = "#10B981";
 const EMERALD_MUTED = "#6EE7B7";
 
+function initials(name = "") {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return ((parts[0][0] || "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+}
+
+// Eyebrow section heading with a soft icon chip, for visual rhythm down the page.
+function SectionHeading({ icon, title, right }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2.5">
+        <span className="w-7 h-7 rounded-lg bg-emerald-muted flex items-center justify-center flex-shrink-0">
+          <i className={`fa-solid ${icon} text-emerald text-xs`} />
+        </span>
+        <h2 className="text-subheading text-brand-text">{title}</h2>
+      </div>
+      {right ? <span className="text-caption text-brand-muted">{right}</span> : null}
+    </div>
+  );
+}
+
+const QUICK_ACTIONS = [
+  { label: "Add Course", desc: "Build new training", icon: "fa-plus", to: "/dashboard/course-add", bg: "bg-emerald-muted", text: "text-emerald" },
+  { label: "Invite Staff", desc: "Grow your team", icon: "fa-user-plus", to: "/dashboard/staff", bg: "bg-blue-100", text: "text-blue-500" },
+  { label: "View Reports", desc: "Compliance & progress", icon: "fa-chart-line", to: "/dashboard/reports/compliance", bg: "bg-violet-100", text: "text-violet-500" },
+];
+
 export default function ManagerDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -72,58 +99,57 @@ export default function ManagerDashboard() {
       />
 
       {/* Quick Actions */}
-      <Card padded={false}>
-        <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
-          <Button
-            variant="primary" size="sm"
-            leadingIcon={<i className="fa-solid fa-plus text-xs" />}
-            onClick={() => navigate("/dashboard/course-add")}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {QUICK_ACTIONS.map((a) => (
+          <button
+            key={a.label}
+            type="button"
+            onClick={() => navigate(a.to)}
+            className="group flex items-center gap-3 bg-surface border border-brand-border rounded-xl p-4 text-left hover:border-emerald/40 hover:shadow-elevated transition-all duration-250 ease-smooth outline-none focus:outline-none"
           >
-            Add Course
-          </Button>
-          <Button
-            variant="secondary" size="sm"
-            leadingIcon={<i className="fa-solid fa-user-plus text-xs" />}
-            onClick={() => navigate("/dashboard/staff")}
-          >
-            Invite Staff
-          </Button>
-          <Button
-            variant="ghost" size="sm"
-            leadingIcon={<i className="fa-solid fa-chart-line text-xs" />}
-            onClick={() => navigate("/dashboard/reports/compliance")}
-          >
-            View Reports
-          </Button>
-        </div>
-      </Card>
+            <span className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${a.bg}`}>
+              <i className={`fa-solid ${a.icon} ${a.text}`} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-brand-text">{a.label}</span>
+              <span className="block text-xs text-brand-muted truncate">{a.desc}</span>
+            </span>
+            <i className="fa-solid fa-arrow-right text-xs text-brand-muted ml-auto opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+          </button>
+        ))}
+      </div>
 
-      {/* ── Org-wide stat cards ──────────────────────── */}
-      {loading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
-        </div>
-      ) : overview ? (
-        <motion.div
-          initial="hidden" animate="visible" variants={stagger}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-        >
-          {[
-            { icon: "fa-users",        label: "Total Users",      value: overview.summary.totalUsers,          tone: "info" },
-            { icon: "fa-circle-dot",   label: "Logged In Today",  value: overview.summary.usersLoggedInToday,  tone: "default" },
-            { icon: "fa-book-open",    label: "Total Courses",    value: overview.summary.totalCourses,        tone: "neutral" },
-            { icon: "fa-circle-check", label: "Completions",      value: overview.summary.coursesCompleted,    tone: "default" },
-          ].map((s) => (
-            <motion.div key={s.label} variants={fadeUp} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
-              <StatCard {...s} tone={s.tone} />
-            </motion.div>
-          ))}
-        </motion.div>
-      ) : null}
+      {/* ── Overview ─────────────────────────────────── */}
+      <section className="space-y-4">
+        <SectionHeading icon="fa-gauge-high" title="Overview" />
+        {loading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        ) : overview ? (
+          <motion.div
+            initial="hidden" animate="visible" variants={stagger}
+            className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+          >
+            {[
+              { icon: "fa-users",            label: "Total Users",     value: overview.summary.totalUsers,         tone: "info" },
+              { icon: "fa-right-to-bracket", label: "Logged In Today", value: overview.summary.usersLoggedInToday, tone: "neutral" },
+              { icon: "fa-book-open",        label: "Total Courses",   value: overview.summary.totalCourses,       tone: "default" },
+              { icon: "fa-circle-check",     label: "Completions",     value: overview.summary.coursesCompleted,   tone: "default" },
+            ].map((s) => (
+              <motion.div key={s.label} variants={fadeUp} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
+                <StatCard {...s} tone={s.tone} />
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : null}
+      </section>
 
-      {/* ── Charts row ───────────────────────────────── */}
+      {/* ── Insights ─────────────────────────────────── */}
       {overview && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <section className="space-y-4">
+          <SectionHeading icon="fa-chart-simple" title="Insights" />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {/* Top 10 Enrollments */}
           <Card padded>
             <p className="text-sm font-bold text-brand-text mb-4">Top 10 Course Enrollments</p>
@@ -171,15 +197,17 @@ export default function ManagerDashboard() {
               </div>
             )}
           </Card>
-        </div>
+          </div>
+        </section>
       )}
 
-      {/* ── Staff grid ───────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-subheading text-brand-text">Staff & Their Progress</h2>
-          {!loading && <span className="text-caption text-brand-muted">{avgProgress}% avg completion</span>}
-        </div>
+      {/* ── Staff & progress ─────────────────────────── */}
+      <section className="space-y-4">
+        <SectionHeading
+          icon="fa-user-group"
+          title="Staff & Their Progress"
+          right={!loading ? `${avgProgress}% avg completion` : null}
+        />
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -206,8 +234,11 @@ export default function ManagerDashboard() {
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               >
                 <Card interactive onClick={() => navigate(`/dashboard/staff-progress/${staff.staffId}`)}>
-                  <div className="flex justify-between items-start mb-2 gap-2">
-                    <div className="min-w-0">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="w-10 h-10 rounded-full bg-emerald-muted text-emerald font-bold text-sm flex items-center justify-center flex-shrink-0">
+                      {initials(staff.staffName)}
+                    </span>
+                    <div className="min-w-0 flex-1">
                       <p className="text-body font-semibold text-brand-text leading-tight truncate">{staff.staffName}</p>
                       <p className="text-caption text-brand-muted truncate">{staff.staffEmail}</p>
                     </div>
@@ -229,7 +260,7 @@ export default function ManagerDashboard() {
             ))}
           </motion.div>
         )}
-      </div>
+      </section>
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
