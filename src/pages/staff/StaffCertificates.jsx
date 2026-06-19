@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../../api/api";
 import toastr from "toastr";
+import { useAuth } from "../../auth/AuthContext";
 import {
   PageHeader,
   Button,
@@ -12,6 +14,11 @@ import {
 } from "../../components/ui";
 
 export default function StaffCertificates() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const roleName = user?.role?.name?.trim().toLowerCase();
+  const isAdmin = roleName === "owner" || roleName === "admin";
+
   const [certificates, setCertificates] = useState([]);
   const [selectedCert, setSelectedCert] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +61,19 @@ export default function StaffCertificates() {
         }
       `}</style>
 
-      <PageHeader title="My Certificates" subtitle="Certificates earned from completed courses" />
+      <PageHeader title="My Certificates" subtitle="Certificates earned from completed courses">
+        {isAdmin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="!text-white !border-white/20 hover:!bg-white/10"
+            leadingIcon={<i className="fa-solid fa-gear text-xs" />}
+            onClick={() => navigate("/dashboard/certificates/manage")}
+          >
+            Manage
+          </Button>
+        )}
+      </PageHeader>
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -119,16 +138,18 @@ export default function StaffCertificates() {
         title="Certificate"
         maxWidth="max-w-2xl"
       >
-        {selectedCert && (
-          <>
+        {selectedCert && (() => {
+          const certCfg = selectedCert.course?.certificate || {};
+          return (
+            <>
             <div
               id="cert-print"
               className="relative overflow-hidden bg-gradient-to-b from-emerald-muted/40 to-surface rounded-xl p-8 border border-brand-border"
             >
               <div className="text-center mb-6">
-                <img src="/images/title-img.png" alt="seal" className="h-16 mx-auto mb-4" />
+                <img src={certCfg.logoUrl || "/images/title-img.png"} alt="seal" className="h-16 mx-auto mb-4" />
                 <h3 className="text-caption font-bold text-brand-muted uppercase tracking-widest mb-4">
-                  Certificate of Completion
+                  {certCfg.title || "Certificate of Completion"}
                 </h3>
                 <div className="h-px bg-brand-border mb-4" />
                 <p className="text-caption text-brand-muted uppercase tracking-wider mb-2">
@@ -155,6 +176,16 @@ export default function StaffCertificates() {
               <div className="flex items-center justify-center mb-4">
                 <img src="/images/stamp.png" alt="stamp" className="h-14 opacity-80" />
               </div>
+
+              {certCfg.signatoryName && (
+                <div className="text-center mb-4">
+                  <div className="h-px w-40 bg-brand-border mb-1 mx-auto" />
+                  <p className="text-caption font-semibold text-brand-text">{certCfg.signatoryName}</p>
+                  {certCfg.signatoryRole && (
+                    <p className="text-[10px] text-brand-muted">{certCfg.signatoryRole}</p>
+                  )}
+                </div>
+              )}
 
               <div className="text-center">
                 <p className="text-[10px] text-brand-muted uppercase tracking-wider">
@@ -188,8 +219,9 @@ export default function StaffCertificates() {
                 Print / Save PDF
               </Button>
             </div>
-          </>
-        )}
+            </>
+          );
+        })()}
       </Modal>
     </div>
   );

@@ -33,6 +33,8 @@ const CourseAdd         = lazy(() => import("./pages/dashboard/CourseAdd"));
 const CourseLessons     = lazy(() => import("./pages/dashboard/CourseLessons"));
 const LessonBuilder     = lazy(() => import("./pages/dashboard/LessonBuilder"));
 const CourseAssignStaff = lazy(() => import("./pages/dashboard/CourseAssignStaff"));
+const BadgeManager      = lazy(() => import("./pages/dashboard/BadgeManager"));
+const CertificateManager = lazy(() => import("./pages/dashboard/CertificateManager"));
 const ManagerDashboard  = lazy(() => import("./pages/dashboard/ManagerDashboard"));
 const ManagerStaffDetails = lazy(() => import("./pages/dashboard/ManagerStaffDetails"));
 
@@ -122,7 +124,9 @@ function AppContent() {
           {/* Owner / admin */}
           <Route path="staff"            element={<PermissionRoute><OwnerStaff /></PermissionRoute>} />
           <Route path="certificates"     element={<PermissionRoute><StaffCertificates /></PermissionRoute>} />
+          <Route path="certificates/manage" element={<PermissionRoute><CertificateManager /></PermissionRoute>} />
           <Route path="badges"           element={<PermissionRoute><StaffBadges /></PermissionRoute>} />
+          <Route path="badges/manage"    element={<PermissionRoute><BadgeManager /></PermissionRoute>} />
           <Route path="locations"        element={<PermissionRoute><OwnerLocations /></PermissionRoute>} />
           <Route path="roles"            element={<PermissionRoute><OwnerRoles /></PermissionRoute>} />
 

@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../../api/api";
 import toastr from "toastr";
+import { useAuth } from "../../auth/AuthContext";
 import {
   PageHeader,
+  Button,
   Card,
   EmptyState,
   SkeletonCard,
@@ -11,6 +14,11 @@ import {
 } from "../../components/ui";
 
 export default function StaffBadges() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const roleName = user?.role?.name?.trim().toLowerCase();
+  const isAdmin = roleName === "owner" || roleName === "admin";
+
   const [badges, setBadges] = useState([]);
   const [earnedCount, setEarnedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
@@ -36,7 +44,19 @@ export default function StaffBadges() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="My Badges" subtitle="Achievements you earn as you learn" />
+      <PageHeader title="My Badges" subtitle="Achievements you earn as you learn">
+        {isAdmin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="!text-white !border-white/20 hover:!bg-white/10"
+            leadingIcon={<i className="fa-solid fa-gear text-xs" />}
+            onClick={() => navigate("/dashboard/badges/manage")}
+          >
+            Manage
+          </Button>
+        )}
+      </PageHeader>
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -63,6 +63,13 @@ export default function CourseAdd() {
 
   const [form, setForm] = useState({
     title: "", description: "",
+    certificate: {
+      enabled: true,
+      title: "Certificate of Completion",
+      signatoryName: "",
+      signatoryRole: "",
+      logoUrl: "",
+    },
   });
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(null);
@@ -74,7 +81,17 @@ export default function CourseAdd() {
       try {
         const res = await api.get(`/courses/${courseId}`);
         const d = res.data.course || res.data;
-        setForm({ title: d.title, description: d.description });
+        setForm({
+          title: d.title,
+          description: d.description,
+          certificate: {
+            enabled: d.certificate?.enabled ?? true,
+            title: d.certificate?.title || "Certificate of Completion",
+            signatoryName: d.certificate?.signatoryName || "",
+            signatoryRole: d.certificate?.signatoryRole || "",
+            logoUrl: d.certificate?.logoUrl || "",
+          },
+        });
         setSavedCourseId(d._id);
       } catch {
         toastr.error("Failed to load course");
@@ -88,6 +105,9 @@ export default function CourseAdd() {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
   };
+
+  const setCert = (patch) =>
+    setForm((p) => ({ ...p, certificate: { ...p.certificate, ...patch } }));
 
   const handleCoverChange = (e) => {
     const file = e.target.files?.[0];
@@ -230,11 +250,48 @@ export default function CourseAdd() {
                     <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Description</label>
                     <textarea className={inputClass} rows={4} name="description" value={form.description} onChange={handleChange} placeholder="What will learners gain from this course?" />
                   </div>
-                  <div className="flex justify-end pt-2 border-t border-brand-border">
-                    <Button type="submit" variant="primary" loading={submitting} trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />}>
-                      Save & Continue
-                    </Button>
+                </div>
+
+                {/* Certificate settings */}
+                <div className="lg:col-span-3 bg-surface border border-brand-border rounded-xl p-6 space-y-4">
+                  <div className="flex items-center justify-between border-b border-brand-border pb-2">
+                    <h3 className="text-xs font-semibold text-brand-muted uppercase tracking-wide">Certificate</h3>
+                    <label className="flex items-center gap-2 text-sm text-brand-text cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="accent-emerald w-4 h-4"
+                        checked={form.certificate.enabled}
+                        onChange={(e) => setCert({ enabled: e.target.checked })}
+                      />
+                      Grant a certificate on completion
+                    </label>
                   </div>
+                  {form.certificate.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Certificate Title</label>
+                        <input className={inputClass} value={form.certificate.title} onChange={(e) => setCert({ title: e.target.value })} placeholder="Certificate of Completion" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Signatory Name</label>
+                        <input className={inputClass} value={form.certificate.signatoryName} onChange={(e) => setCert({ signatoryName: e.target.value })} placeholder="e.g. Jane Smith" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Signatory Role</label>
+                        <input className={inputClass} value={form.certificate.signatoryRole} onChange={(e) => setCert({ signatoryRole: e.target.value })} placeholder="e.g. Training Director" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Logo URL (optional)</label>
+                        <input className={inputClass} value={form.certificate.logoUrl} onChange={(e) => setCert({ logoUrl: e.target.value })} placeholder="https://… or /images/your-logo.png" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="lg:col-span-3 flex justify-end pt-2">
+                  <Button type="submit" variant="primary" loading={submitting} trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />}>
+                    Save & Continue
+                  </Button>
                 </div>
               </div>
             </form>
