@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../api/api";
@@ -18,6 +18,9 @@ import { ThemeScope } from "../../contexts/BrandContext";
 import FilePreview from "../../components/lesson/FilePreview";
 import NumberScale from "../../components/lesson/NumberScale";
 import SignaturePad from "../../components/lesson/SignaturePad";
+import FlipCard from "../../components/lesson/FlipCard";
+
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 const BASE_URL = api.defaults.baseURL || "";
 const FILE_BASE_URL = BASE_URL.replace("/api", "");
@@ -77,7 +80,7 @@ function defaultConfig(kind) {
     case "callout": return { html: "" };
     case "accordion": return { title: "", body: "" };
     case "flip_card": return { front: "", back: "" };
-    case "divider": return {};
+    case "divider": return { thickness: 2, style: "solid" };
     case "video_link": return { sourceType: "external_url", contentUrl: "" };
     case "image":
     case "attach_file": return { sourceType: "stored_file" };
@@ -201,22 +204,6 @@ function PreviewMcq({ config }) {
   );
 }
 
-function PreviewFlipCard({ config }) {
-  const [flipped, setFlipped] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={() => setFlipped((f) => !f)}
-      className="w-full min-h-[140px] rounded-xl border border-emerald/40 bg-emerald-muted/40 p-6 text-left transition-colors hover:bg-emerald-muted/70"
-    >
-      <p className="text-[10px] font-bold uppercase tracking-wide text-emerald mb-2">
-        {flipped ? "Answer" : "Question — tap to flip"}
-      </p>
-      <p className="text-brand-text">{flipped ? config.back : config.front}</p>
-    </button>
-  );
-}
-
 function PreviewAccordion({ config }) {
   const [open, setOpen] = useState(false);
   return (
@@ -255,17 +242,26 @@ function PreviewMatching({ config }) {
 
 function PaletteGroup({ title, fields, onAdd, open, onToggle, collapsible }) {
   return (
-    <div>
+    <div className="mb-2">
       <button
         type="button"
         onClick={collapsible ? onToggle : undefined}
-        className={`w-full flex items-center justify-between text-[10px] font-bold text-brand-muted uppercase mb-1 ${collapsible ? "cursor-pointer" : "cursor-default"}`}
+        className={`w-full flex items-center justify-between gap-2 mb-1.5 ${collapsible ? "cursor-pointer" : "cursor-default"}`}
+        aria-pressed={collapsible ? open : undefined}
       >
-        <span>{title}</span>
-        {collapsible && <i className={`fa-solid fa-chevron-${open ? "up" : "down"} text-[9px]`} />}
+        <span className="text-[10px] font-bold text-brand-muted uppercase">{title}</span>
+        {collapsible && (
+          <span
+            className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${open ? "bg-emerald" : "bg-brand-border"}`}
+          >
+            <span
+              className={`inline-block h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${open ? "translate-x-3.5" : "translate-x-0.5"}`}
+            />
+          </span>
+        )}
       </button>
       {open && (
-        <div className="space-y-2 mb-2">
+        <div className="space-y-2">
           {fields.map((f) => (
             <DraggableSidebarField key={f.kind} field={f} onAdd={onAdd} />
           ))}
@@ -319,11 +315,25 @@ function CanvasDropZone({ empty, children }) {
   );
 }
 
-function SortableItem({ uid, kind, children, onRemove }) {
+// Emerald insertion line shown between fields while dragging from the palette.
+function DropLine() {
+  return (
+    <div className="relative h-0.5 my-1.5 rounded-full bg-emerald">
+      <span className="absolute -left-1 -top-[3px] w-2 h-2 rounded-full bg-emerald" />
+    </div>
+  );
+}
+
+function SortableItem({ uid, kind, error, children, onRemove }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } = useSortable({ id: uid });
   const style = { transform: CSS.Transform.toString(transform), transition };
   return (
-    <div ref={setNodeRef} style={style} className="border border-brand-border rounded-xl p-5 mb-4 bg-surface relative">
+    <div
+      ref={setNodeRef}
+      id={`block-${uid}`}
+      style={style}
+      className={`border rounded-xl p-5 mb-4 bg-surface relative ${error ? "border-brand-danger ring-1 ring-brand-danger/30" : "border-brand-border"}`}
+    >
       <div className="flex items-center justify-between mb-3">
         <div
           ref={setActivatorNodeRef}
@@ -343,6 +353,12 @@ function SortableItem({ uid, kind, children, onRemove }) {
         </button>
       </div>
       {children}
+      {error && (
+        <p className="flex items-center gap-1.5 text-xs font-medium text-brand-danger mt-2.5">
+          <i className="fa-solid fa-circle-exclamation"></i>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -368,6 +384,10 @@ export default function LessonBuilder() {
   const [contentOpen, setContentOpen] = useState(true);
   const [kcOpen, setKcOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({}); // { [uid]: message }
+  const [formError, setFormError] = useState("");
+  const [dropIndex, setDropIndex] = useState(null); // insertion slot during drag
+  const [dragSource, setDragSource] = useState(null); // "sidebar" | "sort"
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -446,46 +466,95 @@ export default function LessonBuilder() {
       return next;
     });
 
+  const setFieldError = (uid, msg) =>
+    setFieldErrors((prev) => ({ ...prev, [uid]: msg }));
+  const clearFieldError = (uid) =>
+    setFieldErrors((prev) => {
+      if (!prev[uid]) return prev;
+      const next = { ...prev };
+      delete next[uid];
+      return next;
+    });
+
   const updateBlock = (uid, patch) => {
+    clearFieldError(uid);
     setBlocks((prev) => prev.map((b) => (b.uid === uid ? { ...b, ...patch } : b)));
   };
   const updateConfig = (uid, patch) => {
+    clearFieldError(uid);
     setBlocks((prev) => prev.map((b) => (b.uid === uid ? { ...b, config: { ...b.config, ...patch } } : b)));
   };
-  const removeBlock = (uid) => setBlocks((prev) => prev.filter((b) => b.uid !== uid));
+  const removeBlock = (uid) => {
+    clearFieldError(uid);
+    setBlocks((prev) => prev.filter((b) => b.uid !== uid));
+  };
 
   function handleDragStart(event) {
     const { active } = event;
     if (active.data.current?.fromSidebar) {
+      setDragSource("sidebar");
       setActiveDrag(FIELD_META[active.data.current.kind]);
     } else {
+      setDragSource("sort");
       const b = blocks.find((x) => x.uid === active.id);
       setActiveDrag(b ? FIELD_META[b.kind] : null);
     }
   }
 
-  function handleDragEnd(event) {
-    setActiveDrag(null);
+  // Compute the insertion slot (0..blocks.length) as the pointer moves, so the drop line
+  // and the final insert agree. Over a block → before/after by which half the pointer is in;
+  // over the empty canvas → end of the list.
+  function handleDragOver(event) {
     const { active, over } = event;
-    if (!over) return;
-    if (active.data.current?.fromSidebar) {
-      const kind = active.data.current.kind;
-      // Dropped over an existing block → insert at that block's position; over the
-      // empty canvas drop zone → append to the end.
-      const overIndex = blocks.findIndex((b) => b.uid === over.id);
-      if (overIndex === -1) addBlock(kind);
-      else addBlockAt(kind, overIndex);
+    if (!over) { setDropIndex(null); return; }
+    const overIdx = blocks.findIndex((b) => b.uid === over.id);
+    if (overIdx === -1) {
+      setDropIndex(over.id === "canvas-drop" ? blocks.length : null);
       return;
     }
-    if (active.id === over.id) return;
+    const draggedRect = active.rect.current.translated || active.rect.current.initial;
+    const draggedMid = draggedRect ? draggedRect.top + draggedRect.height / 2 : 0;
+    const overMid = over.rect.top + over.rect.height / 2;
+    setDropIndex(draggedMid < overMid ? overIdx : overIdx + 1);
+  }
+
+  function resetDrag() {
+    setActiveDrag(null);
+    setDragSource(null);
+    setDropIndex(null);
+  }
+
+  function handleDragEnd(event) {
+    const { active, over } = event;
+    const fromSidebar = active.data.current?.fromSidebar;
+    const idx = dropIndex;
+    resetDrag();
+    if (!over) return;
+
+    if (fromSidebar) {
+      addBlockAt(active.data.current.kind, idx == null ? blocks.length : idx);
+      return;
+    }
+
+    // Reorder: move the dragged block to the computed slot (accounting for its removal
+    // shifting everything below it up by one).
     const oldIndex = blocks.findIndex((b) => b.uid === active.id);
-    const newIndex = blocks.findIndex((b) => b.uid === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    setBlocks(arrayMove(blocks, oldIndex, newIndex));
+    if (oldIndex === -1) return;
+    let target = idx == null ? blocks.findIndex((b) => b.uid === over.id) : idx;
+    if (target === -1) return;
+    if (target > oldIndex) target -= 1;
+    target = Math.max(0, Math.min(blocks.length - 1, target));
+    if (target === oldIndex) return;
+    setBlocks(arrayMove(blocks, oldIndex, target));
   }
 
   const uploadFile = async (uid, file, kind) => {
     if (!file) return;
+    // Block oversized files locally so they never hit (and get rejected by) the proxy.
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setFieldError(uid, "File is larger than 25 MB — compress it or use a link instead");
+      return;
+    }
     const type = kind === "image" ? "image" : "pdf";
     const formData = new FormData();
     formData.append("file", file);
@@ -501,16 +570,98 @@ export default function LessonBuilder() {
         fileSize: res.data.fileSize,
       });
       toastr.success("Uploaded");
-    } catch {
-      toastr.error("Upload failed");
+    } catch (err) {
+      const status = err.response?.status;
+      setFieldError(
+        uid,
+        status === 413
+          ? "File too large (max 25 MB)"
+          : !err.response
+          ? "Upload blocked — file may be too large or the server is unreachable"
+          : err.response.data?.message || "Upload failed"
+      );
     } finally {
       setUploading(uid, false);
     }
   };
 
+  // Per-field validation. Returns { [uid]: message } for every block that isn't ready.
+  const stripHtml = (html) =>
+    (html || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+
+  function validateBlocks() {
+    const errs = {};
+    blocks.forEach((b) => {
+      const c = b.config || {};
+      switch (b.kind) {
+        case "text":
+        case "callout":
+          if (!stripHtml(c.html)) errs[b.uid] = "Add some content";
+          break;
+        case "accordion":
+          if (!c.title?.trim()) errs[b.uid] = "Add an accordion title";
+          else if (!stripHtml(c.body)) errs[b.uid] = "Add accordion content";
+          break;
+        case "flip_card":
+          if (!c.front?.trim() || !c.back?.trim()) errs[b.uid] = "Fill in both the front and back";
+          break;
+        case "image":
+          if (!c.storageKey && !c.contentUrl) errs[b.uid] = "Upload an image";
+          break;
+        case "attach_file":
+          if (!c.storageKey && !c.contentUrl) errs[b.uid] = "Upload a PDF";
+          break;
+        case "video_link":
+          if (!c.contentUrl?.trim()) errs[b.uid] = "Add a video link";
+          break;
+        case "text_answer":
+        case "file_upload":
+        case "survey":
+          if (!c.prompt?.trim()) errs[b.uid] = "Add a prompt for the learner";
+          break;
+        case "mcq": {
+          if (!c.prompt?.trim()) { errs[b.uid] = "Add a question"; break; }
+          const filled = (c.options || []).filter((o) => o.text?.trim());
+          if (filled.length < 2) { errs[b.uid] = "Add at least 2 answer options"; break; }
+          if (!(b.answerKey?.correctOptionKeys || []).length) errs[b.uid] = "Mark the correct answer";
+          break;
+        }
+        case "matching": {
+          const pairs = c.pairs || [];
+          if (pairs.length < 2) { errs[b.uid] = "Add at least 2 pairs"; break; }
+          if (pairs.some((p) => !p.left?.trim() || !p.right?.trim()))
+            errs[b.uid] = "Fill in both sides of every pair";
+          break;
+        }
+        case "esignature":
+          if (!c.label?.trim()) errs[b.uid] = "Add a signature label";
+          break;
+        default:
+          break;
+      }
+    });
+    return errs;
+  }
+
   const handleSave = async () => {
-    if (!title.trim()) return toastr.warning("Lesson title is required");
-    if (blocks.length === 0) return toastr.warning("Add at least one field");
+    if (!title.trim()) { setFormError("Lesson title is required."); return; }
+    if (blocks.length === 0) { setFormError("Add at least one field before saving."); return; }
+    const errs = validateBlocks();
+    if (Object.keys(errs).length) {
+      setFieldErrors(errs);
+      const count = Object.keys(errs).length;
+      setFormError(`Fix the ${count} highlighted field${count > 1 ? "s" : ""} below, then save again.`);
+      const firstUid = blocks.find((b) => errs[b.uid])?.uid;
+      if (firstUid) {
+        if (view !== "edit") setView("edit");
+        setTimeout(
+          () => document.getElementById(`block-${firstUid}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+          0
+        );
+      }
+      return;
+    }
+    setFormError("");
     const payload = {
       title: title.trim(),
       option,
@@ -535,7 +686,9 @@ export default function LessonBuilder() {
       }
       navigate(`/dashboard/courses/${courseId}/lessons`);
     } catch (err) {
-      toastr.error(err.response?.data?.message || "Save failed");
+      const msg = err.response?.data?.message || "Save failed — please try again.";
+      setFormError(msg);
+      toastr.error(msg);
     } finally {
       setSaving(false);
     }
@@ -579,7 +732,43 @@ export default function LessonBuilder() {
           </div>
         );
       case "divider":
-        return <hr className="border-brand-border" />;
+        return (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-brand-muted">Thickness</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="12"
+                  value={config.thickness || 2}
+                  onChange={(e) => updateConfig(uid, { thickness: Number(e.target.value) })}
+                  className="accent-emerald w-36"
+                />
+                <span className="text-xs font-semibold text-brand-text w-10">{config.thickness || 2}px</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-brand-muted">Style</label>
+                <select
+                  className="px-2.5 py-1.5 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
+                  value={config.style || "solid"}
+                  onChange={(e) => updateConfig(uid, { style: e.target.value })}
+                >
+                  <option value="solid">Solid</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="dotted">Dotted</option>
+                </select>
+              </div>
+            </div>
+            <hr
+              className="border-0 border-t border-brand-border"
+              style={{
+                borderTopWidth: `${config.thickness || 2}px`,
+                borderTopStyle: config.style || "solid",
+              }}
+            />
+          </div>
+        );
       case "video_link":
         return (
           <div className="space-y-2">
@@ -746,11 +935,19 @@ export default function LessonBuilder() {
       case "callout":
         return <div className="rounded-lg border-l-4 border-emerald bg-emerald-muted/40 p-4 lesson-content" dangerouslySetInnerHTML={{ __html: config.html || "" }} />;
       case "divider":
-        return <hr className="border-brand-border" />;
+        return (
+          <hr
+            className="border-0 border-t border-brand-border"
+            style={{
+              borderTopWidth: `${config.thickness || 2}px`,
+              borderTopStyle: config.style || "solid",
+            }}
+          />
+        );
       case "accordion":
         return <PreviewAccordion config={config} />;
       case "flip_card":
-        return <PreviewFlipCard config={config} />;
+        return <FlipCard config={config} />;
       case "image":
         return <FilePreview src={fileUrl(config)} mimeType={config.mimeType} fileName={config.fileName} height={280} />;
       case "attach_file":
@@ -927,6 +1124,22 @@ export default function LessonBuilder() {
             </div>
           </div>
 
+          {/* Save / validation banner */}
+          {formError && (
+            <div className="flex items-start gap-2 rounded-lg border border-brand-danger/40 bg-brand-danger/5 px-4 py-3 text-sm text-brand-danger">
+              <i className="fa-solid fa-circle-exclamation mt-0.5" />
+              <span className="flex-1 font-medium">{formError}</span>
+              <button
+                type="button"
+                onClick={() => setFormError("")}
+                className="text-brand-danger/70 hover:text-brand-danger"
+                aria-label="Dismiss"
+              >
+                <i className="fa-solid fa-xmark" />
+              </button>
+            </div>
+          )}
+
           {/* Edit / Preview tabs */}
           <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-fit">
             {["edit", "preview"].map((v) => (
@@ -953,26 +1166,30 @@ export default function LessonBuilder() {
               </div>
             </ThemeScope>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-              <div className="flex gap-5">
+            <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={resetDrag}>
+              <div className="flex gap-5 items-start">
                 {/* Canvas */}
                 <div className="flex-1 min-w-0">
                   <CanvasDropZone empty={blocks.length === 0}>
                     <SortableContext items={blocks.map((b) => b.uid)} strategy={verticalListSortingStrategy}>
-                      {blocks.map((b) => (
-                        <SortableItem key={b.uid} uid={b.uid} kind={b.kind} onRemove={() => removeBlock(b.uid)}>
-                          {renderEditor(b)}
-                        </SortableItem>
+                      {blocks.map((b, i) => (
+                        <Fragment key={b.uid}>
+                          {dragSource === "sidebar" && dropIndex === i && <DropLine />}
+                          <SortableItem uid={b.uid} kind={b.kind} error={fieldErrors[b.uid]} onRemove={() => removeBlock(b.uid)}>
+                            {renderEditor(b)}
+                          </SortableItem>
+                        </Fragment>
                       ))}
+                      {dragSource === "sidebar" && dropIndex === blocks.length && <DropLine />}
                     </SortableContext>
                   </CanvasDropZone>
                 </div>
 
                 {/* Field palette */}
-                <div className="w-56 flex-shrink-0">
+                <div className="w-56 flex-shrink-0 self-start sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
                   <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Fields</p>
                   <p className="text-[10px] text-brand-muted mb-3">
-                    {option === "resource" ? "Content fields" : option === "quiz" ? "Knowledge check fields" : "Content + knowledge check"}
+                    {option === "resource" ? "Content fields" : option === "quiz" ? "Knowledge check fields" : "Toggle a group to show its fields"}
                   </p>
                   <div className="space-y-1">
                     {option !== "quiz" && (

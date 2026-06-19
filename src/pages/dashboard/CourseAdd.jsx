@@ -122,6 +122,10 @@ export default function CourseAdd() {
 
   const handleDesignUpload = async (file) => {
     if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      toastr.error("File is larger than 25 MB — compress it and try again");
+      return;
+    }
     const isPdf = file.type === "application/pdf";
     const fd = new FormData();
     fd.append("file", file);
@@ -130,8 +134,15 @@ export default function CourseAdd() {
       const res = await api.post(`/uploads/lessons/file/${isPdf ? "document" : "image"}`, fd);
       setCert({ designUrl: res.data.publicUrl, designType: isPdf ? "pdf" : "image" });
       toastr.success("Design uploaded");
-    } catch {
-      toastr.error("Upload failed");
+    } catch (err) {
+      const status = err.response?.status;
+      toastr.error(
+        status === 413
+          ? "File too large (max 25 MB)"
+          : !err.response
+          ? "Upload blocked — file may be too large or the server is unreachable"
+          : err.response.data?.message || "Upload failed"
+      );
     } finally {
       setUploadingDesign(false);
     }

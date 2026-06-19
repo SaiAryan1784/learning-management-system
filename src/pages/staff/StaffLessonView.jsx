@@ -9,6 +9,7 @@ import { ThemeScope } from "../../contexts/BrandContext";
 import FilePreview from "../../components/lesson/FilePreview";
 import NumberScale from "../../components/lesson/NumberScale";
 import SignaturePad from "../../components/lesson/SignaturePad";
+import FlipCard from "../../components/lesson/FlipCard";
 import "../../components/lesson/lessonContent.css";
 
 const BASE_URL = api.defaults.baseURL || "";
@@ -29,22 +30,6 @@ const youtubeEmbed = (url) => {
 };
 
 /* ── interactive field components ── */
-
-function FlipCard({ config }) {
-  const [flipped, setFlipped] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={() => setFlipped((f) => !f)}
-      className="w-full min-h-[140px] rounded-xl border border-emerald/40 bg-emerald-muted/40 p-6 text-left transition-colors hover:bg-emerald-muted/70"
-    >
-      <p className="text-[10px] font-bold uppercase tracking-wide text-emerald mb-2">
-        {flipped ? "Answer" : "Question — tap to flip"}
-      </p>
-      <p className="text-brand-text">{flipped ? config.back : config.front}</p>
-    </button>
-  );
-}
 
 function Accordion({ config }) {
   const [open, setOpen] = useState(false);
@@ -217,7 +202,15 @@ export default function StaffLessonView() {
           <div className="rounded-lg border-l-4 border-emerald bg-emerald-muted/40 p-4 lesson-content" dangerouslySetInnerHTML={{ __html: config.html || "" }} />
         );
       case "divider":
-        return <hr className="border-brand-border" />;
+        return (
+          <hr
+            className="border-0 border-t border-brand-border my-1"
+            style={{
+              borderTopWidth: `${config.thickness || 2}px`,
+              borderTopStyle: config.style || "solid",
+            }}
+          />
+        );
       case "accordion":
         return <Accordion config={config} />;
       case "flip_card":

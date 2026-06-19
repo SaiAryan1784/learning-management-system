@@ -73,3 +73,65 @@
   font-style: normal;
   color: #9CA3AF;
 }
+
+/* ── Flip card: real 3D flip shared by the builder preview + learner view ── */
+.flip-card {
+  perspective: 1200px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.flip-inner {
+  position: relative;
+  width: 100%;
+  min-height: 160px;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-style: preserve-3d;
+}
+.flip-card.is-flipped .flip-inner {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  text-align: left;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  overflow: auto;
+}
+/* Front — light surface, dark text */
+.flip-front {
+  background: #ffffff;
+  border: 1px solid #D1FAE5;
+  color: #1F2937;
+}
+/* Back — emerald fill, white text (high contrast; fixes green-on-green) */
+.flip-back {
+  background: #059669;
+  color: #ffffff;
+  transform: rotateY(180deg);
+}
+.flip-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: flex-start;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  margin-bottom: 0.6rem;
+}
+.flip-front .flip-hint { background: #059669; color: #ffffff; }
+.flip-back .flip-hint { background: rgba(255, 255, 255, 0.25); color: #ffffff; }
+.flip-text { font-size: 0.95rem; line-height: 1.5; }
+.flip-empty { opacity: 0.6; font-style: italic; }
