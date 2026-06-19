@@ -203,12 +203,13 @@ export default function StaffLessonView() {
         );
       case "divider":
         return (
-          <hr
-            className="border-0 border-t border-brand-border my-1"
+          <div
+            className="my-1 w-full"
             style={{
+              height: 0,
               borderTopWidth: `${config.thickness || 2}px`,
               borderTopStyle: config.style || "solid",
-              opacity: 1,
+              borderTopColor: "#E5E7EB",
             }}
           />
         );

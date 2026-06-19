@@ -760,12 +760,13 @@ export default function LessonBuilder() {
                 </select>
               </div>
             </div>
-            <hr
-              className="border-0 border-t border-brand-border"
+            <div
+              className="w-full"
               style={{
+                height: 0,
                 borderTopWidth: `${config.thickness || 2}px`,
                 borderTopStyle: config.style || "solid",
-                opacity: 1,
+                borderTopColor: "#E5E7EB",
               }}
             />
           </div>
@@ -937,12 +938,13 @@ export default function LessonBuilder() {
         return <div className="rounded-lg border-l-4 border-emerald bg-emerald-muted/40 p-4 lesson-content" dangerouslySetInnerHTML={{ __html: config.html || "" }} />;
       case "divider":
         return (
-          <hr
-            className="border-0 border-t border-brand-border"
+          <div
+            className="w-full"
             style={{
+              height: 0,
               borderTopWidth: `${config.thickness || 2}px`,
               borderTopStyle: config.style || "solid",
-              opacity: 1,
+              borderTopColor: "#E5E7EB",
             }}
           />
         );
