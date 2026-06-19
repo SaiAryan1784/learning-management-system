@@ -13,7 +13,10 @@ import FlipCard from "../../components/lesson/FlipCard";
 import "../../components/lesson/lessonContent.css";
 
 const BASE_URL = api.defaults.baseURL || "";
-const FILE_BASE_URL = BASE_URL.replace("/api", "");
+// VITE_FILE_BASE_URL is set explicitly in .env.production so uploads always resolve
+// to the real server — not localhost — regardless of how the build was run.
+const FILE_BASE_URL =
+  import.meta.env.VITE_FILE_BASE_URL || BASE_URL.replace(/\/api$/, "");
 
 const fileUrl = (config) => {
   if (!config) return "";
