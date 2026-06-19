@@ -208,6 +208,7 @@ export default function StaffLessonView() {
             style={{
               borderTopWidth: `${config.thickness || 2}px`,
               borderTopStyle: config.style || "solid",
+              opacity: 1,
             }}
           />
         );

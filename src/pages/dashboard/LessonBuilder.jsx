@@ -765,6 +765,7 @@ export default function LessonBuilder() {
               style={{
                 borderTopWidth: `${config.thickness || 2}px`,
                 borderTopStyle: config.style || "solid",
+                opacity: 1,
               }}
             />
           </div>
@@ -941,6 +942,7 @@ export default function LessonBuilder() {
             style={{
               borderTopWidth: `${config.thickness || 2}px`,
               borderTopStyle: config.style || "solid",
+              opacity: 1,
             }}
           />
         );
