@@ -13,6 +13,9 @@ import {
   SkeletonCard,
 } from "../../components/ui";
 
+const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
+const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
+
 export default function StaffCertificates() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -140,6 +143,40 @@ export default function StaffCertificates() {
       >
         {selectedCert && (() => {
           const certCfg = selectedCert.course?.certificate || {};
+          const isUpload = certCfg.mode === "upload" && certCfg.designUrl;
+          const designSrc = toAbsoluteUrl(certCfg.designUrl);
+
+          // Owner-uploaded design (static, shown as-is to every recipient).
+          if (isUpload) {
+            return (
+              <>
+                {certCfg.designType === "pdf" ? (
+                  <div className="rounded-xl border border-brand-border overflow-hidden bg-canvas">
+                    <iframe src={designSrc} title="Certificate" className="block w-full" style={{ height: 460 }} />
+                  </div>
+                ) : (
+                  <div id="cert-print" className="rounded-xl border border-brand-border overflow-hidden bg-white">
+                    <img src={designSrc} alt="Certificate" className="block w-full" />
+                  </div>
+                )}
+                <div className="no-print flex justify-end gap-2 mt-4">
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedCert(null)}>Close</Button>
+                  {certCfg.designType === "pdf" ? (
+                    <a href={designSrc} target="_blank" rel="noreferrer" download>
+                      <Button variant="primary" size="sm" leadingIcon={<i className="fa-solid fa-download text-xs" />}>
+                        Download PDF
+                      </Button>
+                    </a>
+                  ) : (
+                    <Button variant="primary" size="sm" leadingIcon={<i className="fa-solid fa-download text-xs" />} onClick={handlePrint}>
+                      Print / Save PDF
+                    </Button>
+                  )}
+                </div>
+              </>
+            );
+          }
+
           return (
             <>
             <div

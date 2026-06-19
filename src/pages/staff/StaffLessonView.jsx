@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../api/api";
@@ -6,6 +6,9 @@ import toastr from "toastr";
 import { PageLoader } from "../../components/ui/Spinner";
 import { Button, Badge, Card, ProgressBar } from "../../components/ui";
 import { ThemeScope } from "../../contexts/BrandContext";
+import FilePreview from "../../components/lesson/FilePreview";
+import NumberScale from "../../components/lesson/NumberScale";
+import SignaturePad from "../../components/lesson/SignaturePad";
 
 const BASE_URL = api.defaults.baseURL || "";
 const FILE_BASE_URL = BASE_URL.replace("/api", "");
@@ -55,21 +58,6 @@ function Accordion({ config }) {
   );
 }
 
-function StarRating({ value, onChange, scaleMax = 5 }) {
-  return (
-    <div className="flex gap-1 text-2xl">
-      {Array.from({ length: scaleMax }).map((_, i) => {
-        const v = i + 1;
-        return (
-          <button key={v} type="button" onClick={() => onChange(v)} className={v <= (value || 0) ? "text-amber-400" : "text-brand-border"}>
-            <i className="fa-solid fa-star"></i>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 function MatchingField({ config, value, onChange }) {
   // value: [{ left, right }]
   const lefts = (config.pairs || []).map((p) => p.left);
@@ -105,64 +93,6 @@ function MatchingField({ config, value, onChange }) {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function ESignature({ value, onChange }) {
-  const canvasRef = useRef(null);
-  const drawing = useRef(false);
-
-  const pos = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    const t = e.touches ? e.touches[0] : e;
-    return { x: t.clientX - rect.left, y: t.clientY - rect.top };
-  };
-  const start = (e) => {
-    drawing.current = true;
-    const ctx = canvasRef.current.getContext("2d");
-    const { x, y } = pos(e);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-  const move = (e) => {
-    if (!drawing.current) return;
-    const ctx = canvasRef.current.getContext("2d");
-    const { x, y } = pos(e);
-    ctx.lineTo(x, y);
-    ctx.strokeStyle = "#111";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  };
-  const end = () => {
-    if (!drawing.current) return;
-    drawing.current = false;
-    onChange(canvasRef.current.toDataURL("image/png"));
-  };
-  const clear = () => {
-    const ctx = canvasRef.current.getContext("2d");
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    onChange("");
-  };
-
-  return (
-    <div className="space-y-2">
-      <canvas
-        ref={canvasRef}
-        width={500}
-        height={150}
-        className="w-full border border-brand-border rounded-lg bg-white touch-none cursor-crosshair"
-        onMouseDown={start}
-        onMouseMove={move}
-        onMouseUp={end}
-        onMouseLeave={end}
-        onTouchStart={start}
-        onTouchMove={move}
-        onTouchEnd={end}
-      />
-      <button type="button" className="text-xs text-brand-muted hover:text-brand-danger" onClick={clear}>
-        <i className="fa-solid fa-eraser mr-1"></i> Clear
-      </button>
     </div>
   );
 }
@@ -292,18 +222,15 @@ export default function StaffLessonView() {
       case "flip_card":
         return <FlipCard config={config} />;
       case "image":
-        return <img src={fileUrl(config)} alt={config.fileName || ""} className="w-full rounded-xl" />;
+        return <FilePreview src={fileUrl(config)} mimeType={config.mimeType} fileName={config.fileName} height={320} />;
       case "attach_file":
+        return <FilePreview src={fileUrl(config)} mimeType={config.mimeType || "application/pdf"} fileName={config.fileName} height={500} />;
+      case "video_link":
         return (
-          <div className="space-y-2">
-            <iframe src={fileUrl(config)} className="w-full rounded-xl" height="500" title={config.fileName || "PDF"} />
-            <a href={fileUrl(config)} target="_blank" rel="noreferrer" className="text-sm text-emerald font-semibold">
-              <i className="fa-solid fa-download mr-1"></i> Download {config.fileName || "file"}
-            </a>
+          <div className="rounded-xl border border-brand-border bg-black overflow-hidden">
+            <iframe className="block w-full" height="450" src={youtubeEmbed(config.contentUrl)} title="Lesson Video" allowFullScreen />
           </div>
         );
-      case "video_link":
-        return <iframe className="w-full rounded-xl" height="450" src={youtubeEmbed(config.contentUrl)} title="Lesson Video" allowFullScreen />;
       case "text_answer":
         return (
           <div className="space-y-2">
@@ -338,7 +265,7 @@ export default function StaffLessonView() {
         return (
           <div className="space-y-2">
             <p className="text-sm font-medium text-brand-text">{config.prompt}</p>
-            <StarRating value={value} scaleMax={config.scaleMax || 5} onChange={(v) => setAnswer(block._id, v)} />
+            <NumberScale value={value || 0} scaleMax={config.scaleMax || 5} onChange={(v) => setAnswer(block._id, v)} />
           </div>
         );
       case "matching":
@@ -354,12 +281,7 @@ export default function StaffLessonView() {
           </div>
         );
       case "esignature":
-        return (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-brand-text">{config.label || "Sign below"}</p>
-            <ESignature value={value} onChange={(v) => setAnswer(block._id, v)} />
-          </div>
-        );
+        return <SignaturePad label={config.label || "Sign below"} value={value} onChange={(v) => setAnswer(block._id, v)} />;
       default:
         return null;
     }

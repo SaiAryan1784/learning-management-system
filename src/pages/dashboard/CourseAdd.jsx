@@ -4,6 +4,10 @@ import toastr from "toastr";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader, PageLoader, Button } from "../../components/ui";
+import FilePreview from "../../components/lesson/FilePreview";
+
+const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
+const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
@@ -65,6 +69,9 @@ export default function CourseAdd() {
     title: "", description: "",
     certificate: {
       enabled: true,
+      mode: "template",
+      designUrl: "",
+      designType: "image",
       title: "Certificate of Completion",
       signatoryName: "",
       signatoryRole: "",
@@ -73,6 +80,7 @@ export default function CourseAdd() {
   });
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(null);
+  const [uploadingDesign, setUploadingDesign] = useState(false);
 
   useEffect(() => {
     if (!courseId) return;
@@ -86,6 +94,9 @@ export default function CourseAdd() {
           description: d.description,
           certificate: {
             enabled: d.certificate?.enabled ?? true,
+            mode: d.certificate?.mode || "template",
+            designUrl: d.certificate?.designUrl || "",
+            designType: d.certificate?.designType || "image",
             title: d.certificate?.title || "Certificate of Completion",
             signatoryName: d.certificate?.signatoryName || "",
             signatoryRole: d.certificate?.signatoryRole || "",
@@ -108,6 +119,23 @@ export default function CourseAdd() {
 
   const setCert = (patch) =>
     setForm((p) => ({ ...p, certificate: { ...p.certificate, ...patch } }));
+
+  const handleDesignUpload = async (file) => {
+    if (!file) return;
+    const isPdf = file.type === "application/pdf";
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      setUploadingDesign(true);
+      const res = await api.post(`/uploads/lessons/file/${isPdf ? "document" : "image"}`, fd);
+      setCert({ designUrl: res.data.publicUrl, designType: isPdf ? "pdf" : "image" });
+      toastr.success("Design uploaded");
+    } catch {
+      toastr.error("Upload failed");
+    } finally {
+      setUploadingDesign(false);
+    }
+  };
 
   const handleCoverChange = (e) => {
     const file = e.target.files?.[0];
@@ -267,23 +295,74 @@ export default function CourseAdd() {
                     </label>
                   </div>
                   {form.certificate.enabled && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="md:col-span-2">
-                        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Certificate Title</label>
-                        <input className={inputClass} value={form.certificate.title} onChange={(e) => setCert({ title: e.target.value })} placeholder="Certificate of Completion" />
+                    <div className="space-y-4">
+                      {/* Mode toggle: built-in template vs upload-your-own design */}
+                      <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-fit">
+                        {[
+                          { v: "template", label: "Template", icon: "fa-wand-magic-sparkles" },
+                          { v: "upload", label: "Upload your own", icon: "fa-cloud-arrow-up" },
+                        ].map((m) => (
+                          <button
+                            key={m.v}
+                            type="button"
+                            onClick={() => setCert({ mode: m.v })}
+                            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${form.certificate.mode === m.v ? "bg-surface text-brand-text shadow-soft" : "text-brand-muted hover:text-brand-text"}`}
+                          >
+                            <i className={`fa-solid ${m.icon} mr-1.5 text-xs`} />
+                            {m.label}
+                          </button>
+                        ))}
                       </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Signatory Name</label>
-                        <input className={inputClass} value={form.certificate.signatoryName} onChange={(e) => setCert({ signatoryName: e.target.value })} placeholder="e.g. Jane Smith" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Signatory Role</label>
-                        <input className={inputClass} value={form.certificate.signatoryRole} onChange={(e) => setCert({ signatoryRole: e.target.value })} placeholder="e.g. Training Director" />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Logo URL (optional)</label>
-                        <input className={inputClass} value={form.certificate.logoUrl} onChange={(e) => setCert({ logoUrl: e.target.value })} placeholder="https://… or /images/your-logo.png" />
-                      </div>
+
+                      {form.certificate.mode === "upload" ? (
+                        <div className="space-y-3">
+                          <p className="text-caption text-brand-muted">
+                            Upload your finished certificate design (PNG, JPG, or PDF — e.g. exported from Canva).
+                            It’s shown to every recipient as-is and they can download it.
+                          </p>
+                          <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
+                            <i className="fa-solid fa-cloud-arrow-up text-emerald" />
+                            {form.certificate.designUrl ? "Replace design" : "Upload design"}
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf"
+                              className="hidden"
+                              onChange={(e) => handleDesignUpload(e.target.files?.[0])}
+                            />
+                          </label>
+                          {uploadingDesign ? (
+                            <div className="flex items-center gap-2 rounded-lg border border-brand-border bg-canvas px-3 py-6 text-xs text-brand-muted">
+                              <i className="fa-solid fa-spinner fa-spin" /> Uploading…
+                            </div>
+                          ) : form.certificate.designUrl ? (
+                            <FilePreview
+                              src={toAbsoluteUrl(form.certificate.designUrl)}
+                              mimeType={form.certificate.designType === "pdf" ? "application/pdf" : "image/*"}
+                              fileName="Certificate design"
+                              height={280}
+                            />
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Certificate Title</label>
+                            <input className={inputClass} value={form.certificate.title} onChange={(e) => setCert({ title: e.target.value })} placeholder="Certificate of Completion" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Signatory Name</label>
+                            <input className={inputClass} value={form.certificate.signatoryName} onChange={(e) => setCert({ signatoryName: e.target.value })} placeholder="e.g. Jane Smith" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Signatory Role</label>
+                            <input className={inputClass} value={form.certificate.signatoryRole} onChange={(e) => setCert({ signatoryRole: e.target.value })} placeholder="e.g. Training Director" />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Logo URL (optional)</label>
+                            <input className={inputClass} value={form.certificate.logoUrl} onChange={(e) => setCert({ logoUrl: e.target.value })} placeholder="https://… or /images/your-logo.png" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

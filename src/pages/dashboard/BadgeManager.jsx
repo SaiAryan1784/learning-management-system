@@ -113,13 +113,28 @@ export default function BadgeManager() {
   };
 
   const handleDelete = async (b) => {
-    if (!window.confirm(`Delete the "${b.name}" badge? Awards of this badge will be removed.`)) return;
+    const earned = b.awardedCount || 0;
+    const warn = earned > 0
+      ? `Delete the "${b.name}" badge?\n\n⚠ ${earned} learner${earned > 1 ? "s" : ""} earned this — deleting removes it from their walls permanently.`
+      : `Delete the "${b.name}" badge?`;
+    if (!window.confirm(warn)) return;
     try {
       await api.delete(`/badges/definitions/${b.id}`);
       toastr.success("Badge deleted");
       await load();
     } catch (err) {
       toastr.error(err.response?.data?.message || "Delete failed");
+    }
+  };
+
+  const toggleSystemBadge = async (b) => {
+    const nextActive = !b.active;
+    try {
+      await api.put(`/badges/system/${b.key}/state`, { active: nextActive });
+      toastr.success(nextActive ? "Badge enabled" : "Badge disabled");
+      await load();
+    } catch (err) {
+      toastr.error(err.response?.data?.message || "Update failed");
     }
   };
 
@@ -166,7 +181,7 @@ export default function BadgeManager() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {badges.map((b) => (
-            <Card key={b.key} className="flex items-start gap-4">
+            <Card key={b.key} className={`flex items-start gap-4 ${b.active ? "" : "opacity-55"}`}>
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-xl"
                 style={{ backgroundColor: `${b.color}1A`, color: b.color }}
@@ -174,26 +189,44 @@ export default function BadgeManager() {
                 <i className={`fa-solid ${b.icon}`} />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h4 className="text-body font-semibold text-brand-text truncate">{b.name}</h4>
                   {b.isSystem && (
                     <span className="text-[10px] font-bold uppercase text-brand-muted bg-canvas border border-brand-border rounded px-1.5 py-0.5">Built-in</span>
+                  )}
+                  {!b.active && (
+                    <span className="text-[10px] font-bold uppercase text-brand-danger bg-brand-danger/10 border border-brand-danger/30 rounded px-1.5 py-0.5">Disabled</span>
                   )}
                 </div>
                 <p className="text-caption text-brand-muted">{b.description}</p>
                 <p className="text-[11px] text-emerald font-medium mt-1">
                   <i className="fa-solid fa-bullseye mr-1" />{criteriaText(b)}
                 </p>
-                {!b.isSystem && (
-                  <div className="flex gap-2 mt-2">
-                    <button className="text-xs font-semibold text-brand-text hover:text-emerald" onClick={() => openEdit(b)}>
-                      <i className="fa-solid fa-pen mr-1 text-[10px]" />Edit
-                    </button>
-                    <button className="text-xs font-semibold text-brand-danger hover:underline" onClick={() => handleDelete(b)}>
-                      <i className="fa-solid fa-trash mr-1 text-[10px]" />Delete
-                    </button>
-                  </div>
+                {b.awardedCount > 0 && (
+                  <p className="text-[11px] text-brand-muted mt-0.5">
+                    <i className="fa-solid fa-user-check mr-1" />Earned by {b.awardedCount}
+                  </p>
                 )}
+                <div className="flex gap-3 mt-2">
+                  {b.isSystem ? (
+                    <button
+                      className={`text-xs font-semibold ${b.active ? "text-brand-danger hover:underline" : "text-emerald hover:underline"}`}
+                      onClick={() => toggleSystemBadge(b)}
+                    >
+                      <i className={`fa-solid ${b.active ? "fa-ban" : "fa-circle-check"} mr-1 text-[10px]`} />
+                      {b.active ? "Disable" : "Enable"}
+                    </button>
+                  ) : (
+                    <>
+                      <button className="text-xs font-semibold text-brand-text hover:text-emerald" onClick={() => openEdit(b)}>
+                        <i className="fa-solid fa-pen mr-1 text-[10px]" />Edit
+                      </button>
+                      <button className="text-xs font-semibold text-brand-danger hover:underline" onClick={() => handleDelete(b)}>
+                        <i className="fa-solid fa-trash mr-1 text-[10px]" />Delete
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </Card>
           ))}

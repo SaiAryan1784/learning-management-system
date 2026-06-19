@@ -14,6 +14,9 @@ import "react-quill/dist/quill.snow.css";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
 import { ThemeScope } from "../../contexts/BrandContext";
+import FilePreview from "../../components/lesson/FilePreview";
+import NumberScale from "../../components/lesson/NumberScale";
+import SignaturePad from "../../components/lesson/SignaturePad";
 
 const BASE_URL = api.defaults.baseURL || "";
 const FILE_BASE_URL = BASE_URL.replace("/api", "");
@@ -124,40 +127,98 @@ function StepIndicator({ current }) {
   );
 }
 
-// Media with a "Loading preview…" skeleton until it finishes loading.
-function MediaPreview({ as = "img", src, alt = "", height = 220 }) {
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => { setLoaded(false); }, [src]);
+// Bounded YouTube/embed preview (external URL, not an uploaded file → FilePreview
+// doesn't apply). YouTube allows cross-origin framing, so no header issues here.
+function YouTubePreview({ url, height = 220 }) {
+  const src = youtubeEmbed(url);
   if (!src) return null;
   return (
-    <div className="relative">
-      {!loaded && (
-        <div
-          className="absolute inset-0 flex items-center justify-center rounded-lg bg-canvas border border-brand-border text-brand-muted text-xs gap-2"
-          style={{ minHeight: as === "img" ? 120 : height }}
-        >
-          <i className="fa-solid fa-spinner fa-spin" /> Loading preview…
+    <div className="rounded-lg border border-brand-border bg-black overflow-hidden">
+      <iframe
+        src={src}
+        title="Video preview"
+        allowFullScreen
+        className="block w-full"
+        style={{ height }}
+      />
+    </div>
+  );
+}
+
+/* ── Interactive preview-tab field components (real state, so the preview responds) ── */
+
+function PreviewSurvey({ config }) {
+  const [value, setValue] = useState(0);
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-brand-text">{config.prompt || "Survey question"}</p>
+      <NumberScale value={value} scaleMax={config.scaleMax || 5} onChange={setValue} />
+    </div>
+  );
+}
+
+function PreviewTextAnswer({ config }) {
+  const [value, setValue] = useState("");
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-brand-text">{config.prompt}</p>
+      <textarea
+        className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
+        rows={3}
+        placeholder="Learner answer…"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+    </div>
+  );
+}
+
+function PreviewMcq({ config }) {
+  const [selected, setSelected] = useState([]);
+  const toggle = (key) => {
+    if (config.multiple) {
+      setSelected((s) => (s.includes(key) ? s.filter((k) => k !== key) : [...s, key]));
+    } else {
+      setSelected([key]);
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-brand-text">{config.prompt}</p>
+      {(config.options || []).map((o) => (
+        <label key={o.key} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border cursor-pointer hover:bg-canvas">
+          <input
+            type={config.multiple ? "checkbox" : "radio"}
+            className="accent-emerald"
+            checked={selected.includes(o.key)}
+            onChange={() => toggle(o.key)}
+          />
+          <span className="text-sm text-brand-text">{o.text || `Option ${o.key}`}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function PreviewMatching({ config }) {
+  const [picks, setPicks] = useState({});
+  const rights = (config.pairs || []).map((p) => p.right).filter(Boolean);
+  return (
+    <div className="space-y-2">
+      {(config.pairs || []).map((p, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <span className="flex-1 px-3 py-2 rounded-lg bg-canvas border border-brand-border text-sm">{p.left}</span>
+          <i className="fa-solid fa-arrow-right text-brand-muted text-xs"></i>
+          <select
+            className="flex-1 px-3 py-2 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
+            value={picks[i] || ""}
+            onChange={(e) => setPicks((s) => ({ ...s, [i]: e.target.value }))}
+          >
+            <option value="">Select match…</option>
+            {rights.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
         </div>
-      )}
-      {as === "img" ? (
-        <img
-          src={src}
-          alt={alt}
-          onLoad={() => setLoaded(true)}
-          className="w-full rounded-lg max-h-64 object-contain"
-          style={{ opacity: loaded ? 1 : 0 }}
-        />
-      ) : (
-        <iframe
-          src={src}
-          title={alt || "preview"}
-          height={height}
-          onLoad={() => setLoaded(true)}
-          allowFullScreen
-          className="w-full rounded-lg"
-          style={{ opacity: loaded ? 1 : 0 }}
-        />
-      )}
+      ))}
     </div>
   );
 }
@@ -276,6 +337,7 @@ export default function LessonBuilder() {
   const [uploadingUids, setUploadingUids] = useState(() => new Set());
   const [contentOpen, setContentOpen] = useState(true);
   const [kcOpen, setKcOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -443,9 +505,21 @@ export default function LessonBuilder() {
     const uploading = uploadingUids.has(uid);
     switch (kind) {
       case "text":
+        return (
+          <div className="rounded-lg border border-brand-border bg-white overflow-hidden quill-clean">
+            <ReactQuill theme="snow" value={config.html || ""} onChange={(val) => updateConfig(uid, { html: val })} placeholder="Write lesson content…" />
+          </div>
+        );
       case "callout":
         return (
-          <ReactQuill theme="snow" value={config.html || ""} onChange={(val) => updateConfig(uid, { html: val })} />
+          <div className="rounded-lg border border-emerald/40 border-l-4 border-l-emerald bg-emerald-muted/30 p-3">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-emerald mb-2">
+              <i className="fa-solid fa-bullhorn" /> Callout — highlighted info block
+            </p>
+            <div className="rounded-lg border border-emerald/30 bg-white overflow-hidden quill-clean">
+              <ReactQuill theme="snow" value={config.html || ""} onChange={(val) => updateConfig(uid, { html: val })} placeholder="Important note learners should not miss…" />
+            </div>
+          </div>
         );
       case "accordion":
         return (
@@ -467,35 +541,61 @@ export default function LessonBuilder() {
         return (
           <div className="space-y-2">
             <input className={fieldInputClass} placeholder="https://youtube.com/watch?v=..." value={config.contentUrl || ""} onChange={(e) => updateConfig(uid, { sourceType: "external_url", contentUrl: e.target.value })} />
-            {config.contentUrl ? <MediaPreview as="iframe" src={youtubeEmbed(config.contentUrl)} alt="video preview" height={220} /> : null}
+            {config.contentUrl ? <YouTubePreview url={config.contentUrl} height={220} /> : null}
           </div>
         );
       case "image":
         return (
           <div className="space-y-2">
-            <input type="file" accept="image/*" className="text-xs text-brand-muted" onChange={(e) => uploadFile(uid, e.target.files[0], "image")} />
-            {uploading && <p className="text-xs text-brand-muted"><i className="fa-solid fa-spinner fa-spin mr-1" /> Uploading…</p>}
-            {!uploading && fileUrl(config) ? <MediaPreview as="img" src={fileUrl(config)} alt={config.fileName || ""} /> : null}
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
+              <i className="fa-solid fa-image text-emerald" /> {fileUrl(config) ? "Replace image" : "Upload image"}
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadFile(uid, e.target.files[0], "image")} />
+            </label>
+            {uploading ? (
+              <div className="flex items-center gap-2 rounded-lg border border-brand-border bg-canvas px-3 py-6 text-xs text-brand-muted">
+                <i className="fa-solid fa-spinner fa-spin" /> Uploading…
+              </div>
+            ) : (
+              <FilePreview src={fileUrl(config)} mimeType={config.mimeType} fileName={config.fileName} height={220} />
+            )}
           </div>
         );
       case "attach_file":
         return (
           <div className="space-y-2">
-            <input type="file" accept="application/pdf" className="text-xs text-brand-muted" onChange={(e) => uploadFile(uid, e.target.files[0], "attach_file")} />
-            {uploading && <p className="text-xs text-brand-muted"><i className="fa-solid fa-spinner fa-spin mr-1" /> Uploading…</p>}
-            {!uploading && fileUrl(config) ? <MediaPreview as="iframe" src={fileUrl(config)} alt="pdf preview" height={220} /> : null}
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
+              <i className="fa-solid fa-file-pdf text-emerald" /> {fileUrl(config) ? "Replace PDF" : "Upload PDF"}
+              <input type="file" accept="application/pdf" className="hidden" onChange={(e) => uploadFile(uid, e.target.files[0], "attach_file")} />
+            </label>
+            {uploading ? (
+              <div className="flex items-center gap-2 rounded-lg border border-brand-border bg-canvas px-3 py-6 text-xs text-brand-muted">
+                <i className="fa-solid fa-spinner fa-spin" /> Uploading…
+              </div>
+            ) : (
+              <FilePreview src={fileUrl(config)} mimeType={config.mimeType || "application/pdf"} fileName={config.fileName} height={260} />
+            )}
           </div>
         );
       case "text_answer":
         return <input className={fieldInputClass} placeholder="Question / prompt for the learner" value={config.prompt || ""} onChange={(e) => updateConfig(uid, { prompt: e.target.value })} />;
       case "survey":
         return (
-          <div className="space-y-2">
-            <input className={fieldInputClass} placeholder="Survey question (learner rates 1-5)" value={config.prompt || ""} onChange={(e) => updateConfig(uid, { prompt: e.target.value })} />
-            <div className="flex gap-1 text-amber-400">
-              {Array.from({ length: config.scaleMax || 5 }).map((_, i) => (
-                <i key={i} className="fa-solid fa-star"></i>
-              ))}
+          <div className="space-y-3">
+            <input className={fieldInputClass} placeholder="Survey question (learner picks a rating)" value={config.prompt || ""} onChange={(e) => updateConfig(uid, { prompt: e.target.value })} />
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-brand-muted">Scale max</label>
+              <input
+                type="number"
+                min="2"
+                max="10"
+                className="w-20 px-2.5 py-1.5 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
+                value={config.scaleMax || 5}
+                onChange={(e) => updateConfig(uid, { scaleMax: Math.max(2, Math.min(10, Number(e.target.value) || 5)) })}
+              />
+            </div>
+            <div>
+              <p className="text-[11px] text-brand-muted mb-1">Preview</p>
+              <NumberScale value={0} scaleMax={config.scaleMax || 5} disabled />
             </div>
           </div>
         );
@@ -619,51 +719,19 @@ export default function LessonBuilder() {
           </div>
         );
       case "image":
-        return fileUrl(config) ? <MediaPreview as="img" src={fileUrl(config)} alt={config.fileName || ""} /> : <p className="text-xs text-brand-muted">No image uploaded</p>;
+        return <FilePreview src={fileUrl(config)} mimeType={config.mimeType} fileName={config.fileName} height={280} />;
       case "attach_file":
-        return fileUrl(config) ? <MediaPreview as="iframe" src={fileUrl(config)} alt="pdf" height={400} /> : <p className="text-xs text-brand-muted">No file uploaded</p>;
+        return <FilePreview src={fileUrl(config)} mimeType={config.mimeType || "application/pdf"} fileName={config.fileName} height={420} />;
       case "video_link":
-        return config.contentUrl ? <MediaPreview as="iframe" src={youtubeEmbed(config.contentUrl)} alt="video" height={360} /> : <p className="text-xs text-brand-muted">No video link</p>;
+        return config.contentUrl ? <YouTubePreview url={config.contentUrl} height={360} /> : <p className="text-xs text-brand-muted">No video link</p>;
       case "text_answer":
-        return (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-brand-text">{config.prompt}</p>
-            <textarea disabled className={`${fieldInputClass} bg-canvas`} rows={3} placeholder="Learner answer…" />
-          </div>
-        );
+        return <PreviewTextAnswer config={config} />;
       case "mcq":
-        return (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-brand-text">{config.prompt}</p>
-            {(config.options || []).map((o) => (
-              <label key={o.key} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border">
-                <input type={config.multiple ? "checkbox" : "radio"} disabled className="accent-emerald" />
-                <span className="text-sm text-brand-text">{o.text || `Option ${o.key}`}</span>
-              </label>
-            ))}
-          </div>
-        );
+        return <PreviewMcq config={config} />;
       case "survey":
-        return (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-brand-text">{config.prompt}</p>
-            <div className="flex gap-1 text-2xl text-brand-border">
-              {Array.from({ length: config.scaleMax || 5 }).map((_, i) => <i key={i} className="fa-solid fa-star" />)}
-            </div>
-          </div>
-        );
+        return <PreviewSurvey config={config} />;
       case "matching":
-        return (
-          <div className="space-y-2">
-            {(config.pairs || []).map((p, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="flex-1 px-3 py-2 rounded-lg bg-canvas border border-brand-border text-sm">{p.left}</span>
-                <i className="fa-solid fa-arrow-right text-brand-muted text-xs"></i>
-                <span className="flex-1 px-3 py-2 rounded-lg bg-canvas border border-brand-border text-sm text-brand-muted">Select match…</span>
-              </div>
-            ))}
-          </div>
-        );
+        return <PreviewMatching config={config} />;
       case "file_upload":
         return (
           <div className="space-y-2">
@@ -672,12 +740,7 @@ export default function LessonBuilder() {
           </div>
         );
       case "esignature":
-        return (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-brand-text">{config.label || "Sign below"}</p>
-            <div className="w-full h-24 border border-brand-border rounded-lg bg-white" />
-          </div>
-        );
+        return <SignaturePad label={config.label || "Sign below"} />;
       default:
         return null;
     }
@@ -770,41 +833,65 @@ export default function LessonBuilder() {
       {/* ── STEP 3 — Build ── */}
       {step === 3 && (
         <>
-          {/* Lesson meta */}
-          <div className="bg-surface border border-brand-border rounded-xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Lesson Title</label>
-              <input className={fieldInputClass} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Hand Hygiene Basics" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Lesson Type</label>
-              <select className={fieldInputClass} value={option} onChange={(e) => changeOption(e.target.value)}>
-                <option value="resource">Resource — content only</option>
-                <option value="guide">Guide — content + knowledge checks</option>
-                <option value="quiz">Quiz — knowledge checks only</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Theme</label>
-              <select className={fieldInputClass} value={themeId} onChange={(e) => setThemeId(e.target.value)}>
-                <option value="">Default (no theme)</option>
-                {themes.map((t) => (
-                  <option key={t._id} value={t._id}>{t.name}</option>
-                ))}
-              </select>
-            </div>
-            {option === "quiz" && (
-              <>
+          {/* Lesson meta — title as heading (inline edit) + theme; no type dropdown */}
+          <div className="bg-surface border border-brand-border rounded-xl p-5">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="min-w-0 flex-1">
+                {editingTitle ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      className={fieldInputClass}
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && title.trim()) setEditingTitle(false); if (e.key === "Escape") setEditingTitle(false); }}
+                      placeholder="e.g. Hand Hygiene Basics"
+                    />
+                    <Button size="sm" variant="primary" disabled={!title.trim()} onClick={() => setEditingTitle(false)}>Done</Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h2 className="text-heading text-brand-text truncate">{title || "Untitled lesson"}</h2>
+                    <button
+                      type="button"
+                      onClick={() => setEditingTitle(true)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-brand-muted hover:text-emerald hover:bg-emerald/10 transition-colors flex-shrink-0"
+                      aria-label="Edit title"
+                    >
+                      <i className="fa-solid fa-pen text-xs" />
+                    </button>
+                  </div>
+                )}
+                <span className="inline-flex items-center gap-1.5 mt-2 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">
+                  <i className={`fa-solid ${TYPE_OPTIONS.find((t) => t.value === option)?.icon || "fa-book-open"}`} />
+                  {TYPE_OPTIONS.find((t) => t.value === option)?.label || option}
+                </span>
+              </div>
+
+              <div className="flex items-end gap-3 flex-wrap">
                 <div>
-                  <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Pass %</label>
-                  <input type="number" min="0" max="100" className={fieldInputClass} value={passPercent} onChange={(e) => setPassPercent(e.target.value)} />
+                  <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Theme</label>
+                  <select className={fieldInputClass} value={themeId} onChange={(e) => setThemeId(e.target.value)}>
+                    <option value="">Default (no theme)</option>
+                    {themes.map((t) => (
+                      <option key={t._id} value={t._id}>{t.name}</option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Max Attempts</label>
-                  <input type="number" min="1" className={fieldInputClass} value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} />
-                </div>
-              </>
-            )}
+                {option === "quiz" && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Pass %</label>
+                      <input type="number" min="0" max="100" className={`${fieldInputClass} w-24`} value={passPercent} onChange={(e) => setPassPercent(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Max Attempts</label>
+                      <input type="number" min="1" className={`${fieldInputClass} w-24`} value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Edit / Preview tabs */}
