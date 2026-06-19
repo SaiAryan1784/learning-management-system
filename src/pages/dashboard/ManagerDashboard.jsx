@@ -7,7 +7,7 @@ import {
 import api from "../../api/api";
 import { useAuth } from "../../auth/AuthContext";
 import {
-  PageHeader, StatCard, Card, Badge, Button, SkeletonCard, EmptyState, ProgressBar,
+  StatCard, Card, Badge, Button, SkeletonCard, EmptyState, ProgressBar,
 } from "../../components/ui";
 
 function getGreeting() {
@@ -30,7 +30,32 @@ function initials(name = "") {
   return ((parts[0][0] || "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-// Eyebrow section heading with a soft icon chip, for visual rhythm down the page.
+// Brand-colored radial gauge. The arc uses `currentColor` via text-emerald, so it
+// renders in the org's brand colour automatically (no hardcoded green).
+function RadialProgress({ value = 0, size = 128, stroke = 11, children }) {
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(100, Number(value) || 0));
+  const offset = circ - (pct / 100) * circ;
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="text-white/10" stroke="currentColor" />
+        <motion.circle
+          cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round"
+          className="text-emerald" stroke="currentColor"
+          strokeDasharray={circ}
+          initial={{ strokeDashoffset: circ }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">{children}</div>
+    </div>
+  );
+}
+
+// Eyebrow section heading with a soft brand icon chip, for vertical rhythm.
 function SectionHeading({ icon, title, right }) {
   return (
     <div className="flex items-center justify-between">
@@ -46,9 +71,9 @@ function SectionHeading({ icon, title, right }) {
 }
 
 const QUICK_ACTIONS = [
-  { label: "Add Course", desc: "Build new training", icon: "fa-plus", to: "/dashboard/course-add", bg: "bg-emerald-muted", text: "text-emerald" },
-  { label: "Invite Staff", desc: "Grow your team", icon: "fa-user-plus", to: "/dashboard/staff", bg: "bg-blue-100", text: "text-blue-500" },
-  { label: "View Reports", desc: "Compliance & progress", icon: "fa-chart-line", to: "/dashboard/reports/compliance", bg: "bg-violet-100", text: "text-violet-500" },
+  { label: "Add Course", icon: "fa-plus", to: "/dashboard/course-add" },
+  { label: "Invite Staff", icon: "fa-user-plus", to: "/dashboard/staff" },
+  { label: "View Reports", icon: "fa-chart-line", to: "/dashboard/reports/compliance" },
 ];
 
 export default function ManagerDashboard() {
@@ -57,6 +82,7 @@ export default function ManagerDashboard() {
   const lastFetchRef = useRef(0);
 
   const [overview, setOverview] = useState(null);
+  const [compliance, setCompliance] = useState(null);
   const [staffData, setStaffData] = useState([]);
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(true);
@@ -67,12 +93,16 @@ export default function ManagerDashboard() {
       setLoading(true);
       const [ovRes, staffRes] = await Promise.all([
         api.get("/progress/org/overview"),
-        api.get(`/progress/staff?page=${page}&limit=10`),
+        api.get(`/progress/staff?page=${page}&limit=9`),
       ]);
       setOverview(ovRes.data);
       setStaffData(staffRes.data.staffProgress || []);
       setPagination(staffRes.data.pagination || {});
       lastFetchRef.current = Date.now();
+      // Compliance summary is a bonus — never let it block the dashboard.
+      api.get("/reports/compliance/overview")
+        .then((r) => setCompliance(r.data.summary))
+        .catch(() => {});
     } catch (err) {
       console.error(err);
     } finally {
@@ -91,35 +121,63 @@ export default function ManagerDashboard() {
 
   const firstName = user?.name?.split(" ")[0] || "there";
 
-  return (
-    <div className="space-y-8">
-      <PageHeader
-        title={`${getGreeting()}, ${firstName}`}
-        subtitle={formatToday()}
-      />
+  // Readiness = org compliance rate when available, else avg learner progress.
+  const readiness = compliance ? Math.round(compliance.completionRate || 0) : avgProgress;
+  const overdue = compliance
+    ? compliance.overdueAssignments || 0
+    : staffData.reduce((a, s) => a + (s.overdueCourses || 0), 0);
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {QUICK_ACTIONS.map((a) => (
-          <button
-            key={a.label}
-            type="button"
-            onClick={() => navigate(a.to)}
-            className="group flex items-center gap-3 bg-surface border border-brand-border rounded-xl p-4 text-left hover:border-emerald/40 hover:shadow-elevated transition-all duration-250 ease-smooth outline-none focus:outline-none"
-          >
-            <span className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${a.bg}`}>
-              <i className={`fa-solid ${a.icon} ${a.text}`} />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-brand-text">{a.label}</span>
-              <span className="block text-xs text-brand-muted truncate">{a.desc}</span>
-            </span>
-            <i className="fa-solid fa-arrow-right text-xs text-brand-muted ml-auto opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-          </button>
-        ))}
+  const statusLine = overdue > 0
+    ? `${overdue} training${overdue > 1 ? "s" : ""} overdue across your team — worth a look.`
+    : "Your team is on track — nothing overdue right now.";
+  const readinessHint = readiness >= 85
+    ? "Strong compliance. Keep it up."
+    : readiness >= 60
+    ? "Getting there — a few learners to nudge."
+    : "Needs attention — assign or remind staff.";
+
+  return (
+    <div className="space-y-6">
+      {/* ── Hero ──────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl bg-charcoal text-white px-6 py-6 sm:px-8 sm:py-7">
+        <div className="absolute -right-12 -top-12 w-60 h-60 rounded-full bg-emerald/20 blur-3xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-20 w-56 h-56 rounded-full bg-emerald/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-7">
+          <div className="min-w-0">
+            <p className="text-sm text-white/55">{formatToday()}</p>
+            <h1 className="text-3xl font-extrabold tracking-tight mt-1">
+              {getGreeting()}, <span className="text-emerald">{firstName}</span>
+            </h1>
+            <p className="text-sm text-white/70 mt-2 max-w-md">{statusLine}</p>
+            <div className="flex flex-wrap gap-2 mt-5">
+              {QUICK_ACTIONS.map((a) => (
+                <button
+                  key={a.label}
+                  type="button"
+                  onClick={() => navigate(a.to)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/[0.18] px-3.5 py-2 text-sm font-medium transition-colors outline-none focus:outline-none"
+                >
+                  <i className={`fa-solid ${a.icon} text-emerald text-xs`} /> {a.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Readiness gauge */}
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <RadialProgress value={readiness}>
+              <span className="text-[28px] font-extrabold tabular-nums">{readiness}%</span>
+              <span className="text-[10px] uppercase tracking-widest text-white/55 mt-1">Compliant</span>
+            </RadialProgress>
+            <div className="hidden sm:block max-w-[170px]">
+              <p className="text-sm font-semibold">Team readiness</p>
+              <p className="text-xs text-white/60 mt-1 leading-relaxed">{readinessHint}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* ── Overview ─────────────────────────────────── */}
+      {/* ── Overview KPIs ─────────────────────────────── */}
       <section className="space-y-4">
         <SectionHeading icon="fa-gauge-high" title="Overview" />
         {loading ? (
@@ -132,80 +190,80 @@ export default function ManagerDashboard() {
             className="grid grid-cols-2 lg:grid-cols-4 gap-4"
           >
             {[
-              { icon: "fa-users",            label: "Total Users",     value: overview.summary.totalUsers,         tone: "info" },
-              { icon: "fa-right-to-bracket", label: "Logged In Today", value: overview.summary.usersLoggedInToday, tone: "neutral" },
-              { icon: "fa-book-open",        label: "Total Courses",   value: overview.summary.totalCourses,       tone: "default" },
-              { icon: "fa-circle-check",     label: "Completions",     value: overview.summary.coursesCompleted,   tone: "default" },
+              { icon: "fa-users",        label: "Total Users",   value: overview.summary.totalUsers,       tone: "info" },
+              { icon: "fa-book-open",    label: "Total Courses", value: overview.summary.totalCourses,     tone: "neutral" },
+              { icon: "fa-circle-check", label: "Completions",   value: overview.summary.coursesCompleted, tone: "default" },
+              { icon: "fa-triangle-exclamation", label: "Overdue", value: overdue, tone: overdue > 0 ? "danger" : "neutral" },
             ].map((s) => (
               <motion.div key={s.label} variants={fadeUp} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
-                <StatCard {...s} tone={s.tone} />
+                <StatCard {...s} />
               </motion.div>
             ))}
           </motion.div>
         ) : null}
       </section>
 
-      {/* ── Insights ─────────────────────────────────── */}
+      {/* ── Insights ──────────────────────────────────── */}
       {overview && (
         <section className="space-y-4">
           <SectionHeading icon="fa-chart-simple" title="Insights" />
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-          {/* Top 10 Enrollments */}
-          <Card padded>
-            <p className="text-sm font-bold text-brand-text mb-4">Top 10 Course Enrollments</p>
-            {overview.topEnrollments.length === 0 ? (
-              <p className="text-xs text-brand-muted py-8 text-center">No enrollment data yet.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={overview.topEnrollments} layout="vertical" margin={{ left: 4, right: 24, top: 0, bottom: 0 }}>
-                  <XAxis type="number" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                  <YAxis
-                    type="category" dataKey="title" width={120}
-                    tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false}
-                    tickFormatter={(v) => v.length > 18 ? v.slice(0, 17) + "…" : v}
-                  />
-                  <Tooltip
-                    contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-brand-border)", borderRadius: 10, fontSize: 12 }}
-                    formatter={(v) => [v, "Enrollments"]}
-                  />
-                  <Bar dataKey="enrollments" radius={[0, 6, 6, 0]}>
-                    {overview.topEnrollments.map((_, i) => (
-                      <Cell key={i} fill={i === 0 ? EMERALD : EMERALD_MUTED} fillOpacity={1 - i * 0.06} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </Card>
+            {/* Top 10 Enrollments */}
+            <Card padded>
+              <p className="text-sm font-bold text-brand-text mb-4">Top 10 Course Enrollments</p>
+              {overview.topEnrollments.length === 0 ? (
+                <p className="text-xs text-brand-muted py-8 text-center">No enrollment data yet.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={overview.topEnrollments} layout="vertical" margin={{ left: 4, right: 24, top: 0, bottom: 0 }}>
+                    <XAxis type="number" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                    <YAxis
+                      type="category" dataKey="title" width={120}
+                      tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false}
+                      tickFormatter={(v) => v.length > 18 ? v.slice(0, 17) + "…" : v}
+                    />
+                    <Tooltip
+                      contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-brand-border)", borderRadius: 10, fontSize: 12 }}
+                      formatter={(v) => [v, "Enrollments"]}
+                    />
+                    <Bar dataKey="enrollments" radius={[0, 6, 6, 0]}>
+                      {overview.topEnrollments.map((_, i) => (
+                        <Cell key={i} fill={i === 0 ? EMERALD : EMERALD_MUTED} fillOpacity={1 - i * 0.06} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Card>
 
-          {/* Popular Courses (avg progress) */}
-          <Card padded>
-            <p className="text-sm font-bold text-brand-text mb-4">Popular Courses — Avg Progress</p>
-            {overview.popularCourses.length === 0 ? (
-              <p className="text-xs text-brand-muted py-8 text-center">No progress data yet.</p>
-            ) : (
-              <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "#E5E7EB transparent" }}>
-                {overview.popularCourses.map((c) => (
-                  <div key={c.courseId}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-brand-text truncate max-w-[70%]">{c.title}</span>
-                      <span className="text-xs text-brand-muted tabular-nums flex-shrink-0">{c.enrolled} enrolled · {c.avgProgress}%</span>
+            {/* Popular Courses (avg progress) */}
+            <Card padded>
+              <p className="text-sm font-bold text-brand-text mb-4">Popular Courses — Avg Progress</p>
+              {overview.popularCourses.length === 0 ? (
+                <p className="text-xs text-brand-muted py-8 text-center">No progress data yet.</p>
+              ) : (
+                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "#E5E7EB transparent" }}>
+                  {overview.popularCourses.map((c) => (
+                    <div key={c.courseId}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-brand-text truncate max-w-[70%]">{c.title}</span>
+                        <span className="text-xs text-brand-muted tabular-nums flex-shrink-0">{c.enrolled} enrolled · {c.avgProgress}%</span>
+                      </div>
+                      <ProgressBar percent={c.avgProgress} size="xs" />
                     </div>
-                    <ProgressBar percent={c.avgProgress} size="xs" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+                  ))}
+                </div>
+              )}
+            </Card>
           </div>
         </section>
       )}
 
-      {/* ── Staff & progress ─────────────────────────── */}
+      {/* ── Team pulse ────────────────────────────────── */}
       <section className="space-y-4">
         <SectionHeading
           icon="fa-user-group"
-          title="Staff & Their Progress"
+          title="Team Pulse"
           right={!loading ? `${avgProgress}% avg completion` : null}
         />
 
@@ -260,23 +318,23 @@ export default function ManagerDashboard() {
             ))}
           </motion.div>
         )}
-      </section>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <Button variant="secondary" size="sm" disabled={page === 1}
-          leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
-          onClick={() => setPage((p) => p - 1)}>
-          Previous
-        </Button>
-        <span className="text-caption text-brand-muted">Page {pagination.page || 1}</span>
-        <Button variant="secondary" size="sm"
-          disabled={pagination.total ? page * pagination.limit >= pagination.total : true}
-          trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />}
-          onClick={() => setPage((p) => p + 1)}>
-          Next
-        </Button>
-      </div>
+        {/* Pagination */}
+        <div className="flex items-center justify-between pt-1">
+          <Button variant="secondary" size="sm" disabled={page === 1}
+            leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
+            onClick={() => setPage((p) => p - 1)}>
+            Previous
+          </Button>
+          <span className="text-caption text-brand-muted">Page {pagination.page || 1}</span>
+          <Button variant="secondary" size="sm"
+            disabled={pagination.total ? page * pagination.limit >= pagination.total : true}
+            trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />}
+            onClick={() => setPage((p) => p + 1)}>
+            Next
+          </Button>
+        </div>
+      </section>
     </div>
   );
 }

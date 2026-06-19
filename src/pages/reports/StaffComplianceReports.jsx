@@ -69,7 +69,7 @@ export default function StaffComplianceReport() {
     <div className="space-y-5">
       <PageHeader title="Staff Compliance Report" subtitle="Overview of staff compliance status and mandatory course completion" />
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-5 gap-4">
         <StatCard icon="fa-users" label="Staff Tracked" value={summary.totalStaffTracked} />
         <StatCard icon="fa-book-bookmark" label="Mandatory Assignments" value={summary.totalMandatoryAssignments} />
         <StatCard icon="fa-circle-check" label="Completed" value={summary.completedAssignments} />

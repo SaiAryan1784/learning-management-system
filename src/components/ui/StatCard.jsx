@@ -44,13 +44,13 @@ export function StatCard({ icon, label, value, danger = false, tone = "default",
     <motion.div
       whileHover={{ y: -2 }}
       transition={{ type: "spring", stiffness: 360, damping: 26 }}
-      className="h-full bg-surface border border-brand-border rounded-xl p-5 flex items-center gap-4 shadow-soft hover:shadow-elevated transition-shadow duration-250 ease-smooth"
+      className="h-full min-w-0 bg-surface border border-brand-border rounded-xl p-5 flex items-center gap-4 shadow-soft hover:shadow-elevated transition-shadow duration-250 ease-smooth"
     >
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${bg}`}>
         <i className={`fa-solid ${icon} text-base ${text}`}></i>
       </div>
       <div className="min-w-0">
-        <p className="text-caption text-brand-muted uppercase tracking-wide">{label}</p>
+        <p className="text-caption text-brand-muted uppercase tracking-wide break-words">{label}</p>
         <p className="text-2xl font-bold text-brand-text mt-0.5 tabular-nums">{animated}</p>
         {trend != null && (
           <p
