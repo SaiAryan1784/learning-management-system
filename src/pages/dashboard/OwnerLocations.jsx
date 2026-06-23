@@ -65,7 +65,7 @@ export default function OwnerLocations() {
         toastr.success("Location updated successfully!", "success");
       } else {
         await api.post("/locations", form);
-        toastr.success("Location added successfully!", "success");
+        toastr.success("Location added — manager invite sent to the email!", "success");
       }
       resetForm();
       setOpenPop(false);
@@ -175,9 +175,9 @@ export default function OwnerLocations() {
             { label: "Location Name", field: "name", placeholder: "e.g. Head Office" },
             { label: "Address", field: "address", placeholder: "123 Main Street" },
             { label: "Phone", field: "phone", placeholder: "+1 555 000 0000" },
-            { label: "Email", field: "email", placeholder: "location@example.com", type: "email" },
-          ].map(({ label, field, placeholder, type }) => (
-            <FormField key={field} label={label} required>
+            { label: "Email", field: "email", placeholder: "location@example.com", type: "email", hint: "An account invite to manage this location is emailed here." },
+          ].map(({ label, field, placeholder, type, hint }) => (
+            <FormField key={field} label={label} required hint={hint}>
               <Input
                 type={type || "text"}
                 placeholder={placeholder}

@@ -17,6 +17,7 @@ const Resources             = lazy(() => import("./pages/Resources"));
 const ContactUs             = lazy(() => import("./pages/ContactUs"));
 const Login                 = lazy(() => import("./pages/Login"));
 const Register              = lazy(() => import("./pages/Register"));
+const AcceptInvite          = lazy(() => import("./pages/AcceptInvite"));
 const Admin                 = lazy(() => import("./pages/Admin"));
 
 /* ── Layout (eager — shell must never lazy-load) ──────── */
@@ -103,6 +104,7 @@ function AppContent() {
         <Route path="/"                        element={<Landing />} />
         <Route path="/login"                   element={<Login />} />
         <Route path="/register"                element={<Register />} />
+        <Route path="/accept-invite"           element={<AcceptInvite />} />
         <Route path="/about-us"                element={<AboutUs />} />
         <Route path="/blogs"                   element={<Blogs />} />
         <Route path="/help-center"             element={<HelpCenter />} />
