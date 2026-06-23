@@ -226,8 +226,8 @@ export default function StaffLessonView() {
         return <FilePreview src={fileUrl(config)} mimeType={config.mimeType || "application/pdf"} fileName={config.fileName} height={500} />;
       case "video_link":
         return (
-          <div className="rounded-xl border border-brand-border bg-black overflow-hidden">
-            <iframe className="block w-full" height="450" src={youtubeEmbed(config.contentUrl)} title="Lesson Video" allowFullScreen />
+          <div className="rounded-xl border border-brand-border bg-black overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
+            <iframe className="block w-full h-full" src={youtubeEmbed(config.contentUrl)} title="Lesson Video" allowFullScreen />
           </div>
         );
       case "text_answer":

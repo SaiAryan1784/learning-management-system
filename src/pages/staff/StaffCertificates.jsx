@@ -16,7 +16,13 @@ import {
 const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
 const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
 
-export default function StaffCertificates() {
+export const CERT_FONTS = {
+  serif: "Georgia, 'Times New Roman', serif",
+  sans: "system-ui, -apple-system, sans-serif",
+  mono: "'Courier New', monospace",
+};
+
+export default function StaffCertificates({ embedded = false }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const roleName = user?.role?.name?.trim().toLowerCase();
@@ -24,6 +30,7 @@ export default function StaffCertificates() {
 
   const [certificates, setCertificates] = useState([]);
   const [selectedCert, setSelectedCert] = useState(null);
+  const [orgCert, setOrgCert] = useState({});
   const [loading, setLoading] = useState(true);
 
   const loadCertificates = async () => {
@@ -41,6 +48,12 @@ export default function StaffCertificates() {
 
   useEffect(() => {
     loadCertificates();
+    // Org-wide default certificate template — used as a fallback for fields a course
+    // doesn't set, and for the org's own uploaded design.
+    api
+      .get("/organization/settings")
+      .then((res) => setOrgCert(res.data.organization?.certificateSettings || {}))
+      .catch(() => {});
   }, []);
 
   const handlePrint = () => {
@@ -64,19 +77,21 @@ export default function StaffCertificates() {
         }
       `}</style>
 
-      <PageHeader title="My Certificates" subtitle="Certificates earned from completed courses">
-        {isAdmin && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="!text-white !border-white/20 hover:!bg-white/10"
-            leadingIcon={<i className="fa-solid fa-gear text-xs" />}
-            onClick={() => navigate("/dashboard/certificates/manage")}
-          >
-            Manage
-          </Button>
-        )}
-      </PageHeader>
+      {!embedded && (
+        <PageHeader title="My Certificates" subtitle="Certificates earned from completed courses">
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="!text-white !border-white/20 hover:!bg-white/10"
+              leadingIcon={<i className="fa-solid fa-gear text-xs" />}
+              onClick={() => navigate("/dashboard/certificates/manage")}
+            >
+              Manage
+            </Button>
+          )}
+        </PageHeader>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -142,9 +157,30 @@ export default function StaffCertificates() {
         maxWidth="max-w-2xl"
       >
         {selectedCert && (() => {
-          const certCfg = selectedCert.course?.certificate || {};
-          const isUpload = certCfg.mode === "upload" && certCfg.designUrl;
-          const designSrc = toAbsoluteUrl(certCfg.designUrl);
+          const base = selectedCert.course?.certificate || {};
+          // Merge: course values override the org-wide defaults; empty falls back to org.
+          const certCfg = {
+            title: base.title || orgCert.title || "Certificate of Completion",
+            signatoryName: base.signatoryName || orgCert.signatoryName || "",
+            signatoryRole: base.signatoryRole || orgCert.signatoryRole || "",
+            logoUrl: base.logoUrl || orgCert.logoUrl || "",
+            primaryColor: orgCert.primaryColor || "#10B981",
+            fontStyle: orgCert.fontStyle || "serif",
+          };
+          // Effective design: course's own uploaded design wins; else the org's uploaded
+          // template; else the generated template below.
+          let designUrl = "";
+          let designType = "image";
+          if (base.mode === "upload" && base.designUrl) {
+            designUrl = base.designUrl;
+            designType = base.designType || "image";
+          } else if (orgCert.templateUrl) {
+            designUrl = orgCert.templateUrl;
+            designType = orgCert.templateType || "image";
+          }
+          const isUpload = !!designUrl;
+          const designSrc = toAbsoluteUrl(designUrl);
+          certCfg.designType = designType;
 
           // Owner-uploaded design (static, shown as-is to every recipient).
           if (isUpload) {
@@ -152,7 +188,7 @@ export default function StaffCertificates() {
               <>
                 {certCfg.designType === "pdf" ? (
                   <div className="rounded-xl border border-brand-border overflow-hidden bg-canvas">
-                    <iframe src={designSrc} title="Certificate" className="block w-full" style={{ height: 460 }} />
+                    <iframe src={designSrc} title="Certificate" className="block w-full" style={{ height: "80vh", minHeight: 600 }} />
                   </div>
                 ) : (
                   <div id="cert-print" className="rounded-xl border border-brand-border overflow-hidden bg-white">
@@ -182,6 +218,7 @@ export default function StaffCertificates() {
             <div
               id="cert-print"
               className="relative overflow-hidden bg-gradient-to-b from-emerald-muted/40 to-surface rounded-xl p-8 border border-brand-border"
+              style={{ fontFamily: CERT_FONTS[certCfg.fontStyle] || CERT_FONTS.serif }}
             >
               <div className="text-center mb-6">
                 <img src={certCfg.logoUrl || "/images/title-img.png"} alt="seal" className="h-16 mx-auto mb-4" />
@@ -198,7 +235,7 @@ export default function StaffCertificates() {
                 <p className="text-caption text-brand-muted uppercase tracking-wider mb-2">
                   has successfully completed
                 </p>
-                <h3 className="text-subheading text-emerald-hover mb-4">
+                <h3 className="text-subheading mb-4" style={{ color: certCfg.primaryColor }}>
                   {selectedCert.course?.title}
                 </h3>
                 <div className="h-px bg-brand-border mb-4" />

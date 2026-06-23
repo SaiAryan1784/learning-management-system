@@ -54,21 +54,11 @@ export default function FilePreview({
   className = "",
 }) {
   const kind = resolveFileKind({ mimeType, src, fileName });
-  const [status, setStatus] = useState(() => {
-    if (!src) return "empty";
-    if (kind === "pdf" || kind === "image") return "ready";
-    return "loading";
-  });
+  const [status, setStatus] = useState(() => (src ? "ready" : "empty"));
 
   useEffect(() => {
-    if (!src) {
-      setStatus("empty");
-    } else if (kind === "pdf" || kind === "image") {
-      setStatus("ready");
-    } else {
-      setStatus("loading");
-    }
-  }, [src, kind]);
+    setStatus(src ? "ready" : "empty");
+  }, [src]);
 
   if (!src) {
     return (
@@ -162,14 +152,14 @@ export default function FilePreview({
       )}
 
       {kind === "video" && status !== "error" && (
-        <video
-          src={src}
-          controls
-          onLoadedData={() => setStatus("ready")}
-          onError={() => setStatus("error")}
-          className={`block w-full bg-black ${status === "ready" ? "" : "hidden"}`}
-          style={{ maxHeight: height + 80 }}
-        />
+        <div className="w-full bg-black" style={{ aspectRatio: "16 / 9" }}>
+          <video
+            src={src}
+            controls
+            onError={() => setStatus("error")}
+            className="block w-full h-full object-contain bg-black"
+          />
+        </div>
       )}
 
       {kind === "pdf" && status !== "error" && (
@@ -178,13 +168,13 @@ export default function FilePreview({
             data={src}
             type="application/pdf"
             className="block w-full"
-            style={{ height }}
+            style={{ height: "80vh", minHeight: 600 }}
           >
             <iframe
               src={src}
               title={fileName || "PDF preview"}
               className="block w-full border-0"
-              style={{ height }}
+              style={{ height: "80vh", minHeight: 600 }}
             />
           </object>
           <div className="border-t border-brand-border px-3 py-2 bg-surface flex items-center gap-4">

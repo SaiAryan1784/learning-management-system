@@ -5,19 +5,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader, PageLoader, Button } from "../../components/ui";
 import FilePreview from "../../components/lesson/FilePreview";
+import { getCourseColor } from "../../utils/courseColor";
 
 const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
 const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
-
-const COURSE_COLORS = ["#10B981","#3B82F6","#8B5CF6","#F59E0B","#EF4444","#06B6D4","#EC4899","#F97316"];
-function getCourseColor(title = "") {
-  let h = 0;
-  for (let i = 0; i < title.length; i++) h = title.charCodeAt(i) + ((h << 5) - h);
-  return COURSE_COLORS[Math.abs(h) % COURSE_COLORS.length];
-}
 
 const STEPS = ["Course Details", "Build Content", "Assign & Publish"];
 
@@ -170,7 +164,7 @@ export default function CourseAdd() {
       }
       const id = savedCourseId || res.data.course?._id || res.data._id;
       setSavedCourseId(id);
-      setStep(2);
+      navigate(`/dashboard/courses/${id}/lessons`);
     } catch (err) {
       toastr.error(err.response?.data?.message || "Save failed");
     } finally {
@@ -385,43 +379,6 @@ export default function CourseAdd() {
                 </div>
               </div>
             </form>
-          </motion.div>
-        )}
-
-        {/* ── STEP 2: Build Content ── */}
-        {step === 2 && (
-          <motion.div
-            key="step2"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="bg-surface border border-brand-border rounded-xl p-8 text-center space-y-6 max-w-lg mx-auto">
-              <div className="w-16 h-16 rounded-2xl bg-emerald/10 flex items-center justify-center mx-auto">
-                <i className="fa-solid fa-layer-group text-emerald text-2xl" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-brand-text">Course saved as draft!</h2>
-                <p className="text-sm text-brand-muted mt-1">Now build the content — a course is a folder of lessons. Add lessons to give your learners something to work through.</p>
-              </div>
-              <div className="flex flex-col gap-3">
-                <Button
-                  variant="primary" size="lg" fullWidth
-                  leadingIcon={<i className="fa-solid fa-folder-open" />}
-                  onClick={() => navigate(`/dashboard/courses/${savedCourseId}/lessons`)}
-                >
-                  Go to Lesson Builder
-                </Button>
-                <Button
-                  variant="ghost" size="md" fullWidth
-                  onClick={() => setStep(3)}
-                >
-                  Skip for now — go to Assign & Publish
-                  <i className="fa-solid fa-arrow-right ml-1.5 text-xs" />
-                </Button>
-              </div>
-            </div>
           </motion.div>
         )}
 

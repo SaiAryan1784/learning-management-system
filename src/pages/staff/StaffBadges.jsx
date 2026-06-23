@@ -13,7 +13,7 @@ import {
   ProgressBar,
 } from "../../components/ui";
 
-export default function StaffBadges() {
+export default function StaffBadges({ embedded = false }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const roleName = user?.role?.name?.trim().toLowerCase();
@@ -44,19 +44,21 @@ export default function StaffBadges() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="My Badges" subtitle="Achievements you earn as you learn">
-        {isAdmin && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="!text-white !border-white/20 hover:!bg-white/10"
-            leadingIcon={<i className="fa-solid fa-gear text-xs" />}
-            onClick={() => navigate("/dashboard/badges/manage")}
-          >
-            Manage
-          </Button>
-        )}
-      </PageHeader>
+      {!embedded && (
+        <PageHeader title="My Badges" subtitle="Achievements you earn as you learn">
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="!text-white !border-white/20 hover:!bg-white/10"
+              leadingIcon={<i className="fa-solid fa-gear text-xs" />}
+              onClick={() => navigate("/dashboard/badges/manage")}
+            >
+              Manage
+            </Button>
+          )}
+        </PageHeader>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

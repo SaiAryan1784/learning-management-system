@@ -195,8 +195,7 @@ export default function DashboardLayout() {
   ];
 
   const recognitionMenu = [
-    { label: "Certificates", icon: "fa-certificate", path: "/dashboard/certificates" },
-    { label: "Badges", icon: "fa-medal", path: "/dashboard/badges" },
+    { label: "Recognition", icon: "fa-award", path: "/dashboard/certificates" },
   ];
 
   const complianceMenu = [

@@ -6,13 +6,7 @@ import toastr from "toastr";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
 import { SectionLoader } from "../../components/ui/Spinner";
-
-const COURSE_COLORS = ["#10B981", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444", "#06B6D4", "#EC4899", "#F97316"];
-function getCourseColor(title = "") {
-  let h = 0;
-  for (let i = 0; i < title.length; i++) h = title.charCodeAt(i) + ((h << 5) - h);
-  return COURSE_COLORS[Math.abs(h) % COURSE_COLORS.length];
-}
+import { getCourseColor } from "../../utils/courseColor";
 
 export default function OSCourses() {
   const navigate = useNavigate();

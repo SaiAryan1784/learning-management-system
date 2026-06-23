@@ -15,7 +15,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(true);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ export default function Login() {
     }
     try {
       setLoading(true);
-      const res = await api.post("/auth/login", { email, password });
+      const res = await api.post("/auth/login", { email, password, remember });
 
       if (res.data?.accessToken) {
         localStorage.setItem("accessToken", res.data.accessToken);

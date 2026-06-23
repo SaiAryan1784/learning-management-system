@@ -42,6 +42,7 @@ export default function CertificateManager() {
   const [designForm, setDesignForm] = useState(emptyDesign);
   const [savingDesign, setSavingDesign] = useState(false);
   const [uploadingDesign, setUploadingDesign] = useState(false);
+  const [templateConfigured, setTemplateConfigured] = useState(true);
 
   const load = async () => {
     try {
@@ -53,6 +54,14 @@ export default function CertificateManager() {
       setCertificates(certRes.data.certificates || []);
       setStaff((staffRes.data.staff || []).filter((s) => s.inviteStatus === "accepted"));
       setCourses(courseRes.data.courses || []);
+      // Has the org configured its default certificate template yet?
+      api
+        .get("/organization/settings")
+        .then((r) => {
+          const c = r.data.organization?.certificateSettings || {};
+          setTemplateConfigured(!!(c.templateUrl || c.logoUrl || c.signatoryName));
+        })
+        .catch(() => {});
     } catch {
       toastr.error("Failed to load certificates");
     } finally {
@@ -156,12 +165,36 @@ export default function CertificateManager() {
           variant="ghost"
           size="sm"
           className="!text-white !border-white/20 hover:!bg-white/10"
+          leadingIcon={<i className="fa-solid fa-sliders text-xs" />}
+          onClick={() => navigate("/dashboard/certificates/setup")}
+        >
+          Template Setup
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="!text-white !border-white/20 hover:!bg-white/10"
           leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
           onClick={() => navigate("/dashboard/certificates")}
         >
           Back
         </Button>
       </PageHeader>
+
+      {!templateConfigured && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="text-sm text-amber-800">
+            <i className="fa-solid fa-triangle-exclamation mr-2" />
+            No certificate template set up yet — courses will use the built-in default.
+          </p>
+          <button
+            className="text-sm font-semibold text-amber-900 hover:underline whitespace-nowrap"
+            onClick={() => navigate("/dashboard/certificates/setup")}
+          >
+            Configure template →
+          </button>
+        </div>
+      )}
 
       {/* View tabs */}
       <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-fit">
@@ -326,6 +359,12 @@ export default function CertificateManager() {
       {/* Design edit modal */}
       <Modal isOpen={!!designCourse} onClose={() => setDesignCourse(null)} title={`Certificate Design — ${designCourse?.title || ""}`} maxWidth="max-w-lg">
         <div className="space-y-4">
+          <p className="text-caption text-brand-muted">
+            Overrides for this course only. Anything left blank falls back to your{" "}
+            <button className="font-semibold text-emerald hover:underline" onClick={() => navigate("/dashboard/certificates/setup")}>
+              organization template
+            </button>.
+          </p>
           <label className="flex items-center gap-2 text-sm text-brand-text cursor-pointer">
             <input type="checkbox" className="accent-emerald w-4 h-4" checked={designForm.enabled} onChange={(e) => setDesign({ enabled: e.target.checked })} />
             Grant a certificate on completion

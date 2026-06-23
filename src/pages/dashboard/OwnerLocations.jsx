@@ -15,7 +15,7 @@ import { SectionLoader } from "../../components/ui/Spinner";
 
 export default function OwnerLocations() {
   const [locations, setLocations] = useState([]);
-  const [form, setForm] = useState({ name: "", address: "", phone: "" });
+  const [form, setForm] = useState({ name: "", address: "", phone: "", email: "" });
   const [editId, setEditId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -55,6 +55,8 @@ export default function OwnerLocations() {
     if (!form.name.trim()) { toastr.error("Location name is required", "error"); return; }
     if (!form.address.trim()) { toastr.error("Address is required", "error"); return; }
     if (!form.phone.trim()) { toastr.error("Phone is required", "error"); return; }
+    if (!form.email.trim()) { toastr.error("Email is required", "error"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { toastr.error("Enter a valid email", "error"); return; }
 
     try {
       setSubmitting(true);
@@ -77,12 +79,12 @@ export default function OwnerLocations() {
 
   const handleEdit = (loc) => {
     setEditId(loc._id);
-    setForm({ name: loc.name, address: loc.address, phone: loc.phone });
+    setForm({ name: loc.name, address: loc.address, phone: loc.phone, email: loc.email || "" });
     setOpenPop(true);
   };
 
   const resetForm = () => {
-    setForm({ name: "", address: "", phone: "" });
+    setForm({ name: "", address: "", phone: "", email: "" });
     setEditId(null);
   };
 
@@ -122,13 +124,14 @@ export default function OwnerLocations() {
               <th>Name</th>
               <th>Address</th>
               <th>Phone</th>
+              <th>Email</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {locations.length === 0 ? (
               <tr>
-                <td colSpan="4" className="text-center text-brand-muted py-8">
+                <td colSpan="5" className="text-center text-brand-muted py-8">
                   No locations found
                 </td>
               </tr>
@@ -138,6 +141,7 @@ export default function OwnerLocations() {
                   <td>{loc.name}</td>
                   <td>{loc.address}</td>
                   <td>{loc.phone}</td>
+                  <td>{loc.email}</td>
                   <td>
                     <button className={actionBtn} onClick={() => handleEdit(loc)} title="Edit">
                       <i className="fa-solid fa-edit text-xs"></i>
@@ -171,9 +175,11 @@ export default function OwnerLocations() {
             { label: "Location Name", field: "name", placeholder: "e.g. Head Office" },
             { label: "Address", field: "address", placeholder: "123 Main Street" },
             { label: "Phone", field: "phone", placeholder: "+1 555 000 0000" },
-          ].map(({ label, field, placeholder }) => (
+            { label: "Email", field: "email", placeholder: "location@example.com", type: "email" },
+          ].map(({ label, field, placeholder, type }) => (
             <FormField key={field} label={label} required>
               <Input
+                type={type || "text"}
                 placeholder={placeholder}
                 value={form[field]}
                 onChange={(e) => setForm({ ...form, [field]: e.target.value })}

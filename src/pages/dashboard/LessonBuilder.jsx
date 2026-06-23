@@ -136,18 +136,94 @@ function StepIndicator({ current }) {
 
 // Bounded YouTube/embed preview (external URL, not an uploaded file → FilePreview
 // doesn't apply). YouTube allows cross-origin framing, so no header issues here.
-function YouTubePreview({ url, height = 220 }) {
+function YouTubePreview({ url }) {
   const src = youtubeEmbed(url);
   if (!src) return null;
   return (
-    <div className="rounded-lg border border-brand-border bg-black overflow-hidden">
+    <div className="rounded-lg border border-brand-border bg-black overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
       <iframe
         src={src}
         title="Video preview"
         allowFullScreen
-        className="block w-full"
-        style={{ height }}
+        className="block w-full h-full"
       />
+    </div>
+  );
+}
+
+// Lesson appearance selector. Visual rebuild per the client reference — a "Guide Primary"
+// readout, Navigation/Content tabs, and a vertical list of full-width theme rows. The data
+// model is unchanged: rows are the org's themes and selecting one saves the per-lesson
+// `themeId`. "Default" clears the theme. (Navigation vs Content is presentational; both map
+// to the single per-lesson palette the model supports.)
+function ThemeSelector({ themes, themeId, setThemeId }) {
+  const [tab, setTab] = useState("navigation");
+  const selected = themes.find((t) => t._id === themeId) || null;
+  const primary = selected?.primary || "#10B981";
+  const rows = [{ _id: "", name: "Default", primary: "#6B7280" }, ...themes];
+
+  return (
+    <div className="bg-surface border border-brand-border rounded-xl p-5 space-y-4">
+      {/* Guide Primary */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="text-xs font-semibold text-brand-muted uppercase tracking-wide">Guide Primary</label>
+        <span
+          className="w-9 h-9 rounded-lg border border-brand-border flex-shrink-0"
+          style={{ backgroundColor: primary }}
+        />
+        <input
+          readOnly
+          value={primary.toUpperCase()}
+          className="w-28 px-3 py-2 border border-brand-border rounded-lg text-sm font-mono text-brand-text bg-canvas"
+        />
+      </div>
+
+      {/* Navigation / Content tabs */}
+      <div>
+        <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-fit">
+          {[
+            { v: "navigation", label: "Navigation Theme" },
+            { v: "content", label: "Content Theme" },
+          ].map((t) => (
+            <button
+              key={t.v}
+              type="button"
+              onClick={() => setTab(t.v)}
+              className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${tab === t.v ? "bg-surface text-brand-text shadow-soft" : "text-brand-muted hover:text-brand-text"}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-brand-muted mt-2">
+          {tab === "navigation"
+            ? "Applies to the left-side navigation panel."
+            : "Applies to the lesson content area."}
+        </p>
+      </div>
+
+      {/* Theme rows */}
+      <div className="space-y-2">
+        {rows.map((t) => {
+          const active = (themeId || "") === (t._id || "");
+          return (
+            <button
+              key={t._id || "default"}
+              type="button"
+              onClick={() => setThemeId(t._id)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm font-bold uppercase tracking-wide transition-all"
+              style={
+                active
+                  ? { backgroundColor: "#1F2937", color: "#fff", borderColor: "#1F2937" }
+                  : { backgroundColor: t.primary, color: "#fff", borderColor: "transparent" }
+              }
+            >
+              <span className="truncate">{t.name}</span>
+              {active && <i className="fa-solid fa-check flex-shrink-0" />}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1106,15 +1182,6 @@ export default function LessonBuilder() {
               </div>
 
               <div className="flex items-end gap-3 flex-wrap">
-                <div>
-                  <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Theme</label>
-                  <select className={fieldInputClass} value={themeId} onChange={(e) => setThemeId(e.target.value)}>
-                    <option value="">Default (no theme)</option>
-                    {themes.map((t) => (
-                      <option key={t._id} value={t._id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
                 {option === "quiz" && (
                   <>
                     <div>
@@ -1130,6 +1197,9 @@ export default function LessonBuilder() {
               </div>
             </div>
           </div>
+
+          {/* Lesson appearance */}
+          <ThemeSelector themes={themes} themeId={themeId} setThemeId={setThemeId} />
 
           {/* Save / validation banner */}
           {formError && (

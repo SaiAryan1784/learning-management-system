@@ -7,8 +7,12 @@ import {
 import api from "../../api/api";
 import { useAuth } from "../../auth/AuthContext";
 import {
-  StatCard, Card, Badge, Button, SkeletonCard, EmptyState, ProgressBar,
+  Card, Badge, Button, SkeletonCard, EmptyState, ProgressBar,
 } from "../../components/ui";
+import RingStatCard from "../../components/dashboard/RingStatCard";
+
+// Reference-screenshot card colours: deep maroon, golden yellow, teal-green, dark teal.
+const RING_COLORS = ["#9B2C4E", "#D69A1F", "#1AA179", "#13525B"];
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -190,13 +194,13 @@ export default function ManagerDashboard() {
             className="grid grid-cols-2 lg:grid-cols-4 gap-4"
           >
             {[
-              { icon: "fa-users",        label: "Total Users",   value: overview.summary.totalUsers,       tone: "info" },
-              { icon: "fa-book-open",    label: "Total Courses", value: overview.summary.totalCourses,     tone: "neutral" },
-              { icon: "fa-circle-check", label: "Completions",   value: overview.summary.coursesCompleted, tone: "default" },
-              { icon: "fa-triangle-exclamation", label: "Overdue", value: overdue, tone: overdue > 0 ? "danger" : "neutral" },
-            ].map((s) => (
+              { label: "Total Users",            value: overview.summary.totalUsers },
+              { label: "Users Logged In Today",  value: overview.summary.usersLoggedInToday ?? 0 },
+              { label: "Total Courses",          value: overview.summary.totalCourses },
+              { label: "Courses Completed",      value: overview.summary.coursesCompleted },
+            ].map((s, i) => (
               <motion.div key={s.label} variants={fadeUp} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
-                <StatCard {...s} />
+                <RingStatCard label={s.label} value={s.value} color={RING_COLORS[i]} />
               </motion.div>
             ))}
           </motion.div>
@@ -210,7 +214,7 @@ export default function ManagerDashboard() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
             {/* Top 10 Enrollments */}
             <Card padded>
-              <p className="text-sm font-bold text-brand-text mb-4">Top 10 Course Enrollments</p>
+              <p className="text-sm font-bold text-brand-text mb-4 uppercase tracking-wide">Top 10 Course Enrollments</p>
               {overview.topEnrollments.length === 0 ? (
                 <p className="text-xs text-brand-muted py-8 text-center">No enrollment data yet.</p>
               ) : (
@@ -238,7 +242,7 @@ export default function ManagerDashboard() {
 
             {/* Popular Courses (avg progress) */}
             <Card padded>
-              <p className="text-sm font-bold text-brand-text mb-4">Popular Courses — Avg Progress</p>
+              <p className="text-sm font-bold text-brand-text mb-4 uppercase tracking-wide">Popular Courses</p>
               {overview.popularCourses.length === 0 ? (
                 <p className="text-xs text-brand-muted py-8 text-center">No progress data yet.</p>
               ) : (
