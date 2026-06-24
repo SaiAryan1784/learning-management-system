@@ -3,9 +3,13 @@ import StaffDashboard from "../pages/staff/StaffDashboard";
 import ManagerDashboard from "../pages/dashboard/ManagerDashboard";
 
 export default function Admin() {
-  const { isSuperAdmin, access } = useAuth();
-  const isOwner = !isSuperAdmin && access?.orgWide;
-  const isStaff = !isSuperAdmin && !access?.orgWide;
+  const { isSuperAdmin, access, user } = useAuth();
+  // Owners/admins get the Manager dashboard even if their Staff record isn't org-wide —
+  // the role is what matters here (some owner accounts have orgWide=false in data).
+  const roleName = user?.role?.name?.trim().toLowerCase();
+  const isOwner =
+    !isSuperAdmin && (access?.orgWide || roleName === "owner" || roleName === "admin");
+  const isStaff = !isSuperAdmin && !isOwner;
 
   return (
     <div className="mx-wd">

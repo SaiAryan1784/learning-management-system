@@ -21,6 +21,11 @@ export default function OwnerLocations() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Manager-invite modal (explicit action, separate from create)
+  const [inviteLoc, setInviteLoc] = useState(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+
   const loadLocations = async () => {
     try {
       setLoading(true);
@@ -65,7 +70,7 @@ export default function OwnerLocations() {
         toastr.success("Location updated successfully!", "success");
       } else {
         await api.post("/locations", form);
-        toastr.success("Location added — manager invite sent to the email!", "success");
+        toastr.success("Location added successfully!", "success");
       }
       resetForm();
       setOpenPop(false);
@@ -91,6 +96,29 @@ export default function OwnerLocations() {
   const closeModal = () => {
     setOpenPop(false);
     resetForm();
+  };
+
+  const openInvite = (loc) => {
+    setInviteLoc(loc);
+    setInviteEmail(loc.email || "");
+  };
+
+  const handleInviteManager = async () => {
+    if (!inviteEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) {
+      toastr.error("Enter a valid email", "error");
+      return;
+    }
+    try {
+      setInviting(true);
+      await api.post(`/locations/${inviteLoc._id}/invite-manager`, { email: inviteEmail.trim() });
+      toastr.success("Manager invite sent!", "success");
+      setInviteLoc(null);
+      setInviteEmail("");
+    } catch (err) {
+      toastr.error(err.response?.data?.message || "Could not send invite", "error");
+    } finally {
+      setInviting(false);
+    }
   };
 
   const actionBtn =
@@ -143,9 +171,14 @@ export default function OwnerLocations() {
                   <td>{loc.phone}</td>
                   <td>{loc.email}</td>
                   <td>
-                    <button className={actionBtn} onClick={() => handleEdit(loc)} title="Edit">
-                      <i className="fa-solid fa-edit text-xs"></i>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button className={actionBtn} onClick={() => handleEdit(loc)} title="Edit">
+                        <i className="fa-solid fa-edit text-xs"></i>
+                      </button>
+                      <button className={actionBtn} onClick={() => openInvite(loc)} title="Invite manager">
+                        <i className="fa-solid fa-user-plus text-xs"></i>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -175,7 +208,7 @@ export default function OwnerLocations() {
             { label: "Location Name", field: "name", placeholder: "e.g. Head Office" },
             { label: "Address", field: "address", placeholder: "123 Main Street" },
             { label: "Phone", field: "phone", placeholder: "+1 555 000 0000" },
-            { label: "Email", field: "email", placeholder: "location@example.com", type: "email", hint: "An account invite to manage this location is emailed here." },
+            { label: "Email", field: "email", placeholder: "location@example.com", type: "email", hint: "Contact email for this location. Use “Invite manager” later to send a manager account invite." },
           ].map(({ label, field, placeholder, type, hint }) => (
             <FormField key={field} label={label} required hint={hint}>
               <Input
@@ -186,6 +219,36 @@ export default function OwnerLocations() {
               />
             </FormField>
           ))}
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!inviteLoc}
+        onClose={() => setInviteLoc(null)}
+        title={`Invite manager${inviteLoc?.name ? ` — ${inviteLoc.name}` : ""}`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setInviteLoc(null)}>
+              Cancel
+            </Button>
+            <Button variant="primary" loading={inviting} onClick={handleInviteManager}>
+              Send invite
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-caption text-brand-muted">
+            Sends an account invite. The recipient sets a password and becomes a Manager scoped to this location.
+          </p>
+          <FormField label="Manager email" required hint="They’ll receive an invite link to accept.">
+            <Input
+              type="email"
+              placeholder="manager@example.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+            />
+          </FormField>
         </div>
       </Modal>
     </div>
