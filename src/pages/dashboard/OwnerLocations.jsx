@@ -115,7 +115,10 @@ export default function OwnerLocations() {
       setInviteLoc(null);
       setInviteEmail("");
     } catch (err) {
-      toastr.error(err.response?.data?.message || "Could not send invite", "error");
+      toastr.error(
+        err.response?.data?.error || err.response?.data?.message || "Could not send invite",
+        "error",
+      );
     } finally {
       setInviting(false);
     }
