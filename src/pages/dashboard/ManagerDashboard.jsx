@@ -131,17 +131,25 @@ export default function ManagerDashboard() {
     ? compliance.overdueAssignments || 0
     : staffData.reduce((a, s) => a + (s.overdueCourses || 0), 0);
 
-  const statusLine = overdue > 0
+  // A brand-new org has no compliance data and no tracked staff yet — show a welcoming
+  // empty state instead of an alarming "0% / Needs attention".
+  const hasActivity = !!compliance || staffData.length > 0;
+
+  const statusLine = !hasActivity
+    ? "Get started — add a course and assign it to your team."
+    : overdue > 0
     ? `${overdue} training${overdue > 1 ? "s" : ""} overdue across your team — worth a look.`
     : "Your team is on track — nothing overdue right now.";
-  const readinessHint = readiness >= 85
+  const readinessHint = !hasActivity
+    ? "No training assigned yet."
+    : readiness >= 85
     ? "Strong compliance. Keep it up."
     : readiness >= 60
     ? "Getting there — a few learners to nudge."
     : "Needs attention — assign or remind staff.";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       {/* ── Hero ──────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl bg-charcoal text-white px-6 py-6 sm:px-8 sm:py-7">
         <div className="absolute -right-12 -top-12 w-60 h-60 rounded-full bg-emerald/20 blur-3xl pointer-events-none" />
@@ -149,7 +157,7 @@ export default function ManagerDashboard() {
         <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-7">
           <div className="min-w-0">
             <p className="text-sm text-white/55">{formatToday()}</p>
-            <h1 className="text-3xl font-extrabold tracking-tight mt-1">
+            <h1 className="text-3xl font-extrabold tracking-tight mt-1 text-white">
               {getGreeting()}, <span className="text-[#db767c]">{firstName}</span>
             </h1>
             <p className="text-sm text-white/70 mt-2 max-w-md">{statusLine}</p>
@@ -170,7 +178,7 @@ export default function ManagerDashboard() {
           {/* Readiness gauge */}
           <div className="flex items-center gap-4 flex-shrink-0">
             <RadialProgress value={readiness}>
-              <span className="text-[28px] font-extrabold tabular-nums">{readiness}%</span>
+              <span className="text-[28px] font-extrabold tabular-nums">{hasActivity ? `${readiness}%` : "—"}</span>
               <span className="text-[10px] uppercase tracking-widest text-white/55 mt-1">Compliant</span>
             </RadialProgress>
             <div className="hidden sm:block max-w-[170px]">
@@ -323,21 +331,23 @@ export default function ManagerDashboard() {
           </motion.div>
         )}
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between pt-1">
-          <Button variant="secondary" size="sm" disabled={page === 1}
-            leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
-            onClick={() => setPage((p) => p - 1)}>
-            Previous
-          </Button>
-          <span className="text-caption text-brand-muted">Page {pagination.page || 1}</span>
-          <Button variant="secondary" size="sm"
-            disabled={pagination.total ? page * pagination.limit >= pagination.total : true}
-            trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />}
-            onClick={() => setPage((p) => p + 1)}>
-            Next
-          </Button>
-        </div>
+        {/* Pagination — only when there's more than one page */}
+        {pagination.total > pagination.limit && (
+          <div className="flex items-center justify-between pt-1">
+            <Button variant="secondary" size="sm" disabled={page === 1}
+              leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
+              onClick={() => setPage((p) => p - 1)}>
+              Previous
+            </Button>
+            <span className="text-caption text-brand-muted">Page {pagination.page || 1}</span>
+            <Button variant="secondary" size="sm"
+              disabled={pagination.total ? page * pagination.limit >= pagination.total : true}
+              trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />}
+              onClick={() => setPage((p) => p + 1)}>
+              Next
+            </Button>
+          </div>
+        )}
       </section>
     </div>
   );
