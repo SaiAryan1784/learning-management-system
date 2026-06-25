@@ -26,6 +26,10 @@ export default function OwnerLocations() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
 
+  // Deletion modal
+  const [deleteLoc, setDeleteLoc] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
   const loadLocations = async () => {
     try {
       setLoading(true);
@@ -124,6 +128,25 @@ export default function OwnerLocations() {
     }
   };
 
+  const handleDeleteLocation = async () => {
+    if (!deleteLoc) return;
+    try {
+      setDeleting(true);
+      await api.delete(`/locations/${deleteLoc._id}`);
+      toastr.success("Location deleted successfully!", "success");
+      setDeleteLoc(null);
+      loadLocations();
+    } catch (err) {
+      console.error("Error deleting location:", err);
+      toastr.error(
+        err.response?.data?.error || err.response?.data?.message || "Failed to delete location.",
+        "error"
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const actionBtn =
     "flex items-center justify-center w-7 h-7 rounded-md border border-brand-border text-brand-muted hover:bg-emerald-muted hover:text-emerald hover:border-emerald transition-colors";
 
@@ -180,6 +203,13 @@ export default function OwnerLocations() {
                       </button>
                       <button className={actionBtn} onClick={() => openInvite(loc)} title="Invite manager">
                         <i className="fa-solid fa-user-plus text-xs"></i>
+                      </button>
+                      <button
+                        className={`${actionBtn} hover:bg-brand-danger/10 hover:text-brand-danger hover:border-brand-danger transition-colors`}
+                        onClick={() => setDeleteLoc(loc)}
+                        title="Delete"
+                      >
+                        <i className="fa-solid fa-trash text-xs"></i>
                       </button>
                     </div>
                   </td>
@@ -252,6 +282,32 @@ export default function OwnerLocations() {
               onChange={(e) => setInviteEmail(e.target.value)}
             />
           </FormField>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!deleteLoc}
+        onClose={() => setDeleteLoc(null)}
+        title={`Delete Location${deleteLoc?.name ? ` — ${deleteLoc.name}` : ""}`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteLoc(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" loading={deleting} onClick={handleDeleteLocation}>
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-caption text-brand-danger font-semibold flex items-center gap-2">
+            <i className="fa-solid fa-triangle-exclamation"></i>
+            Warning: This action is permanent and cannot be undone.
+          </p>
+          <p className="text-caption text-brand-muted">
+            Deleting this location will automatically remove it from any assigned staff members and scoped compliance policies.
+          </p>
         </div>
       </Modal>
     </div>
