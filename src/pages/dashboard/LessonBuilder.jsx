@@ -71,7 +71,7 @@ const TYPE_OPTIONS = [
   { value: "quiz", label: "Quiz", desc: "Knowledge checks only — scored with a pass mark.", icon: "fa-clipboard-question" },
 ];
 
-const STEPS = ["Title", "Type", "Build"];
+const STEPS = ["Details", "Build"];
 
 function categoryFor(kind) {
   return CONTENT_KINDS.includes(kind) ? "content" : "knowledge_check";
@@ -136,11 +136,11 @@ function StepIndicator({ current }) {
 
 // Bounded YouTube/embed preview (external URL, not an uploaded file → FilePreview
 // doesn't apply). YouTube allows cross-origin framing, so no header issues here.
-function YouTubePreview({ url }) {
+function YouTubePreview({ url, height = 220 }) {
   const src = youtubeEmbed(url);
   if (!src) return null;
   return (
-    <div className="rounded-lg border border-brand-border bg-black overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
+    <div className="mx-auto rounded-lg border border-brand-border bg-black overflow-hidden" style={{ aspectRatio: "16 / 9", width: Math.round((height * 16) / 9), maxWidth: "100%" }}>
       <iframe
         src={src}
         title="Video preview"
@@ -1065,9 +1065,8 @@ export default function LessonBuilder() {
 
   const subtitle = editing
     ? "Edit lesson content and settings"
-    : step === 1 ? "Step 1 — name your lesson"
-    : step === 2 ? "Step 2 — choose a lesson type"
-    : "Step 3 — build your lesson";
+    : step === 1 ? "Step 1 — name and type your lesson"
+    : "Step 2 — build your lesson";
 
   return (
     <div className="space-y-5">
@@ -1090,20 +1089,44 @@ export default function LessonBuilder() {
         </div>
       )}
 
-      {/* ── STEP 1 — Title ── */}
+      {/* ── STEP 1 — Details (Title + Type) ── */}
       {!editing && step === 1 && (
         <AnimatePresence mode="wait">
-          <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="bg-surface border border-brand-border rounded-xl p-6 max-w-2xl">
-            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Lesson Title</label>
-            <input
-              autoFocus
-              className={fieldInputClass}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Hand Hygiene Basics"
-              onKeyDown={(e) => { if (e.key === "Enter" && title.trim()) setStep(2); }}
-            />
-            <div className="flex justify-end mt-4">
+          <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
+            <div className="bg-surface border border-brand-border rounded-xl p-6 max-w-2xl">
+              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Lesson Title</label>
+              <input
+                autoFocus
+                className={fieldInputClass}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Hand Hygiene Basics"
+                onKeyDown={(e) => { if (e.key === "Enter" && title.trim()) setStep(2); }}
+              />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-3">Lesson Type</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {TYPE_OPTIONS.map((t) => {
+                  const active = option === t.value;
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => changeOption(t.value)}
+                      className={`text-left p-5 rounded-xl border-2 transition-colors ${active ? "border-emerald bg-emerald/5" : "border-brand-border hover:border-emerald/40 bg-surface"}`}
+                    >
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${active ? "bg-emerald text-white" : "bg-canvas text-brand-muted"}`}>
+                        <i className={`fa-solid ${t.icon}`} />
+                      </div>
+                      <p className="text-body font-semibold text-brand-text mb-1">{t.label}</p>
+                      <p className="text-caption text-brand-muted">{t.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex justify-end">
               <Button variant="primary" disabled={!title.trim()} trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />} onClick={() => setStep(2)}>
                 Continue
               </Button>
@@ -1112,39 +1135,8 @@ export default function LessonBuilder() {
         </AnimatePresence>
       )}
 
-      {/* ── STEP 2 — Type ── */}
-      {!editing && step === 2 && (
-        <AnimatePresence mode="wait">
-          <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {TYPE_OPTIONS.map((t) => {
-                const active = option === t.value;
-                return (
-                  <button
-                    key={t.value}
-                    type="button"
-                    onClick={() => changeOption(t.value)}
-                    className={`text-left p-5 rounded-xl border-2 transition-colors ${active ? "border-emerald bg-emerald/5" : "border-brand-border hover:border-emerald/40 bg-surface"}`}
-                  >
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${active ? "bg-emerald text-white" : "bg-canvas text-brand-muted"}`}>
-                      <i className={`fa-solid ${t.icon}`} />
-                    </div>
-                    <p className="text-body font-semibold text-brand-text mb-1">{t.label}</p>
-                    <p className="text-caption text-brand-muted">{t.desc}</p>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex justify-between">
-              <Button variant="ghost" leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />} onClick={() => setStep(1)}>Back</Button>
-              <Button variant="primary" trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />} onClick={() => setStep(3)}>Continue</Button>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      )}
-
-      {/* ── STEP 3 — Build ── */}
-      {step === 3 && (
+      {/* ── STEP 2 — Build ── */}
+      {step === 2 && (
         <>
           {/* Lesson meta — title as heading (inline edit) + theme; no type dropdown */}
           <div className="bg-surface border border-brand-border rounded-xl p-5">
@@ -1307,7 +1299,7 @@ export default function LessonBuilder() {
           {/* Save bar */}
           <div className="flex items-center justify-between gap-3 pt-2">
             {!editing ? (
-              <Button variant="ghost" leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />} onClick={() => setStep(2)}>Back</Button>
+              <Button variant="ghost" leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />} onClick={() => setStep(1)}>Back</Button>
             ) : <span />}
             {blocks.length > 0 && (
               <Button variant="primary" loading={saving} onClick={handleSave}>

@@ -13,7 +13,7 @@ const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent mb-3";
 
-const STEPS = ["Course Details", "Build Content", "Assign & Publish"];
+const STEPS = ["Course Details", "Build Content"];
 
 function StepIndicator({ current }) {
   return (
@@ -54,7 +54,6 @@ export default function CourseAdd() {
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [publishing, setPublishing] = useState(false);
 
   const [step, setStep] = useState(1);
   const [savedCourseId, setSavedCourseId] = useState(courseId || null);
@@ -63,7 +62,7 @@ export default function CourseAdd() {
     title: "", description: "",
     certificate: {
       enabled: true,
-      mode: "template",
+      mode: "",
       designUrl: "",
       designType: "image",
       title: "Certificate of Completion",
@@ -172,20 +171,6 @@ export default function CourseAdd() {
     }
   };
 
-  const handlePublish = async () => {
-    if (!savedCourseId) return;
-    try {
-      setPublishing(true);
-      await api.patch(`/courses/${savedCourseId}/publish`);
-      toastr.success("Course published");
-      navigate("/dashboard/courses");
-    } catch (err) {
-      toastr.error(err.response?.data?.message || "Publish failed");
-    } finally {
-      setPublishing(false);
-    }
-  };
-
   if (loading) return <PageLoader />;
 
   const avatarColor = getCourseColor(form.title);
@@ -195,7 +180,7 @@ export default function CourseAdd() {
     <div className="space-y-6">
       <PageHeader
         title={savedCourseId && courseId ? "Edit Course" : "New Course"}
-        subtitle="Set up your course in three steps"
+        subtitle="Set up your course in two steps"
       >
         <Button
           type="button" variant="ghost" size="sm"
@@ -301,25 +286,30 @@ export default function CourseAdd() {
                   </div>
                   {form.certificate.enabled && (
                     <div className="space-y-4">
-                      {/* Mode toggle: built-in template vs upload-your-own design */}
-                      <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-fit">
-                        {[
-                          { v: "template", label: "Template", icon: "fa-wand-magic-sparkles" },
-                          { v: "upload", label: "Upload your own", icon: "fa-cloud-arrow-up" },
-                        ].map((m) => (
-                          <button
-                            key={m.v}
-                            type="button"
-                            onClick={() => setCert({ mode: m.v })}
-                            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${form.certificate.mode === m.v ? "bg-surface text-brand-text shadow-soft" : "text-brand-muted hover:text-brand-text"}`}
-                          >
-                            <i className={`fa-solid ${m.icon} mr-1.5 text-xs`} />
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
+                      {/* One-time certificate type choice */}
+                      {!form.certificate.mode && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {[
+                            { v: "template", label: "Use a template", desc: "Fill in your title, signatory, and logo — we generate a polished certificate.", icon: "fa-wand-magic-sparkles" },
+                            { v: "upload", label: "Upload your own", desc: "Upload a finished design from Canva or any tool (PNG, JPG, or PDF).", icon: "fa-cloud-arrow-up" },
+                          ].map((m) => (
+                            <button
+                              key={m.v}
+                              type="button"
+                              onClick={() => setCert({ mode: m.v })}
+                              className="text-left p-5 rounded-xl border-2 border-brand-border hover:border-emerald/50 bg-surface transition-colors"
+                            >
+                              <div className="w-10 h-10 rounded-lg bg-canvas flex items-center justify-center mb-3">
+                                <i className={`fa-solid ${m.icon} text-emerald`} />
+                              </div>
+                              <p className="text-body font-semibold text-brand-text mb-1">{m.label}</p>
+                              <p className="text-caption text-brand-muted">{m.desc}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
-                      {form.certificate.mode === "upload" ? (
+                      {form.certificate.mode === "upload" && (
                         <div className="space-y-3">
                           <p className="text-caption text-brand-muted">
                             Upload your finished certificate design (PNG, JPG, or PDF — e.g. exported from Canva).
@@ -347,8 +337,13 @@ export default function CourseAdd() {
                               height={280}
                             />
                           ) : null}
+                          <button type="button" onClick={() => setCert({ mode: "" })} className="text-xs text-brand-muted hover:text-emerald underline">
+                            Change certificate type
+                          </button>
                         </div>
-                      ) : (
+                      )}
+
+                      {form.certificate.mode === "template" && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
                             <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Certificate Title</label>
@@ -366,6 +361,11 @@ export default function CourseAdd() {
                             <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Logo URL (optional)</label>
                             <input className={inputClass} value={form.certificate.logoUrl} onChange={(e) => setCert({ logoUrl: e.target.value })} placeholder="https://… or /images/your-logo.png" />
                           </div>
+                          <div className="md:col-span-2">
+                            <button type="button" onClick={() => setCert({ mode: "" })} className="text-xs text-brand-muted hover:text-emerald underline">
+                              Change certificate type
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -382,49 +382,6 @@ export default function CourseAdd() {
           </motion.div>
         )}
 
-        {/* ── STEP 3: Assign & Publish ── */}
-        {step === 3 && (
-          <motion.div
-            key="step3"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="bg-surface border border-brand-border rounded-xl p-8 space-y-6 max-w-lg mx-auto">
-              <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mx-auto">
-                <i className="fa-solid fa-users text-blue-500 text-2xl" />
-              </div>
-              <div className="text-center">
-                <h2 className="text-lg font-bold text-brand-text">Assign & Publish</h2>
-                <p className="text-sm text-brand-muted mt-1">Assign this course to staff members and publish when you're ready.</p>
-              </div>
-              <div className="flex flex-col gap-3">
-                <Button
-                  variant="secondary" size="lg" fullWidth
-                  leadingIcon={<i className="fa-solid fa-user-plus" />}
-                  onClick={() => navigate(`/dashboard/courses/${savedCourseId}/assign`)}
-                >
-                  Assign to Staff
-                </Button>
-                <Button
-                  variant="primary" size="lg" fullWidth loading={publishing}
-                  leadingIcon={<i className="fa-solid fa-rocket" />}
-                  onClick={handlePublish}
-                >
-                  Publish Course
-                </Button>
-                <Button
-                  variant="ghost" size="md" fullWidth
-                  onClick={() => navigate("/dashboard/courses")}
-                >
-                  <i className="fa-solid fa-check mr-1.5 text-xs" />
-                  Done — View All Courses
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
     </div>
   );

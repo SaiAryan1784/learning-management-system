@@ -152,7 +152,7 @@ export default function FilePreview({
       )}
 
       {kind === "video" && status !== "error" && (
-        <div className="w-full bg-black" style={{ aspectRatio: "16 / 9" }}>
+        <div className="mx-auto bg-black" style={{ aspectRatio: "16 / 9", width: Math.round((height * 16) / 9), maxWidth: "100%" }}>
           <video
             src={src}
             controls
@@ -164,19 +164,21 @@ export default function FilePreview({
 
       {kind === "pdf" && status !== "error" && (
         <>
-          <object
-            data={src}
-            type="application/pdf"
-            className="block w-full"
-            style={{ height: "80vh", minHeight: 600 }}
-          >
-            <iframe
-              src={src}
-              title={fileName || "PDF preview"}
-              className="block w-full border-0"
-              style={{ height: "80vh", minHeight: 600 }}
-            />
-          </object>
+          <div className="mx-auto w-full" style={{ maxWidth: 640 }}>
+            <object
+              data={src}
+              type="application/pdf"
+              className="block w-full"
+              style={{ height, minHeight: 360 }}
+            >
+              <iframe
+                src={src}
+                title={fileName || "PDF preview"}
+                className="block w-full border-0"
+                style={{ height, minHeight: 360 }}
+              />
+            </object>
+          </div>
           <div className="border-t border-brand-border px-3 py-2 bg-surface flex items-center gap-4">
             <a
               href={src}

@@ -17,16 +17,36 @@ export default function CourseLessons() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [published, setPublished] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const loadLessons = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/courses/${courseId}/lessons?active=true&page=1&limit=100`);
-      setLessons(res.data.lessons || []);
+      const [lessonsRes, courseRes] = await Promise.all([
+        api.get(`/courses/${courseId}/lessons?active=true&page=1&limit=100`),
+        api.get(`/courses/${courseId}`),
+      ]);
+      setLessons(lessonsRes.data.lessons || []);
+      const course = courseRes.data.course || courseRes.data;
+      setPublished(course.status === "published" || course.published === true);
     } catch {
       toastr.error("Failed to load lessons");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    try {
+      setPublishing(true);
+      await api.patch(`/courses/${courseId}/publish`);
+      toastr.success("Course published");
+      navigate("/dashboard/courses");
+    } catch (err) {
+      toastr.error(err.response?.data?.message || "Publish failed");
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -59,6 +79,23 @@ export default function CourseLessons() {
         >
           Add Lesson
         </Button>
+        {!published && (
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={publishing}
+            leadingIcon={<i className="fa-solid fa-rocket text-xs" />}
+            onClick={handlePublish}
+          >
+            Publish Course
+          </Button>
+        )}
+        {published && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald/10 text-emerald text-xs font-semibold">
+            <i className="fa-solid fa-circle-check text-[10px]" />
+            Published
+          </span>
+        )}
         <Link
           to="/dashboard/courses"
           className="flex items-center justify-center w-8 h-8 bg-charcoal-light hover:bg-charcoal-muted text-white/60 rounded-lg transition-colors"
