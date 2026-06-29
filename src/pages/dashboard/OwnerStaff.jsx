@@ -104,6 +104,17 @@ export default function OwnerStaff() {
     setOpenPop(false);
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this staff member? This cannot be undone.")) return;
+    try {
+      await api.delete(`/staff/${id}`);
+      toastr.success("Staff member deleted");
+      loadData();
+    } catch (err) {
+      toastr.error(err.response?.data?.message || "Delete failed");
+    }
+  };
+
   const handleUpdate = async () => {
     try {
       setSubmitting(true);
@@ -229,6 +240,13 @@ export default function OwnerStaff() {
                           <i className="fa fa-chart-line text-xs"></i>
                         </button>
                       )}
+                      <button
+                        className={`${actionBtn} hover:bg-brand-danger/10 hover:text-brand-danger hover:border-brand-danger`}
+                        onClick={() => handleDelete(s._id)}
+                        title="Delete Staff"
+                      >
+                        <i className="fa fa-trash text-xs"></i>
+                      </button>
                     </div>
                   </td>
                 </tr>
