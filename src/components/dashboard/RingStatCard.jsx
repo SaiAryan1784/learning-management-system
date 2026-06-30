@@ -36,8 +36,8 @@ export default function RingStatCard({ label, value, color, size = 80, stroke = 
   return (
     <div className="rounded-2xl overflow-hidden shadow-soft" style={{ backgroundColor: color }}>
       {/* Header with label */}
-      <div className="px-4 py-2.5 border-b border-white/30">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-white text-center leading-tight break-words">
+      <div className="px-4 py-2.5 border-b border-gray-200 bg-white">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600 text-center leading-tight break-words">
           {label}
         </p>
       </div>

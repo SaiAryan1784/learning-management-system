@@ -7,6 +7,7 @@ export const AuthProvider = ({ children }) => {
   const [permissions, setPermissions] = useState([]);
   const [access, setAccess] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [impersonating, setImpersonating] = useState(null); // { orgName, orgId }
 
   // 👑 Super Admin check
   const isSuperAdmin = user?.isPlatformAdmin === true;
@@ -65,10 +66,57 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("lmsPermissions");
     localStorage.removeItem("lmsAccess");
     localStorage.removeItem("organizationId");
+    localStorage.removeItem("adminSnapshot");
 
     setUser(null);
     setPermissions([]);
     setAccess(null);
+    setImpersonating(null);
+  };
+
+  // 🔀 Impersonation — platform admin switches into a client org
+  const impersonate = (data) => {
+    try {
+      const snapshot = {
+        accessToken: localStorage.getItem("accessToken"),
+        lmsUser: localStorage.getItem("lmsUser"),
+        lmsPermissions: localStorage.getItem("lmsPermissions"),
+        lmsAccess: localStorage.getItem("lmsAccess"),
+        organizationId: localStorage.getItem("organizationId"),
+      };
+      localStorage.setItem("adminSnapshot", JSON.stringify(snapshot));
+      login(data);
+      setImpersonating({ orgName: data.orgName, orgId: data.organization?.id });
+    } catch (err) {
+      console.error("Impersonate error:", err);
+    }
+  };
+
+  const exitImpersonation = () => {
+    try {
+      const snapshot = JSON.parse(localStorage.getItem("adminSnapshot") || "{}");
+      if (snapshot.accessToken) localStorage.setItem("accessToken", snapshot.accessToken);
+      if (snapshot.lmsUser) localStorage.setItem("lmsUser", snapshot.lmsUser);
+      if (snapshot.lmsPermissions) localStorage.setItem("lmsPermissions", snapshot.lmsPermissions);
+      if (snapshot.lmsAccess) localStorage.setItem("lmsAccess", snapshot.lmsAccess);
+      if (snapshot.organizationId) {
+        localStorage.setItem("organizationId", snapshot.organizationId);
+      } else {
+        localStorage.removeItem("organizationId");
+      }
+      localStorage.removeItem("adminSnapshot");
+
+      const restoredUser = snapshot.lmsUser ? JSON.parse(snapshot.lmsUser) : null;
+      const restoredPerms = snapshot.lmsPermissions ? JSON.parse(snapshot.lmsPermissions) : [];
+      const restoredAccess = snapshot.lmsAccess ? JSON.parse(snapshot.lmsAccess) : null;
+
+      setUser(restoredUser);
+      setPermissions(restoredPerms);
+      setAccess(restoredAccess);
+      setImpersonating(null);
+    } catch (err) {
+      console.error("Exit impersonation error:", err);
+    }
   };
 
   // 🔐 Permission Helpers
@@ -100,7 +148,10 @@ export const AuthProvider = ({ children }) => {
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
-  }), [user, permissions, access, loading]);
+    impersonating,
+    impersonate,
+    exitImpersonation,
+  }), [user, permissions, access, loading, impersonating]);
 
   return (
     <AuthContext.Provider value={value}>

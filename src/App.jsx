@@ -60,6 +60,14 @@ const AuditTrail             = lazy(() => import("./pages/reports/AuditTrail"));
 const NotificationLogs       = lazy(() => import("./pages/reports/NotificationLogs"));
 const CertificateExpiry      = lazy(() => import("./pages/reports/CertificateExpiry"));
 
+/* ── Root redirect ────────────────────────────────────── */
+function RootRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <Landing />;
+}
+
 /* ── Route guards ─────────────────────────────────────── */
 const PermissionRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -101,7 +109,7 @@ function AppContent() {
       <Routes>
 
         {/* Public */}
-        <Route path="/"                        element={<Landing />} />
+        <Route path="/"                        element={<RootRoute />} />
         <Route path="/login"                   element={<Login />} />
         <Route path="/register"                element={<Register />} />
         <Route path="/accept-invite"           element={<AcceptInvite />} />

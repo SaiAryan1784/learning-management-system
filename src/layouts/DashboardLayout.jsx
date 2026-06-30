@@ -30,7 +30,7 @@ function notifIcon(type) {
 }
 
 export default function DashboardLayout() {
-  const { logout, user, access, loading } = useAuth();
+  const { logout, user, access, loading, impersonating, exitImpersonation } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -621,6 +621,21 @@ export default function DashboardLayout() {
 
           </div>{/* end right wrapper */}
         </header>
+
+        {/* Impersonation banner */}
+        {impersonating && (
+          <div className="flex items-center justify-between gap-4 bg-amber-500 px-5 py-2 flex-shrink-0">
+            <span className="text-xs font-bold text-white">
+              Platform Admin — Viewing as: {impersonating.orgName}
+            </span>
+            <button
+              onClick={exitImpersonation}
+              className="text-xs font-semibold text-white underline hover:no-underline flex-shrink-0"
+            >
+              Exit →
+            </button>
+          </div>
+        )}
 
         {/* PAGE CONTENT */}
         <main className="flex-1 p-6 overflow-y-auto">

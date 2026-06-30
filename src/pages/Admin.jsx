@@ -1,6 +1,7 @@
 import { useAuth } from "../auth/AuthContext";
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import ManagerDashboard from "../pages/dashboard/ManagerDashboard";
+import SuperAdminDashboard from "../pages/dashboard/SuperAdminDashboard";
 
 export default function Admin() {
   const { isSuperAdmin, access, user } = useAuth();
@@ -15,7 +16,7 @@ export default function Admin() {
     <div className="mx-wd">
       {isStaff && <StaffDashboard />}
       {isOwner && <ManagerDashboard />}
-      {isSuperAdmin && <h2>Welcome Super Admin</h2>}
+      {isSuperAdmin && <SuperAdminDashboard />}
     </div>
   );
 }
