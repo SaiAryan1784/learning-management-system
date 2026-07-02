@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import api from "../../api/api";
 import { useAuth } from "../../auth/AuthContext";
 import { Button, SectionLoader } from "../../components/ui";
@@ -37,11 +37,19 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-lg font-bold text-brand-text">Platform Admin</h2>
-        <p className="text-sm text-brand-muted mt-0.5">
-          Switch into any client organization to manage on their behalf.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-bold text-brand-text">Platform Admin</h2>
+          <p className="text-sm text-brand-muted mt-0.5">
+            Switch into any client organization to manage on their behalf.
+          </p>
+        </div>
+        <Link to="/dashboard/organizations/new">
+          <Button size="sm">
+            <i className="fa-solid fa-circle-plus mr-1.5" />
+            Add Client
+          </Button>
+        </Link>
       </div>
 
       {orgs.length === 0 ? (

@@ -317,6 +317,7 @@ export default function DashboardLayout() {
             <>
               <SectionLabel>Platform</SectionLabel>
               <NavItem to="/dashboard" end icon="fa-building" label="Organizations" />
+              <NavItem to="/dashboard/organizations/new" icon="fa-circle-plus" label="Add Client" />
             </>
           )}
 

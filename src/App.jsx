@@ -24,6 +24,7 @@ const Admin                 = lazy(() => import("./pages/Admin"));
 import DashboardLayout from "./layouts/DashboardLayout";
 
 /* ── Dashboard / Owner ────────────────────────────────── */
+const CreateClientOrg   = lazy(() => import("./pages/dashboard/CreateClientOrg"));
 const Modules           = lazy(() => import("./pages/dashboard/Modules"));
 const OwnerLocations    = lazy(() => import("./pages/dashboard/OwnerLocations"));
 const OwnerRoles        = lazy(() => import("./pages/dashboard/OwnerRoles"));
@@ -126,6 +127,7 @@ function AppContent() {
 
           {/* Super admin */}
           <Route path="modules" element={<SuperAdminRoute><Modules /></SuperAdminRoute>} />
+          <Route path="organizations/new" element={<SuperAdminRoute><CreateClientOrg /></SuperAdminRoute>} />
 
           {/* Manager */}
           <Route path="manager"                  element={<PermissionRoute><ManagerDashboard /></PermissionRoute>} />
