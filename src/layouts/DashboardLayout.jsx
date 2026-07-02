@@ -309,10 +309,15 @@ export default function DashboardLayout() {
 
         {/* Nav Items */}
         <div className="flex-1 min-h-0 px-2 py-3 overflow-y-auto no-scrollbar">
-          <NavItem to="/dashboard" end icon="fa-house" label="Dashboard" />
+          {!isSuperAdmin && (
+            <NavItem to="/dashboard" end icon="fa-house" label="Dashboard" />
+          )}
 
           {isSuperAdmin && (
-            <NavItem to="/dashboard/modules" icon="fa-business-time" label="Modules" />
+            <>
+              <SectionLabel>Platform</SectionLabel>
+              <NavItem to="/dashboard" end icon="fa-building" label="Organizations" />
+            </>
           )}
 
           {isOwnerAdmin && (
