@@ -7,9 +7,11 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
 import { SectionLoader } from "../../components/ui/Spinner";
 import { getCourseColor } from "../../utils/courseColor";
+import { useAuth } from "../../auth/AuthContext";
 
 export default function OSCourses() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -124,15 +126,17 @@ export default function OSCourses() {
                     >
                       Assign
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-400 hover:text-red-300"
-                      leadingIcon={<i className="fa-solid fa-trash text-[10px]" />}
-                      onClick={() => handleDelete(course)}
-                    >
-                      Delete
-                    </Button>
+                    {hasPermission("courses:delete") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-400 hover:text-red-300"
+                        leadingIcon={<i className="fa-solid fa-trash text-[10px]" />}
+                        onClick={() => handleDelete(course)}
+                      >
+                        Delete
+                      </Button>
+                    )}
                   </div>
                 </div>
               </motion.div>
