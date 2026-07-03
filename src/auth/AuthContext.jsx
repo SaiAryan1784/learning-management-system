@@ -123,16 +123,19 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (permission) => {
     if (isSuperAdmin) return true;
+    if (permissions.includes("*")) return true;
     return permissions.includes(permission);
   };
 
   const hasAnyPermission = (permissionArray = []) => {
     if (isSuperAdmin) return true;
+    if (permissions.includes("*")) return true;
     return permissionArray.some((perm) => permissions.includes(perm));
   };
 
   const hasAllPermissions = (permissionArray = []) => {
     if (isSuperAdmin) return true;
+    if (permissions.includes("*")) return true;
     return permissionArray.every((perm) => permissions.includes(perm));
   };
 
