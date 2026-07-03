@@ -3,16 +3,10 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { Button } from "../../components/ui";
 
-function slugify(name) {
-  return name
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
-}
-
 export default function CreateClientOrg() {
   const navigate = useNavigate();
   const [companyName, setCompanyName] = useState("");
+  const [email, setEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [timezone, setTimezone] = useState("UTC");
   const [loading, setLoading] = useState(false);
@@ -20,17 +14,15 @@ export default function CreateClientOrg() {
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState({});
 
-  const slug = slugify(companyName);
-  const previewEmail = slug ? `owner@${slug}.com` : "";
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!companyName.trim()) return;
+    if (!companyName.trim() || !email.trim()) return;
     setError("");
     setLoading(true);
     try {
       const res = await api.post("/platform/create-org", {
         companyName: companyName.trim(),
+        email: email.trim(),
         ownerName: ownerName.trim() || undefined,
         timezone,
       });
@@ -118,11 +110,19 @@ export default function CreateClientOrg() {
             required
             className="w-full rounded-lg border border-brand-border bg-surface px-3 py-2 text-sm text-brand-text placeholder:text-brand-muted focus:outline-none focus:ring-2 focus:ring-emerald/40"
           />
-          {previewEmail && (
-            <p className="text-xs text-brand-muted">
-              Owner email: <span className="font-mono text-brand-text">{previewEmail}</span>
-            </p>
-          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-brand-text">Client Email *</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="e.g. owner@lashandcompany.com"
+            required
+            className="w-full rounded-lg border border-brand-border bg-surface px-3 py-2 text-sm text-brand-text placeholder:text-brand-muted focus:outline-none focus:ring-2 focus:ring-emerald/40"
+          />
+          <p className="text-xs text-brand-muted">Client's existing email — will become the owner login</p>
         </div>
 
         <div className="space-y-1.5">
@@ -156,7 +156,7 @@ export default function CreateClientOrg() {
         )}
 
         <div className="flex items-center gap-3 pt-1">
-          <Button type="submit" loading={loading} disabled={!companyName.trim()}>
+          <Button type="submit" loading={loading} disabled={!companyName.trim() || !email.trim()}>
             Create Organization
           </Button>
           <Button type="button" variant="secondary" onClick={() => navigate("/dashboard")}>
