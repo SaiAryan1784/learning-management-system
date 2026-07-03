@@ -29,6 +29,17 @@ export default function OSCourses() {
     loadCourses();
   }, []);
 
+  const handleDelete = async (course) => {
+    if (!window.confirm(`Delete "${course.title}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/courses/${course._id}`);
+      toastr.success("Course deleted");
+      loadCourses();
+    } catch (err) {
+      toastr.error(err.response?.data?.message || "Delete failed");
+    }
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader title="Courses" subtitle="Published courses visible to staff">
@@ -112,6 +123,15 @@ export default function OSCourses() {
                       onClick={() => navigate(`/dashboard/courses/${course._id}/assign`)}
                     >
                       Assign
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-400 hover:text-red-300"
+                      leadingIcon={<i className="fa-solid fa-trash text-[10px]" />}
+                      onClick={() => handleDelete(course)}
+                    >
+                      Delete
                     </Button>
                   </div>
                 </div>
