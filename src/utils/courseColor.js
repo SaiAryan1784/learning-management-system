@@ -1,10 +1,10 @@
 // Brand-only course accent colors.
 //
-// Course cards used to cycle an arbitrary 8-colour array (purple, red, teal…). Per the
-// client, the accent stripe must stay within the org's brand. We read the brand primary
-// from the `--brand-primary` CSS var (set per-org by BrandContext) and derive a small
-// palette of brand shades by stepping lightness while keeping the brand hue/saturation.
-// Selection is deterministic (hash of the course title), so colours never change on re-render.
+// Course cards used to cycle an arbitrary 8-colour array (purple, red, teal…), then a
+// per-title hash of brand-hue shades (which made some cards read as pale/light green
+// next to others). Per the client, every course should render the exact same dark
+// brand shade. We read the brand primary from the `--brand-primary` CSS var (set
+// per-org by BrandContext) and return one fixed-lightness shade of it.
 
 const FALLBACK_HSL = { h: 160, s: 84, l: 39 }; // emerald #10B981
 
@@ -52,16 +52,12 @@ function readBrandHsl() {
   return rgbToHsl(parts[0], parts[1], parts[2]);
 }
 
-// Lightness steps kept dark enough that white text stays legible on the avatar chip.
-const LIGHTNESS_STEPS = [38, 44, 31, 48, 35, 41];
+// Fixed lightness so every course card renders the exact same brand shade —
+// no per-title hash variety (client wants one consistent dark green, not a spread).
+const FIXED_LIGHTNESS = 34;
 
-export function getCourseColor(title = "") {
+export function getCourseColor() {
   const { h, s } = readBrandHsl();
   const sat = Math.max(45, s); // keep colours saturated even for muted brand primaries
-  let hash = 0;
-  for (let i = 0; i < title.length; i++) {
-    hash = title.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const idx = Math.abs(hash) % LIGHTNESS_STEPS.length;
-  return hslToHex(h, sat, LIGHTNESS_STEPS[idx]);
+  return hslToHex(h, sat, FIXED_LIGHTNESS);
 }

@@ -332,14 +332,21 @@ export default function CourseAdd() {
                           ) : form.certificate.designUrl ? (
                             <FilePreview
                               src={toAbsoluteUrl(form.certificate.designUrl)}
-                              mimeType={form.certificate.designType === "pdf" ? "application/pdf" : "image/*"}
                               fileName="Certificate design"
                               height={280}
                             />
                           ) : null}
-                          <button type="button" onClick={() => setCert({ mode: "" })} className="text-xs text-brand-muted hover:text-emerald underline">
-                            Change certificate type
-                          </button>
+                          <div className="pt-2 mt-1 border-t border-brand-border">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              leadingIcon={<i className="fa-solid fa-rotate text-[10px]" />}
+                              onClick={() => setCert({ mode: "" })}
+                            >
+                              Change certificate type
+                            </Button>
+                          </div>
                         </div>
                       )}
 
@@ -361,10 +368,16 @@ export default function CourseAdd() {
                             <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Logo URL (optional)</label>
                             <input className={inputClass} value={form.certificate.logoUrl} onChange={(e) => setCert({ logoUrl: e.target.value })} placeholder="https://… or /images/your-logo.png" />
                           </div>
-                          <div className="md:col-span-2">
-                            <button type="button" onClick={() => setCert({ mode: "" })} className="text-xs text-brand-muted hover:text-emerald underline">
+                          <div className="md:col-span-2 pt-2 mt-1 border-t border-brand-border">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              leadingIcon={<i className="fa-solid fa-rotate text-[10px]" />}
+                              onClick={() => setCert({ mode: "" })}
+                            >
                               Change certificate type
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}

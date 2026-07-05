@@ -4,8 +4,11 @@ import toastr from "toastr";
 import $ from "jquery";
 import "datatables.net";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { StatCard } from "../../components/ui/StatCard";
+import RingStatCard from "../../components/dashboard/RingStatCard";
 import { TableContainer } from "../../components/ui/TableContainer";
+
+const RING_COLORS = ["#9B2C4E", "#D69A1F", "#1AA179", "#13525B", "#C2531B"];
+const DANGER_COLOR = "#B91C1C";
 
 export default function StaffComplianceReport() {
   const tableRef = useRef();
@@ -70,11 +73,15 @@ export default function StaffComplianceReport() {
       <PageHeader title="Staff Compliance Report" subtitle="Overview of staff compliance status and mandatory course completion" />
 
       <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-5 gap-4">
-        <StatCard icon="fa-users" label="Staff Tracked" value={summary.totalStaffTracked} />
-        <StatCard icon="fa-book-bookmark" label="Mandatory Assignments" value={summary.totalMandatoryAssignments} />
-        <StatCard icon="fa-circle-check" label="Completed" value={summary.completedAssignments} />
-        <StatCard icon="fa-triangle-exclamation" label="Overdue" value={summary.overdueAssignments} danger={summary.overdueAssignments > 0} />
-        <StatCard icon="fa-chart-line" label="Compliance Rate" value={`${summary.completionRate}%`} />
+        <RingStatCard label="Staff Tracked" value={summary.totalStaffTracked} color={RING_COLORS[0]} />
+        <RingStatCard label="Mandatory Assignments" value={summary.totalMandatoryAssignments} color={RING_COLORS[1]} />
+        <RingStatCard label="Completed" value={summary.completedAssignments} color={RING_COLORS[2]} />
+        <RingStatCard
+          label="Overdue"
+          value={summary.overdueAssignments}
+          color={summary.overdueAssignments > 0 ? DANGER_COLOR : RING_COLORS[3]}
+        />
+        <RingStatCard label="Compliance Rate" value={`${summary.completionRate}%`} color={RING_COLORS[4]} />
       </div>
 
       <TableContainer>

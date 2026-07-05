@@ -407,7 +407,6 @@ export default function CertificateManager() {
                   ) : designForm.designUrl ? (
                     <FilePreview
                       src={toAbsoluteUrl(designForm.designUrl)}
-                      mimeType={designForm.designType === "pdf" ? "application/pdf" : "image/*"}
                       fileName="Certificate design"
                       height={260}
                     />
