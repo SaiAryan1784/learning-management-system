@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import api from "../../api/api";
 import {
   PageHeader,
-  StatCard,
   Card,
   Button,
   Badge,
@@ -13,6 +12,9 @@ import {
   SkeletonCard,
   ProgressBar,
 } from "../../components/ui";
+import RingStatCard from "../../components/dashboard/RingStatCard";
+
+const RING_COLORS = ["#9B2C4E", "#D69A1F", "#1AA179", "#13525B"];
 
 function ProgressRing({ percent = 0, size = 56, stroke = 5 }) {
   const r = (size - stroke) / 2;
@@ -146,13 +148,13 @@ export default function StaffDashboard() {
               isAdminUser
                 ? { icon: "fa-circle-dot", label: "Logged In Today", value: loggedInToday ?? "—" }
                 : { icon: "fa-circle-pause", label: "Not Started", value: summary.notStartedCourses },
-            ].map((s) => (
+            ].map((s, i) => (
               <motion.div
                 key={s.label}
                 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               >
-                <StatCard icon={s.icon} label={s.label} value={s.value} />
+                <RingStatCard label={s.label} value={s.value} color={RING_COLORS[i]} />
               </motion.div>
             ))}
           </motion.div>

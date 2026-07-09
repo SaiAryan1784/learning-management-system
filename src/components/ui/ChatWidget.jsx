@@ -153,7 +153,17 @@ export default function ChatWidget() {
                 <p className="text-sm font-semibold text-white leading-tight">Lucy</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald animate-pulse" />
-                  <span className="text-[11px] text-white/50">Online · Powered by Groq</span>
+                  <span className="text-[11px] text-white/50">
+                    Online ·{" "}
+                    <a
+                      href="https://hlms3.com"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-white/50 hover:text-white/80 hover:underline"
+                    >
+                      hlms3.com
+                    </a>
+                  </span>
                 </div>
               </div>
             </div>

@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../../api/api";
 import toastr from "toastr";
-import $ from "jquery";
-import "datatables.net";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
 import { Modal } from "../../components/ui/Modal";
@@ -13,6 +11,7 @@ export default function CourseAssign() {
 
   const [staff, setStaff] = useState([]);
   const [selected, setSelected] = useState([]);
+  const [search, setSearch] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const [dueDate, setDueDate] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,26 +28,16 @@ export default function CourseAssign() {
 
   useEffect(() => { loadStaff(); }, []);
 
-  useEffect(() => {
-    if (staff.length === 0) return;
-    const timer = setTimeout(() => {
-      if ($.fn.DataTable.isDataTable("#staffTable")) {
-        $("#staffTable").DataTable().destroy();
-      }
-      $("#staffTable").DataTable({ pageLength: 10 });
-    }, 100);
-    return () => {
-      clearTimeout(timer);
-      if ($.fn.DataTable.isDataTable("#staffTable")) {
-        $("#staffTable").DataTable().destroy();
-      }
-    };
-  }, [staff]);
+  const filteredStaff = staff.filter((s) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (s.user?.name || "").toLowerCase().includes(q) || (s.email || "").toLowerCase().includes(q);
+  });
 
   const handleSelect = (id) =>
     setSelected((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
 
-  const handleSelectAll = (checked) => setSelected(checked ? staff.map((s) => s._id) : []);
+  const handleSelectAll = (checked) => setSelected(checked ? filteredStaff.map((s) => s._id) : []);
 
   const confirmAssign = async () => {
     if (!dueDate) return toastr.error("Please select due date");
@@ -99,49 +88,71 @@ export default function CourseAssign() {
           <p className="text-brand-muted text-sm">No accepted staff available.</p>
         </div>
       ) : (
-        <TableContainer>
-          <table key={staff.length} id="staffTable" width="100%">
-            <thead>
-              <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    className="accent-emerald"
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    checked={selected.length === staff.length && staff.length > 0}
-                  />
-                </th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Locations</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map((s) => (
-                <tr
-                  key={s._id}
-                  className={selected.includes(s._id) ? "bg-emerald/5" : ""}
-                  onClick={() => handleSelect(s._id)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <td onClick={(e) => e.stopPropagation()}>
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <input
+              type="text"
+              placeholder="Search staff by name or email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full max-w-xs px-3 py-2 text-sm border border-brand-border rounded-lg text-brand-text bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent"
+            />
+            <p className="text-xs text-brand-muted whitespace-nowrap">
+              Showing {filteredStaff.length} of {staff.length}
+            </p>
+          </div>
+
+          <TableContainer>
+            <table className="dataTable" width="100%">
+              <thead>
+                <tr>
+                  <th>
                     <input
                       type="checkbox"
                       className="accent-emerald"
-                      checked={selected.includes(s._id)}
-                      onChange={() => handleSelect(s._id)}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      checked={filteredStaff.length > 0 && filteredStaff.every((s) => selected.includes(s._id))}
                     />
-                  </td>
-                  <td>{s.user?.name || "—"}</td>
-                  <td>{s.email}</td>
-                  <td>{s.role?.name || "—"}</td>
-                  <td>{s.locations?.length > 0 ? s.locations.map((l) => l.name).join(", ") : "Org Wide"}</td>
+                  </th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Locations</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableContainer>
+              </thead>
+              <tbody>
+                {filteredStaff.map((s) => (
+                  <tr
+                    key={s._id}
+                    className={selected.includes(s._id) ? "bg-emerald/5" : ""}
+                    onClick={() => handleSelect(s._id)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="accent-emerald"
+                        checked={selected.includes(s._id)}
+                        onChange={() => handleSelect(s._id)}
+                      />
+                    </td>
+                    <td>{s.user?.name || "—"}</td>
+                    <td>{s.email}</td>
+                    <td>{s.role?.name || "—"}</td>
+                    <td>{s.locations?.length > 0 ? s.locations.map((l) => l.name).join(", ") : "Org Wide"}</td>
+                  </tr>
+                ))}
+                {filteredStaff.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="text-center text-brand-muted text-sm py-6">
+                      No staff match your search.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </TableContainer>
+        </>
       )}
 
       <Modal

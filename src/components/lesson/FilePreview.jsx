@@ -54,11 +54,12 @@ export default function FilePreview({
   className = "",
 }) {
   const kind = resolveFileKind({ mimeType, src, fileName });
-  const [status, setStatus] = useState(() => (src ? "ready" : "empty"));
+  const initialStatus = (s) => (!s ? "empty" : kind === "pdf" ? "loading" : "ready");
+  const [status, setStatus] = useState(() => initialStatus(src));
 
   useEffect(() => {
-    setStatus(src ? "ready" : "empty");
-  }, [src]);
+    setStatus(initialStatus(src));
+  }, [src, kind]);
 
   if (!src) {
     return (
@@ -139,7 +140,7 @@ export default function FilePreview({
 
   return (
     <div className={`rounded-lg border border-brand-border bg-canvas overflow-hidden ${className}`}>
-      {status === "loading" && Skeleton}
+      {status === "loading" && kind !== "pdf" && Skeleton}
       {status === "error" && ErrorBlock}
 
       {kind === "image" && status !== "error" && (
@@ -164,18 +165,23 @@ export default function FilePreview({
 
       {kind === "pdf" && status !== "error" && (
         <>
-          <div className="mx-auto w-full" style={{ maxWidth: 640 }}>
+          <div className="relative w-full" style={{ height: Math.max(height, 480) }}>
+            {status === "loading" && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-canvas text-brand-muted text-xs">
+                <i className="fa-solid fa-spinner fa-spin" /> Loading preview…
+              </div>
+            )}
             <object
               data={src}
               type="application/pdf"
-              className="block w-full"
-              style={{ height, minHeight: 360 }}
+              className="block w-full h-full"
+              onLoad={() => setStatus("ready")}
             >
               <iframe
                 src={src}
                 title={fileName || "PDF preview"}
-                className="block w-full border-0"
-                style={{ height, minHeight: 360 }}
+                className="block w-full h-full border-0"
+                onLoad={() => setStatus("ready")}
               />
             </object>
           </div>
