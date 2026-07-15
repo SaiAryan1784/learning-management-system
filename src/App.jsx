@@ -94,15 +94,14 @@ const SuperAdminRoute = ({ children }) => {
 
 /* ── App content ──────────────────────────────────────── */
 function AppContent() {
-  const { logout } = useAuth();
+  const { logout, remembered } = useAuth();
 
   useIdleLogout(() => {
-    localStorage.removeItem("token");
     localStorage.removeItem("loginTime");
     alert("Session expired due to inactivity");
     logout();
     window.location.href = "/login";
-  });
+  }, remembered);
 
   return (
     <ErrorBoundary>

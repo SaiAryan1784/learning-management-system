@@ -29,13 +29,14 @@ export default function Login() {
       setLoading(true);
       const res = await api.post("/auth/login", { email, password, remember });
 
-      if (res.data?.accessToken) {
-        localStorage.setItem("accessToken", res.data.accessToken);
-      }
+      // accessToken is stored by AuthContext.login() below (res.data.accessToken is the
+      // {accessToken, refreshToken} object from the server — writing it directly here
+      // used to stringify to "[object Object]" and race with the correct write).
       if (res.data?.organizationId) {
         localStorage.setItem("organizationId", res.data.organizationId);
       }
       localStorage.setItem("loginTime", Date.now());
+      localStorage.setItem("remember", String(remember));
 
       login(res.data);
       toastr.success("Login successful!");

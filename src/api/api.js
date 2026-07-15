@@ -26,18 +26,17 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
 
-    if (status === 401) {
+    if (status === 401 && window.location.pathname !== "/login") {
       console.warn("Session expired. Logging out...");
 
       // Clear all auth data
       localStorage.removeItem("accessToken");
       localStorage.removeItem("organizationId");
       localStorage.removeItem("loginTime");
+      localStorage.removeItem("remember");
 
-      // Optional: show message
-      alert("Session expired. Please login again.");
-
-      // Redirect to login
+      // No blocking alert() — a jarring interruption for a background/expired-token 401.
+      // Redirect to login (skipped if already there, e.g. a failed login attempt).
       window.location.href = "/login";
     }
 
