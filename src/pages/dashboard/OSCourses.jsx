@@ -38,7 +38,7 @@ export default function OSCourses() {
       toastr.success("Course deleted");
       loadCourses();
     } catch (err) {
-      toastr.error(err.response?.data?.message || "Delete failed");
+      toastr.error(err.response?.data?.error || err.response?.data?.message || "Delete failed");
     }
   };
 

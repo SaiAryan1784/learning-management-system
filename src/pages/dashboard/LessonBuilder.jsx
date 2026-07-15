@@ -447,7 +447,7 @@ export default function LessonBuilder() {
   const navigate = useNavigate();
   const editing = Boolean(lessonId);
 
-  const [step, setStep] = useState(editing ? 3 : 1);
+  const [step, setStep] = useState(editing ? 2 : 1);
   const [view, setView] = useState("edit"); // edit | preview
   const [title, setTitle] = useState("");
   const [option, setOption] = useState("guide");
@@ -465,6 +465,7 @@ export default function LessonBuilder() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({}); // { [uid]: message }
   const [formError, setFormError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [dropIndex, setDropIndex] = useState(null); // insertion slot during drag
   const [dragSource, setDragSource] = useState(null); // "sidebar" | "sort"
 
@@ -498,8 +499,10 @@ export default function LessonBuilder() {
             answerKey: b.answerKey || null,
           }))
         );
-      } catch {
-        toastr.error("Failed to load lesson");
+      } catch (err) {
+        const reason = err.response?.data?.error || err.response?.data?.message || "Failed to load lesson";
+        setLoadError(reason);
+        toastr.error(reason);
       } finally {
         setLoading(false);
       }
@@ -1061,6 +1064,30 @@ export default function LessonBuilder() {
 
   if (loading) {
     return <p className="text-brand-muted text-sm p-6">Loading lesson…</p>;
+  }
+
+  if (editing && loadError) {
+    return (
+      <div className="space-y-5">
+        <PageHeader title="Edit Lesson" subtitle="Edit lesson content and settings">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="!text-white !border-white/20 hover:!bg-white/10"
+            leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
+            onClick={() => navigate(`/dashboard/courses/${courseId}/lessons`)}
+          >
+            Back
+          </Button>
+        </PageHeader>
+        <div className="bg-surface border border-brand-border rounded-xl p-8 text-center space-y-2">
+          <i className="fa-solid fa-circle-exclamation text-brand-danger text-xl" />
+          <p className="text-sm font-semibold text-brand-text">Couldn't load this lesson</p>
+          <p className="text-xs text-brand-muted">{loadError}</p>
+        </div>
+      </div>
+    );
   }
 
   const subtitle = editing

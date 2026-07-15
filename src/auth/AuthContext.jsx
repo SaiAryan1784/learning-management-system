@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [access, setAccess] = useState(null);
   const [loading, setLoading] = useState(true);
   const [impersonating, setImpersonating] = useState(null); // { orgName, orgId }
+  const [remembered, setRemembered] = useState(() => localStorage.getItem("remember") === "true");
 
   // 👑 Super Admin check
   const isSuperAdmin = user?.isPlatformAdmin === true;
@@ -22,6 +23,11 @@ export const AuthProvider = ({ children }) => {
       if (storedUser) setUser(JSON.parse(storedUser));
       if (storedPermissions) setPermissions(JSON.parse(storedPermissions));
       if (storedAccess) setAccess(JSON.parse(storedAccess));
+
+      // Restore the "Viewing as" banner across reloads (the token still carries the
+      // impersonated org; without this the banner vanished on refresh mid-impersonation).
+      const storedImpersonating = localStorage.getItem("impersonating");
+      if (storedImpersonating) setImpersonating(JSON.parse(storedImpersonating));
     } catch (error) {
       console.error("Auth restore error:", error);
       localStorage.clear();
@@ -54,6 +60,9 @@ export const AuthProvider = ({ children }) => {
     setUser(userData); // 👈 use updated user
     setPermissions(perms);
     setAccess(data.access);
+    // Login.jsx writes the "remember" flag to localStorage just before calling login() —
+    // pick it up here so useIdleLogout reacts immediately (no full page reload happens).
+    setRemembered(localStorage.getItem("remember") === "true");
   } catch (error) {
     console.error("Login storage error:", error);
   }
@@ -67,10 +76,13 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("lmsAccess");
     localStorage.removeItem("organizationId");
     localStorage.removeItem("adminSnapshot");
+    localStorage.removeItem("impersonating");
+    localStorage.removeItem("remember");
 
     setUser(null);
     setPermissions([]);
     setAccess(null);
+    setRemembered(false);
     setImpersonating(null);
   };
 
@@ -86,7 +98,9 @@ export const AuthProvider = ({ children }) => {
       };
       localStorage.setItem("adminSnapshot", JSON.stringify(snapshot));
       login(data);
-      setImpersonating({ orgName: data.orgName, orgId: data.organization?.id });
+      const nextImpersonating = { orgName: data.orgName, orgId: data.organization?.id };
+      localStorage.setItem("impersonating", JSON.stringify(nextImpersonating));
+      setImpersonating(nextImpersonating);
     } catch (err) {
       console.error("Impersonate error:", err);
     }
@@ -105,6 +119,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem("organizationId");
       }
       localStorage.removeItem("adminSnapshot");
+      localStorage.removeItem("impersonating");
 
       const restoredUser = snapshot.lmsUser ? JSON.parse(snapshot.lmsUser) : null;
       const restoredPerms = snapshot.lmsPermissions ? JSON.parse(snapshot.lmsPermissions) : [];
@@ -154,7 +169,8 @@ export const AuthProvider = ({ children }) => {
     impersonating,
     impersonate,
     exitImpersonation,
-  }), [user, permissions, access, loading, impersonating]);
+    remembered,
+  }), [user, permissions, access, loading, impersonating, remembered]);
 
   return (
     <AuthContext.Provider value={value}>

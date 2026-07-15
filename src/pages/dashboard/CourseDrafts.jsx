@@ -52,7 +52,7 @@ export default function CourseDrafts() {
       toastr.success("Course deleted");
       loadCourses();
     } catch (err) {
-      toastr.error(err.response?.data?.message || "Delete failed");
+      toastr.error(err.response?.data?.error || err.response?.data?.message || "Delete failed");
     }
   };
 
