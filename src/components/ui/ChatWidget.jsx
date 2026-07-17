@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import api from "../../api/api";
+import VideoLightbox from "./VideoLightbox";
 
 const SESSION_KEY = "lms_chat_session_id";
 const MAX_MSG_LEN = 4000;
@@ -28,6 +29,7 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeVideo, setActiveVideo] = useState(null);
   const [sessionId] = useState(getOrCreateSessionId);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
@@ -87,7 +89,13 @@ export default function ChatWidget() {
       const res = await api.post("/chat/message", { message: text, sessionId });
       setMessages((prev) => [
         ...prev,
-        { _id: `a-${Date.now()}`, role: "assistant", content: res.data.reply, ts: Date.now() },
+        {
+          _id: `a-${Date.now()}`,
+          role: "assistant",
+          content: res.data.reply,
+          videos: res.data.videos || [],
+          ts: Date.now(),
+        },
       ]);
     } catch (err) {
       const status = err?.response?.status;
@@ -264,6 +272,39 @@ export default function ChatWidget() {
                         {msg.content}
                       </div>
                     </div>
+
+                    {msg.videos?.length > 0 && (
+                      <div className="ml-7 mt-2 flex flex-col gap-2">
+                        {msg.videos.map((v) => (
+                          <button
+                            key={v.key}
+                            onClick={() => setActiveVideo(v)}
+                            className="group relative w-[200px] overflow-hidden rounded-xl border border-brand-border bg-surface text-left shadow-sm transition-all hover:shadow-md"
+                          >
+                            <div className="relative aspect-video w-full bg-charcoal">
+                              <img
+                                src={`https://img.youtube.com/vi/${v.youtubeId}/hqdefault.jpg`}
+                                alt={v.title}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = `https://img.youtube.com/vi/${v.youtubeId}/0.jpg`;
+                                }}
+                              />
+                              <span className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors group-hover:bg-black/25">
+                                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white transition-transform group-hover:scale-110">
+                                  <i className="fa-solid fa-play text-sm" style={{ marginLeft: "2px" }} />
+                                </span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-2">
+                              <i className="fa-brands fa-youtube text-brand-danger text-xs" />
+                              <span className="truncate text-xs font-medium text-brand-text">{v.title}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
                     {ts && (
                       <span className="ml-7 mt-1 text-[10px] text-brand-muted">{formatTime(ts)}</span>
                     )}
@@ -349,6 +390,13 @@ export default function ChatWidget() {
           }`}
         />
       </button>
+
+      <VideoLightbox
+        isOpen={!!activeVideo}
+        youtubeId={activeVideo?.youtubeId}
+        title={activeVideo?.title}
+        onClose={() => setActiveVideo(null)}
+      />
     </div>
   );
 }
