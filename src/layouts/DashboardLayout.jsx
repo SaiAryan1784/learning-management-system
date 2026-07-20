@@ -30,7 +30,7 @@ function notifIcon(type) {
 }
 
 export default function DashboardLayout() {
-  const { logout, user, access, loading, impersonating, exitImpersonation } = useAuth();
+  const { logout, user, access, loading, impersonating, exitImpersonation, hasPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -201,6 +201,7 @@ export default function DashboardLayout() {
   const complianceMenu = [
     { label: "Compliance Settings", icon: "fa-sliders", path: "/dashboard/compliance/settings" },
     { label: "Policies", icon: "fa-shield-halved", path: "/dashboard/compliance/policies" },
+    { label: "Run Assignments", icon: "fa-rotate", path: "/dashboard/compliance/run-assignments" },
   ];
 
   const reportsMenu = [
@@ -356,6 +357,13 @@ export default function DashboardLayout() {
               {recognitionMenu.map((item) => (
                 <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
               ))}
+
+              {hasPermission("compliance:run") && (
+                <>
+                  <SectionLabel>Compliance</SectionLabel>
+                  <NavItem to="/dashboard/compliance/run-assignments" icon="fa-rotate" label="Run Assignments" />
+                </>
+              )}
             </>
           )}
         </div>

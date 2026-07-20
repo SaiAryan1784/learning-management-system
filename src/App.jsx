@@ -85,6 +85,14 @@ const PermissionRoute = ({ children }) => {
   return children;
 };
 
+const PermissionOrRoleRoute = ({ children, permission }) => {
+  const { user, loading, hasPermission } = useAuth();
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user?.isPlatformAdmin === true) return children;
+  return hasPermission(permission) ? children : <Navigate to="/dashboard" replace />;
+};
+
 const SuperAdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
@@ -133,7 +141,7 @@ function AppContent() {
           <Route path="staff-progress/:staffId"  element={<PermissionRoute><ManagerStaffDetails /></PermissionRoute>} />
 
           {/* Owner / admin */}
-          <Route path="staff"            element={<PermissionRoute><OwnerStaff /></PermissionRoute>} />
+          <Route path="staff"            element={<PermissionOrRoleRoute permission="staff:create"><OwnerStaff /></PermissionOrRoleRoute>} />
           <Route path="certificates"     element={<PermissionRoute><Recognition /></PermissionRoute>} />
           <Route path="certificates/manage" element={<PermissionRoute><CertificateManager /></PermissionRoute>} />
           <Route path="certificates/setup"  element={<PermissionRoute><CertificateSetup /></PermissionRoute>} />
@@ -158,7 +166,7 @@ function AppContent() {
           {/* Compliance */}
           <Route path="compliance/settings"       element={<PermissionRoute><ComplianceSettings /></PermissionRoute>} />
           <Route path="compliance/policies"       element={<PermissionRoute><CompliancePolicies /></PermissionRoute>} />
-          <Route path="compliance/run-assignments" element={<PermissionRoute><RunAssignments /></PermissionRoute>} />
+          <Route path="compliance/run-assignments" element={<PermissionOrRoleRoute permission="compliance:run"><RunAssignments /></PermissionOrRoleRoute>} />
 
           {/* Reports */}
           <Route path="reports/compliance"         element={<PermissionRoute><ComplianceOverview /></PermissionRoute>} />
