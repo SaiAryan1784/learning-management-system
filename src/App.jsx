@@ -17,6 +17,7 @@ const Resources             = lazy(() => import("./pages/Resources"));
 const ContactUs             = lazy(() => import("./pages/ContactUs"));
 const Login                 = lazy(() => import("./pages/Login"));
 const Register              = lazy(() => import("./pages/Register"));
+const ForgotPassword         = lazy(() => import("./pages/ForgotPassword"));
 const AcceptInvite          = lazy(() => import("./pages/AcceptInvite"));
 const Admin                 = lazy(() => import("./pages/Admin"));
 
@@ -120,6 +121,7 @@ function AppContent() {
         <Route path="/"                        element={<RootRoute />} />
         <Route path="/login"                   element={<Login />} />
         <Route path="/register"                element={<Register />} />
+        <Route path="/forgot-password"         element={<ForgotPassword />} />
         <Route path="/accept-invite"           element={<AcceptInvite />} />
         <Route path="/about-us"                element={<AboutUs />} />
         <Route path="/blogs"                   element={<Blogs />} />

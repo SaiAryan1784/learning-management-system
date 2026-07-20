@@ -42,8 +42,11 @@ export default function Login() {
       toastr.success("Login successful!");
       setTimeout(() => navigate("/dashboard"), 600);
     } catch (err) {
-      if (err.response?.status === 401) {
+      const status = err.response?.status;
+      if (status === 401) {
         toastr.warning("Invalid email or password");
+      } else if (status === 403 && err.response?.data?.error) {
+        toastr.error(err.response.data.error);
       } else {
         toastr.error("Something went wrong");
       }
@@ -133,13 +136,12 @@ export default function Login() {
               />
               <span className="text-sm text-brand-muted">Remember for 30 days</span>
             </label>
-            <button
-              type="button"
-              onClick={() => toastr.info("Password reset — coming soon")}
-              className="text-sm font-semibold text-emerald hover:text-emerald-hover transition-colors bg-transparent border-0 outline-none cursor-pointer"
+            <Link
+              to="/forgot-password"
+              className="text-sm font-semibold text-emerald hover:text-emerald-hover transition-colors no-underline"
             >
               Forgot password?
-            </button>
+            </Link>
           </motion.div>
 
           {/* Sign In */}
