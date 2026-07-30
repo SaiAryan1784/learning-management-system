@@ -32,6 +32,96 @@ const youtubeEmbed = (url) => {
   return url;
 };
 
+/* ── curriculum navigation ── */
+
+function LessonTile({ lesson, currentLessonId, completedIds, courseId, navigate }) {
+  const isActive = lesson._id === currentLessonId;
+  const isCompleted = completedIds.has(lesson._id);
+  const isLocked = lesson.locked === true;
+
+  let toneClass = "border-brand-border hover:border-emerald/40 bg-surface";
+  if (isActive) toneClass = "border-emerald bg-emerald-muted shadow-soft";
+  else if (isCompleted) toneClass = "border-emerald/30 bg-emerald-muted/60";
+  else if (isLocked) toneClass = "border-brand-border bg-canvas opacity-60 cursor-not-allowed";
+
+  return (
+    <motion.button
+      whileHover={isLocked ? undefined : { y: -2 }}
+      whileTap={isLocked ? undefined : { scale: 0.98 }}
+      disabled={isLocked}
+      title={isLocked ? "Complete the previous lesson in this path first" : undefined}
+      className={`text-left p-3 rounded-xl border transition-colors relative ${toneClass}`}
+      onClick={() =>
+        !isLocked && navigate(`/dashboard/staff/course/${courseId}/lesson/${lesson._id}`)
+      }
+    >
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] font-semibold text-brand-muted uppercase">
+          Lesson {lesson.sequence}
+        </span>
+        {isCompleted && <i className="fa-solid fa-circle-check text-emerald text-xs"></i>}
+        {!isCompleted && isLocked && (
+          <i className="fa-solid fa-lock text-brand-muted text-xs"></i>
+        )}
+      </div>
+      <p className="text-caption font-medium text-brand-text line-clamp-2">{lesson.title}</p>
+      {lesson.required === false && (
+        <span className="text-[10px] text-brand-muted">Optional</span>
+      )}
+    </motion.button>
+  );
+}
+
+function PathGroup({ path, currentLessonId, completedIds, courseId, navigate }) {
+  const lessons = path.lessons || [];
+  const holdsCurrent = lessons.some((l) => l._id === currentLessonId);
+  // Open the group the learner is actually in; keep the rest collapsed.
+  const [open, setOpen] = useState(holdsCurrent);
+  const doneCount = lessons.filter((l) => completedIds.has(l._id)).length;
+
+  return (
+    <div className="border border-brand-border rounded-xl overflow-hidden">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between px-4 py-3 bg-canvas text-left"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          <i className="fa-solid fa-folder-tree text-emerald text-xs"></i>
+          <span className="text-sm font-semibold text-brand-text truncate">{path.title}</span>
+          {path.sequentialUnlock && (
+            <i
+              className="fa-solid fa-lock text-brand-muted text-[10px]"
+              title="Lessons unlock in order"
+            ></i>
+          )}
+        </span>
+        <span className="flex items-center gap-3 flex-shrink-0">
+          <span className="text-[11px] text-brand-muted">
+            {doneCount}/{lessons.length}
+          </span>
+          <i className={`fa-solid fa-chevron-${open ? "up" : "down"} text-xs text-brand-muted`}></i>
+        </span>
+      </button>
+
+      {open && (
+        <div className="px-4 py-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {lessons.map((lesson) => (
+            <LessonTile
+              key={lesson._id}
+              lesson={lesson}
+              currentLessonId={currentLessonId}
+              completedIds={completedIds}
+              courseId={courseId}
+              navigate={navigate}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── interactive field components ── */
 
 function Accordion({ config }) {
@@ -135,9 +225,21 @@ export default function StaffLessonView() {
     [progressData]
   );
 
+  // The server sends `lessons` already linearized across paths, so index±1 stays
+  // correct. `items` is the same content grouped; falling back to a flat mapping
+  // keeps this working against a backend that predates paths.
+  const items = useMemo(
+    () => courseData?.items || allLessons.map((l) => ({ kind: "lesson", ...l })),
+    [courseData, allLessons]
+  );
+
   const currentIndex = allLessons.findIndex((l) => l._id === lessonId);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
-  const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+  // Skip lessons still locked behind an incomplete prerequisite.
+  const nextLesson =
+    currentIndex >= 0
+      ? allLessons.slice(currentIndex + 1).find((l) => !l.locked) || null
+      : null;
 
   const goNext = () => {
     if (nextLesson) navigate(`/dashboard/staff/course/${courseId}/lesson/${nextLesson._id}`);
@@ -289,6 +391,23 @@ export default function StaffLessonView() {
   if (loading) return <PageLoader />;
   if (!currentLesson) return <p className="text-brand-muted text-body p-6">Lesson not found.</p>;
 
+  // Reachable by pasting a URL — the backend refuses to record progress for a
+  // locked lesson, so don't render its content either.
+  if (currentLesson.locked) {
+    return (
+      <div className="p-10 text-center">
+        <i className="fa-solid fa-lock text-brand-muted text-3xl mb-3 block"></i>
+        <p className="text-brand-text text-body font-medium mb-1">This lesson is locked</p>
+        <p className="text-brand-muted text-caption mb-4">
+          Finish the earlier lessons in this path to unlock it.
+        </p>
+        <Button variant="secondary" size="sm" onClick={() => navigate("/dashboard/my-dashboard")}>
+          Back to my dashboard
+        </Button>
+      </div>
+    );
+  }
+
   const isQuiz = currentLesson.option === "quiz";
   const alreadyPassed = completedIds.has(currentLesson._id) && isQuiz;
 
@@ -315,32 +434,29 @@ export default function StaffLessonView() {
           Lessons
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {allLessons.map((lesson, index) => {
-            const isActive = lesson._id === lessonId;
-            const isCompleted = completedIds.has(lesson._id);
-            return (
-              <motion.button
-                key={lesson._id}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className={`text-left p-3 rounded-xl border transition-colors relative ${
-                  isActive
-                    ? "border-emerald bg-emerald-muted shadow-soft"
-                    : isCompleted
-                    ? "border-emerald/30 bg-emerald-muted/60"
-                    : "border-brand-border hover:border-emerald/40 bg-surface"
-                }`}
-                onClick={() => navigate(`/dashboard/staff/course/${courseId}/lesson/${lesson._id}`)}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-semibold text-brand-muted uppercase">Lesson {index + 1}</span>
-                  {isCompleted && <i className="fa-solid fa-circle-check text-emerald text-xs"></i>}
-                </div>
-                <p className="text-caption font-medium text-brand-text line-clamp-2">{lesson.title}</p>
-              </motion.button>
-            );
-          })}
+        <div className="space-y-4">
+          {items.map((item) =>
+            item.kind === "path" ? (
+              <PathGroup
+                key={item._id}
+                path={item}
+                currentLessonId={lessonId}
+                completedIds={completedIds}
+                courseId={courseId}
+                navigate={navigate}
+              />
+            ) : (
+              <div key={item._id} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                <LessonTile
+                  lesson={item}
+                  currentLessonId={lessonId}
+                  completedIds={completedIds}
+                  courseId={courseId}
+                  navigate={navigate}
+                />
+              </div>
+            )
+          )}
         </div>
       </Card>
 

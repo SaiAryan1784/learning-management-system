@@ -159,6 +159,10 @@ function AppContent() {
           <Route path="courses/:courseId/lessons"                  element={<PermissionRoute><CourseLessons /></PermissionRoute>} />
           <Route path="courses/:courseId/lessons/new"              element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
           <Route path="courses/:courseId/lessons/:lessonId/edit"   element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
+
+          {/* Paths — same two components, scoped to a path instead of the course */}
+          <Route path="courses/:courseId/paths/:pathId/lessons"     element={<PermissionRoute><CourseLessons /></PermissionRoute>} />
+          <Route path="courses/:courseId/paths/:pathId/lessons/new" element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
           <Route path="courses/:courseId/assign"                   element={<PermissionRoute><CourseAssignStaff /></PermissionRoute>} />
 
           {/* Staff */}

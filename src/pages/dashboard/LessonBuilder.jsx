@@ -443,9 +443,16 @@ function SortableItem({ uid, kind, error, children, onRemove }) {
 }
 
 export default function LessonBuilder() {
-  const { courseId, lessonId } = useParams();
+  // pathId is present when creating a lesson inside a path. On edit it comes
+  // from the loaded lesson instead, since the edit route stays flat.
+  const { courseId, pathId, lessonId } = useParams();
   const navigate = useNavigate();
   const editing = Boolean(lessonId);
+  const [loadedPathId, setLoadedPathId] = useState(null);
+  const parentPathId = pathId || loadedPathId || null;
+  const backTo = parentPathId
+    ? `/dashboard/courses/${courseId}/paths/${parentPathId}/lessons`
+    : `/dashboard/courses/${courseId}/lessons`;
 
   const [step, setStep] = useState(editing ? 2 : 1);
   const [view, setView] = useState("edit"); // edit | preview
@@ -485,6 +492,7 @@ export default function LessonBuilder() {
       try {
         const res = await api.get(`/courses/${courseId}/lessons/${lessonId}`);
         const l = res.data.lesson;
+        setLoadedPathId(l.path ? String(l.path) : null);
         setTitle(l.title || "");
         setOption(l.option || "guide");
         setThemeId(l.theme?._id || l.theme || "");
@@ -760,13 +768,17 @@ export default function LessonBuilder() {
     try {
       setSaving(true);
       if (editing) {
+        // pathId is intentionally omitted — reparenting isn't supported yet.
         await api.put(`/courses/${courseId}/lessons/${lessonId}`, payload);
         toastr.success("Lesson updated");
       } else {
-        await api.post(`/courses/${courseId}/lessons`, payload);
+        await api.post(`/courses/${courseId}/lessons`, {
+          ...payload,
+          ...(pathId ? { pathId } : {}),
+        });
         toastr.success("Lesson created");
       }
-      navigate(`/dashboard/courses/${courseId}/lessons`);
+      navigate(backTo);
     } catch (err) {
       const msg = err.response?.data?.message || "Save failed — please try again.";
       setFormError(msg);
@@ -1076,7 +1088,7 @@ export default function LessonBuilder() {
             size="sm"
             className="!text-white !border-white/20 hover:!bg-white/10"
             leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
-            onClick={() => navigate(`/dashboard/courses/${courseId}/lessons`)}
+            onClick={() => navigate(backTo)}
           >
             Back
           </Button>
@@ -1104,7 +1116,7 @@ export default function LessonBuilder() {
           size="sm"
           className="!text-white !border-white/20 hover:!bg-white/10"
           leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
-          onClick={() => navigate(`/dashboard/courses/${courseId}/lessons`)}
+          onClick={() => navigate(backTo)}
         >
           Back
         </Button>
