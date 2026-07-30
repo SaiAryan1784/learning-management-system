@@ -29,9 +29,9 @@ export default function Login() {
       setLoading(true);
       const res = await api.post("/auth/login", { email, password, remember });
 
-      // accessToken is stored by AuthContext.login() below (res.data.accessToken is the
-      // {accessToken, refreshToken} object from the server — writing it directly here
-      // used to stringify to "[object Object]" and race with the correct write).
+      // accessToken is stored by AuthContext.login() below. The long-lived half of the
+      // session is the httpOnly refresh cookie the server set on this response — it is
+      // not readable here, and does not need to be.
       if (res.data?.organizationId) {
         localStorage.setItem("organizationId", res.data.organizationId);
       }
