@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PdfViewer from "./PdfViewer";
 
 /**
  * Bounded, production-grade preview for an uploaded asset. Used by the lesson editor,
@@ -10,6 +11,12 @@ import { useEffect, useState } from "react";
  *    in normal flow, no absolute positioning over a collapsed parent).
  *  - loading / error / empty states are explicit.
  *  - the right viewer is chosen per asset type with a generic fallback.
+ *
+ * SECURITY: `allowDownload={false}` hides the download and open-in-new-tab links, and
+ * the canvas-based PDF viewer gives the browser no download button of its own. It is
+ * NOT access control — /uploads is served as unauthenticated static files, so anyone
+ * with the URL can still fetch the file. Enforcing that needs an authenticated
+ * streaming route, which this component cannot provide.
  */
 
 const IMAGE_EXT = ["png", "jpg", "jpeg", "webp", "gif", "svg", "avif"];
@@ -38,6 +45,16 @@ export function resolveFileKind({ mimeType, src, fileName }) {
   return "file";
 }
 
+/**
+ * Whether an attach_file block should show its download link.
+ * Hidden unless explicitly enabled — blocks saved before `hideDownload` existed have no
+ * key at all, and those must default to hidden too. Single source of truth for the
+ * builder editor, the builder preview tab and the learner view.
+ */
+export function allowsDownload(config = {}) {
+  return config.hideDownload === false;
+}
+
 const KIND_ICON = {
   image: "fa-image",
   video: "fa-film",
@@ -51,14 +68,15 @@ export default function FilePreview({
   mimeType,
   fileName,
   height = 240,
+  allowDownload = true,
   className = "",
 }) {
   const kind = resolveFileKind({ mimeType, src, fileName });
-  const initialStatus = (s) => (!s ? "empty" : kind === "pdf" ? "loading" : "ready");
-  const [status, setStatus] = useState(() => initialStatus(src));
+  // PdfViewer tracks its own loading state, so only the img/video paths need this.
+  const [status, setStatus] = useState(() => (src ? "ready" : "empty"));
 
   useEffect(() => {
-    setStatus(initialStatus(src));
+    setStatus(src ? "ready" : "empty");
   }, [src, kind]);
 
   if (!src) {
@@ -89,15 +107,17 @@ export default function FilePreview({
     >
       <i className="fa-solid fa-triangle-exclamation text-amber-500 text-base" />
       <span>Couldn’t load preview.</span>
-      <a
-        href={src}
-        target="_blank"
-        rel="noreferrer"
-        className="font-semibold text-emerald hover:underline"
-      >
-        <i className="fa-solid fa-download mr-1" />
-        Download {fileName || "file"}
-      </a>
+      {allowDownload && (
+        <a
+          href={src}
+          target="_blank"
+          rel="noreferrer"
+          className="font-semibold text-icon hover:underline"
+        >
+          <i className="fa-solid fa-download mr-1" />
+          Download {fileName || "file"}
+        </a>
+      )}
     </div>
   );
 
@@ -106,7 +126,7 @@ export default function FilePreview({
     return (
       <div className={`rounded-lg border border-brand-border bg-canvas p-3 ${className}`}>
         <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-brand-text">
-          <i className="fa-solid fa-music text-emerald" />
+          <i className="fa-solid fa-music text-icon" />
           <span className="truncate">{fileName || "Audio"}</span>
         </div>
         <audio src={src} controls className="w-full" />
@@ -119,28 +139,66 @@ export default function FilePreview({
       <div className={`rounded-lg border border-brand-border bg-canvas p-4 ${className}`}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-emerald-muted flex items-center justify-center flex-shrink-0">
-            <i className="fa-solid fa-file text-emerald" />
+            <i className="fa-solid fa-file text-icon" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-brand-text truncate">{fileName || "File"}</p>
-            <a
-              href={src}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-semibold text-emerald hover:underline"
-            >
-              <i className="fa-solid fa-download mr-1" />
-              Download
-            </a>
+            {allowDownload && (
+              <a
+                href={src}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-semibold text-icon hover:underline"
+              >
+                <i className="fa-solid fa-download mr-1" />
+                Download
+              </a>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
+  // PdfViewer brings its own bordered container and loading/error states, so it sits
+  // outside the shared wrapper below.
+  if (kind === "pdf") {
+    return (
+      <div className={className}>
+        <PdfViewer src={src} fileName={fileName} height={height} />
+        {allowDownload && (
+          <div className="border border-t-0 border-brand-border rounded-b-lg px-3 py-2 bg-surface flex items-center gap-4 -mt-px">
+            <a
+              href={src}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-semibold text-icon hover:underline inline-flex items-center gap-1.5"
+            >
+              <i className="fa-solid fa-arrow-up-right-from-square text-[10px]" />
+              Open in new tab
+            </a>
+            <span className="text-brand-border text-xs">|</span>
+            <a
+              href={src}
+              download
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-semibold text-icon hover:underline inline-flex items-center gap-1.5"
+            >
+              <i className="fa-solid fa-download text-[10px]" />
+              Download {fileName || "PDF"}
+            </a>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
+    // overflow-hidden is safe here now that PDFs render in their own container — it
+    // only clips the img/video corners to the rounded border, which is intended.
     <div className={`rounded-lg border border-brand-border bg-canvas overflow-hidden ${className}`}>
-      {status === "loading" && kind !== "pdf" && Skeleton}
+      {status === "loading" && Skeleton}
       {status === "error" && ErrorBlock}
 
       {kind === "image" && status !== "error" && (
@@ -163,52 +221,6 @@ export default function FilePreview({
         </div>
       )}
 
-      {kind === "pdf" && status !== "error" && (
-        <>
-          <div className="relative w-full" style={{ height: Math.max(height, 480) }}>
-            {status === "loading" && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-canvas text-brand-muted text-xs">
-                <i className="fa-solid fa-spinner fa-spin" /> Loading preview…
-              </div>
-            )}
-            <object
-              data={src}
-              type="application/pdf"
-              className="block w-full h-full"
-              onLoad={() => setStatus("ready")}
-            >
-              <iframe
-                src={src}
-                title={fileName || "PDF preview"}
-                className="block w-full h-full border-0"
-                onLoad={() => setStatus("ready")}
-              />
-            </object>
-          </div>
-          <div className="border-t border-brand-border px-3 py-2 bg-surface flex items-center gap-4">
-            <a
-              href={src}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-semibold text-emerald hover:underline inline-flex items-center gap-1.5"
-            >
-              <i className="fa-solid fa-arrow-up-right-from-square text-[10px]" />
-              Open in new tab
-            </a>
-            <span className="text-brand-border text-xs">|</span>
-            <a
-              href={src}
-              download
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-semibold text-emerald hover:underline inline-flex items-center gap-1.5"
-            >
-              <i className="fa-solid fa-download text-[10px]" />
-              Download {fileName || "PDF"}
-            </a>
-          </div>
-        </>
-      )}
     </div>
   );
 }

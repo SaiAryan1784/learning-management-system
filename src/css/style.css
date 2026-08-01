@@ -12,6 +12,8 @@
   --brand-primary:       16 185 129;   /* #10B981 emerald default */
   --brand-primary-dark:  5 150 105;    /* #059669 emerald hover  */
   --brand-primary-light: 209 250 229;  /* #D1FAE5 emerald light  */
+  --brand-icon:          16 185 129;   /* #10B981 — matches primary by default */
+  --brand-text:          17 24 39;     /* #111827 — default body text          */
 
   --color-charcoal: #1C1C1E;
   --color-charcoal-light: #2C2C2E;
@@ -205,7 +207,11 @@ div.dt-container .dt-input:focus{border-color: #1C1C1E;outline: 0;box-shadow: in
 .hero h1 {color:#10184a;}
 .hero h1 .highlight{color:#10B981;}
 .nav-link:focus-visible {outline: 0;box-shadow: unset;}
-.fa-solid{color:#db767c}
+/* Legacy default icon colour. Wrapped in :where() so it carries ZERO specificity —
+   it still colours bare icons, but any explicit utility class (text-icon, text-emerald,
+   text-white …) now wins. Without this it tied with those utilities on specificity and
+   won on source order, silently overriding every themed icon in the app. */
+:where(.fa-solid){color:#db767c}
 .sidebar .fa-solid{color:rgba(255,255,255,.6)}
 /* Allow Tailwind text-* classes on nav items to control icon color via inheritance */
 .sidebar .fa-solid, .sidebar .fa-regular, .sidebar .fa-brands { color: inherit; }

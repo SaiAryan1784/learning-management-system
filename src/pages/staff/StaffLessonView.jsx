@@ -6,7 +6,7 @@ import toastr from "toastr";
 import { PageLoader } from "../../components/ui/Spinner";
 import { Button, Badge, Card, ProgressBar } from "../../components/ui";
 import { ThemeScope } from "../../contexts/BrandContext";
-import FilePreview from "../../components/lesson/FilePreview";
+import FilePreview, { allowsDownload } from "../../components/lesson/FilePreview";
 import NumberScale from "../../components/lesson/NumberScale";
 import SignaturePad from "../../components/lesson/SignaturePad";
 import FlipCard from "../../components/lesson/FlipCard";
@@ -59,7 +59,7 @@ function LessonTile({ lesson, currentLessonId, completedIds, courseId, navigate 
         <span className="text-[10px] font-semibold text-brand-muted uppercase">
           Lesson {lesson.sequence}
         </span>
-        {isCompleted && <i className="fa-solid fa-circle-check text-emerald text-xs"></i>}
+        {isCompleted && <i className="fa-solid fa-circle-check text-icon text-xs"></i>}
         {!isCompleted && isLocked && (
           <i className="fa-solid fa-lock text-brand-muted text-xs"></i>
         )}
@@ -87,7 +87,7 @@ function PathGroup({ path, currentLessonId, completedIds, courseId, navigate }) 
         onClick={() => setOpen((o) => !o)}
       >
         <span className="flex items-center gap-2 min-w-0">
-          <i className="fa-solid fa-folder-tree text-emerald text-xs"></i>
+          <i className="fa-solid fa-folder-tree text-icon text-xs"></i>
           <span className="text-sm font-semibold text-brand-text truncate">{path.title}</span>
           {path.sequentialUnlock && (
             <i
@@ -325,7 +325,7 @@ export default function StaffLessonView() {
       case "image":
         return <FilePreview src={fileUrl(config)} mimeType={config.mimeType} fileName={config.fileName} height={320} />;
       case "attach_file":
-        return <FilePreview src={fileUrl(config)} mimeType={config.mimeType || "application/pdf"} fileName={config.fileName} height={500} />;
+        return <FilePreview src={fileUrl(config)} mimeType={config.mimeType || "application/pdf"} fileName={config.fileName} height={500} allowDownload={allowsDownload(config)} />;
       case "video_link":
         return (
           <div className="mx-auto rounded-xl border border-brand-border bg-black overflow-hidden" style={{ aspectRatio: "16 / 9", width: Math.round((320 * 16) / 9), maxWidth: "100%" }}>

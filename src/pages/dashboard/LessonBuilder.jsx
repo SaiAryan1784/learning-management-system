@@ -15,7 +15,7 @@ import "../../components/lesson/lessonContent.css";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
 import { ThemeScope } from "../../contexts/BrandContext";
-import FilePreview from "../../components/lesson/FilePreview";
+import FilePreview, { allowsDownload } from "../../components/lesson/FilePreview";
 import NumberScale from "../../components/lesson/NumberScale";
 import SignaturePad from "../../components/lesson/SignaturePad";
 import FlipCard from "../../components/lesson/FlipCard";
@@ -85,8 +85,9 @@ function defaultConfig(kind) {
     case "flip_card": return { front: "", back: "" };
     case "divider": return { thickness: 2, style: "solid" };
     case "video_link": return { sourceType: "external_url", contentUrl: "" };
-    case "image":
-    case "attach_file": return { sourceType: "stored_file" };
+    case "image": return { sourceType: "stored_file" };
+    // Download link is off by default — admins opt a specific PDF back in.
+    case "attach_file": return { sourceType: "stored_file", hideDownload: true };
     case "text_answer": return { prompt: "" };
     case "mcq": return { prompt: "", multiple: false, options: [{ key: "A", text: "" }, { key: "B", text: "" }] };
     case "survey": return { prompt: "", scaleMax: 5 };
@@ -161,21 +162,33 @@ function ThemeSelector({ themes, themeId, setThemeId }) {
   const selected = themes.find((t) => t._id === themeId) || null;
   const primary = selected?.primary || "#10B981";
   const rows = [{ _id: "", name: "Default", primary: "#6B7280" }, ...themes];
+  // Read-only readout of the full palette — editing lives in Settings → Lesson Themes.
+  const swatches = [
+    { label: "Primary", hex: primary },
+    { label: "Icon", hex: selected?.icon || primary },
+    { label: "Text", hex: selected?.text || "#111827" },
+  ];
 
   return (
     <div className="bg-surface border border-brand-border rounded-xl p-5 space-y-4">
-      {/* Guide Primary */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <label className="text-xs font-semibold text-brand-muted uppercase tracking-wide">Guide Primary</label>
-        <span
-          className="w-9 h-9 rounded-lg border border-brand-border flex-shrink-0"
-          style={{ backgroundColor: primary }}
-        />
-        <input
-          readOnly
-          value={primary.toUpperCase()}
-          className="w-28 px-3 py-2 border border-brand-border rounded-lg text-sm font-mono text-brand-text bg-canvas"
-        />
+      {/* Guide palette */}
+      <div className="flex items-end gap-4 flex-wrap">
+        {swatches.map((s) => (
+          <div key={s.label}>
+            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">{s.label}</label>
+            <div className="flex items-center gap-2">
+              <span
+                className="w-9 h-9 rounded-lg border border-brand-border flex-shrink-0"
+                style={{ backgroundColor: s.hex }}
+              />
+              <input
+                readOnly
+                value={s.hex.toUpperCase()}
+                className="w-24 px-2.5 py-2 border border-brand-border rounded-lg text-xs font-mono text-brand-text bg-canvas"
+              />
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Navigation / Content tabs */}
@@ -891,16 +904,33 @@ export default function LessonBuilder() {
       case "attach_file":
         return (
           <div className="space-y-2">
-            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
-              <i className="fa-solid fa-file-pdf text-emerald" /> {fileUrl(config) ? "Replace PDF" : "Upload PDF"}
-              <input type="file" accept="application/pdf" className="hidden" onChange={(e) => uploadFile(uid, e.target.files[0], "attach_file")} />
-            </label>
+            <div className="flex items-center gap-4 flex-wrap">
+              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
+                <i className="fa-solid fa-file-pdf text-icon" /> {fileUrl(config) ? "Replace PDF" : "Upload PDF"}
+                <input type="file" accept="application/pdf" className="hidden" onChange={(e) => uploadFile(uid, e.target.files[0], "attach_file")} />
+              </label>
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-brand-text cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="accent-emerald w-4 h-4"
+                  checked={!allowsDownload(config)}
+                  onChange={(e) => updateConfig(uid, { hideDownload: e.target.checked })}
+                />
+                Hide download link
+              </label>
+            </div>
             {uploading ? (
               <div className="flex items-center gap-2 rounded-lg border border-brand-border bg-canvas px-3 py-6 text-xs text-brand-muted">
                 <i className="fa-solid fa-spinner fa-spin" /> Uploading…
               </div>
             ) : (
-              <FilePreview src={fileUrl(config)} mimeType={config.mimeType || "application/pdf"} fileName={config.fileName} height={260} />
+              <FilePreview
+                src={fileUrl(config)}
+                mimeType={config.mimeType || "application/pdf"}
+                fileName={config.fileName}
+                height={260}
+                allowDownload={allowsDownload(config)}
+              />
             )}
           </div>
         );
@@ -1049,7 +1079,7 @@ export default function LessonBuilder() {
       case "image":
         return <FilePreview src={fileUrl(config)} mimeType={config.mimeType} fileName={config.fileName} height={280} />;
       case "attach_file":
-        return <FilePreview src={fileUrl(config)} mimeType={config.mimeType || "application/pdf"} fileName={config.fileName} height={420} />;
+        return <FilePreview src={fileUrl(config)} mimeType={config.mimeType || "application/pdf"} fileName={config.fileName} height={420} allowDownload={allowsDownload(config)} />;
       case "video_link":
         return config.contentUrl ? <YouTubePreview url={config.contentUrl} height={360} /> : <p className="text-xs text-brand-muted">No video link</p>;
       case "text_answer":

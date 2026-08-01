@@ -106,15 +106,16 @@
   backface-visibility: hidden;
   overflow: auto;
 }
-/* Front — light surface, dark text */
+/* Front — light surface, themed text. Vars so flip cards follow the lesson theme;
+   the fallbacks are the literals these rules used before they were tokenised. */
 .flip-front {
   background: #ffffff;
-  border: 1px solid #D1FAE5;
-  color: #1F2937;
+  border: 1px solid var(--color-emerald-light, #D1FAE5);
+  color: var(--color-text, #1F2937);
 }
-/* Back — emerald fill, white text (high contrast; fixes green-on-green) */
+/* Back — brand fill, white text (high contrast; fixes green-on-green) */
 .flip-back {
-  background: #059669;
+  background: var(--color-emerald-hover, #059669);
   color: #ffffff;
   transform: rotateY(180deg);
 }

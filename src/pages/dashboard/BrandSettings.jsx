@@ -6,11 +6,41 @@ import { Button } from "../../components/ui/Button";
 import api from "../../api/api";
 import toastr from "toastr";
 
+/** Swatch + hex text input pair. Only pushes valid 6-digit hex upward. */
+function ColorField({ label, value, onChange, hint }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">{label}</label>
+      <div className="flex items-center gap-2">
+        <label className="relative cursor-pointer flex-shrink-0">
+          <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="sr-only" />
+          <div
+            className="w-10 h-10 rounded-lg border border-brand-border cursor-pointer transition-shadow hover:shadow-soft"
+            style={{ backgroundColor: value }}
+          />
+        </label>
+        <input
+          type="text"
+          value={value}
+          maxLength={7}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-24 px-2.5 py-2 border border-brand-border rounded-lg text-xs font-mono text-brand-text bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
+        />
+      </div>
+      {hint && <p className="text-[10px] text-brand-muted mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+const BLANK_THEME = { id: null, name: "", primary: "#10B981", icon: "#10B981", text: "#111827" };
+
 function ThemesManager() {
   const [themes, setThemes] = useState([]);
-  const [name, setName] = useState("");
-  const [color, setColor] = useState("#10B981");
+  const [form, setForm] = useState(BLANK_THEME);
+  // Until the admin touches Icon, it tracks Primary — the common case stays one pick.
+  const [iconTouched, setIconTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+  const editing = Boolean(form.id);
 
   const load = async () => {
     try {
@@ -25,19 +55,51 @@ function ThemesManager() {
     load();
   }, []);
 
-  const create = async () => {
-    if (!name.trim()) return toastr.error("Theme name is required");
-    if (!/^#[0-9A-Fa-f]{6}$/.test(color)) return toastr.error("Enter a valid hex color");
+  const reset = () => {
+    setForm(BLANK_THEME);
+    setIconTouched(false);
+  };
+
+  const setPrimary = (hex) =>
+    setForm((f) => ({ ...f, primary: hex, ...(iconTouched ? {} : { icon: hex }) }));
+
+  const startEdit = (t) => {
+    setForm({
+      id: t._id,
+      name: t.name,
+      primary: t.primary,
+      icon: t.icon || t.primary,
+      text: t.text || "#111827",
+    });
+    // An existing theme's icon is whatever was saved — never re-derive it from primary.
+    setIconTouched(true);
+  };
+
+  const save = async () => {
+    if (!form.name.trim()) return toastr.error("Theme name is required");
+    for (const [field, hex] of [["primary", form.primary], ["icon", form.icon], ["text", form.text]]) {
+      if (!isValidHex(hex)) return toastr.error(`Enter a valid hex color for ${field}`);
+    }
     try {
       setSaving(true);
-      const palette = derivePalette(color);
-      await api.post("/themes", { name: name.trim(), ...palette });
-      toastr.success("Theme created");
-      setName("");
-      setColor("#10B981");
+      // dark + light stay derived from primary; icon and text are picked explicitly.
+      const payload = {
+        name: form.name.trim(),
+        ...derivePalette(form.primary),
+        icon: form.icon,
+        text: form.text,
+      };
+      if (editing) {
+        await api.put(`/themes/${form.id}`, payload);
+        toastr.success("Theme updated");
+      } else {
+        await api.post("/themes", payload);
+        toastr.success("Theme created");
+      }
+      reset();
       load();
     } catch (err) {
-      toastr.error(err.response?.data?.message || "Failed to create theme");
+      toastr.error(err.response?.data?.message || "Failed to save theme");
     } finally {
       setSaving(false);
     }
@@ -48,6 +110,7 @@ function ThemesManager() {
     try {
       await api.delete(`/themes/${id}`);
       toastr.success("Theme deleted");
+      if (form.id === id) reset();
       load();
     } catch {
       toastr.error("Delete failed");
@@ -63,23 +126,47 @@ function ThemesManager() {
         </p>
       </div>
 
-      <div className="flex items-end gap-3 flex-wrap">
-        <div className="flex-1 min-w-[180px]">
-          <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Theme Name</label>
-          <input
-            className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
-            placeholder="e.g. Ocean Blue"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+      <div className="border border-brand-border rounded-lg p-4 space-y-4 bg-canvas">
+        <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide">
+          {editing ? `Editing “${form.name || "theme"}”` : "New Theme"}
+        </p>
+
+        <div className="flex items-start gap-4 flex-wrap">
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Theme Name</label>
+            <input
+              className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
+              placeholder="e.g. Ocean Blue"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+          <ColorField label="Primary" value={form.primary} onChange={setPrimary} hint="Buttons & accents" />
+          <ColorField
+            label="Icon"
+            value={form.icon}
+            onChange={(hex) => { setIconTouched(true); setForm((f) => ({ ...f, icon: hex })); }}
+            hint="Icons only"
+          />
+          <ColorField
+            label="Text"
+            value={form.text}
+            onChange={(hex) => setForm((f) => ({ ...f, text: hex }))}
+            hint="Body text"
           />
         </div>
-        <div>
-          <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Color</label>
-          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-11 h-10 rounded-lg border border-brand-border cursor-pointer" />
+
+        <div className="flex items-center gap-3">
+          <Button
+            variant="primary"
+            loading={saving}
+            onClick={save}
+            leadingIcon={<i className={`fa-solid ${editing ? "fa-check" : "fa-plus"} text-xs`} />}
+          >
+            {editing ? "Save Changes" : "Add Theme"}
+          </Button>
+          {editing && <Button variant="ghost" onClick={reset}>Cancel</Button>}
         </div>
-        <Button variant="primary" loading={saving} onClick={create} leadingIcon={<i className="fa-solid fa-plus text-xs" />}>
-          Add Theme
-        </Button>
       </div>
 
       {themes.length === 0 ? (
@@ -87,17 +174,27 @@ function ThemesManager() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {themes.map((t) => (
-            <div key={t._id} className="flex items-center gap-3 border border-brand-border rounded-lg p-3">
-              <div className="flex gap-1">
-                <span className="w-6 h-6 rounded" style={{ backgroundColor: t.primary }} />
-                <span className="w-6 h-6 rounded" style={{ backgroundColor: t.dark }} />
-                <span className="w-6 h-6 rounded" style={{ backgroundColor: t.light }} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-brand-text truncate">{t.name}</p>
-                <p className="text-[11px] font-mono text-brand-muted">{t.primary}</p>
-              </div>
-              <button className="text-brand-danger hover:bg-brand-danger/10 w-7 h-7 rounded flex items-center justify-center" onClick={() => remove(t._id)} title="Delete">
+            <div
+              key={t._id}
+              className={`flex items-center gap-3 border rounded-lg p-3 ${form.id === t._id ? "border-emerald ring-2 ring-emerald/20" : "border-brand-border"}`}
+            >
+              <button
+                type="button"
+                onClick={() => startEdit(t)}
+                className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                title="Edit this theme"
+              >
+                <div className="flex gap-1 flex-shrink-0">
+                  {[t.primary, t.dark, t.light, t.icon || t.primary, t.text || "#111827"].map((hex, i) => (
+                    <span key={i} className="w-5 h-6 rounded border border-brand-border" style={{ backgroundColor: hex }} />
+                  ))}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-brand-text truncate">{t.name}</p>
+                  <p className="text-[11px] font-mono text-brand-muted">{t.primary}</p>
+                </div>
+              </button>
+              <button className="text-brand-danger hover:bg-brand-danger/10 w-7 h-7 rounded flex items-center justify-center flex-shrink-0" onClick={() => remove(t._id)} title="Delete">
                 <i className="fa-solid fa-trash text-xs"></i>
               </button>
             </div>
@@ -128,36 +225,37 @@ export default function BrandSettings() {
   const [pickerColor, setPickerColor] = useState(brand.primary);
   const [hexInput, setHexInput] = useState(brand.primary);
   const [preview, setPreview] = useState(brand.primary);
+  const [iconColor, setIconColor] = useState(brand.icon || brand.primary);
+  const [textColor, setTextColor] = useState(brand.text || DEFAULTS.text);
+  // Icon follows Primary until the admin picks one explicitly.
+  const [iconTouched, setIconTouched] = useState(Boolean(brand.icon && brand.icon !== brand.primary));
 
-  const handlePreset = (hex) => {
+  const applyPrimary = (hex) => {
     setPickerColor(hex);
     setHexInput(hex);
     setPreview(hex);
+    if (!iconTouched) setIconColor(hex);
   };
 
-  const handlePickerChange = (e) => {
-    const hex = e.target.value;
-    setPickerColor(hex);
-    setHexInput(hex);
-    setPreview(hex);
-  };
+  const handlePreset = (hex) => applyPrimary(hex);
+
+  const handlePickerChange = (e) => applyPrimary(e.target.value);
 
   const handleHexInput = (e) => {
     const val = e.target.value;
     setHexInput(val);
-    if (isValidHex(val)) {
-      setPickerColor(val);
-      setPreview(val);
-    }
+    if (isValidHex(val)) applyPrimary(val);
   };
 
   const handleSave = () => {
-    if (!isValidHex(pickerColor)) {
-      toastr.error("Enter a valid hex color");
-      return;
+    for (const [field, hex] of [["primary", pickerColor], ["icon", iconColor], ["text", textColor]]) {
+      if (!isValidHex(hex)) {
+        toastr.error(`Enter a valid hex color for ${field}`);
+        return;
+      }
     }
-    setBrand(pickerColor);
-    toastr.success("Brand color saved — site updated!");
+    setBrand(pickerColor, { icon: iconColor, text: textColor });
+    toastr.success("Brand colors saved — site updated!");
   };
 
   const handleReset = () => {
@@ -165,7 +263,10 @@ export default function BrandSettings() {
     setPickerColor(DEFAULTS.primary);
     setHexInput(DEFAULTS.primary);
     setPreview(DEFAULTS.primary);
-    toastr.info("Brand color reset to default");
+    setIconColor(DEFAULTS.icon);
+    setTextColor(DEFAULTS.text);
+    setIconTouched(false);
+    toastr.info("Brand colors reset to default");
   };
 
   return (
@@ -239,10 +340,24 @@ export default function BrandSettings() {
             </div>
           </div>
 
+          {/* Icon + text — picked explicitly, never derived from primary */}
+          <div>
+            <p className="text-xs text-brand-muted mb-3 uppercase tracking-wide font-semibold">Icon &amp; Text</p>
+            <div className="flex items-start gap-4 flex-wrap">
+              <ColorField
+                label="Icon"
+                value={iconColor}
+                onChange={(hex) => { setIconTouched(true); setIconColor(hex); }}
+                hint="Icons only"
+              />
+              <ColorField label="Text" value={textColor} onChange={setTextColor} hint="Body text" />
+            </div>
+          </div>
+
           {/* Action buttons */}
           <div className="flex items-center gap-3 pt-2 border-t border-brand-border">
             <Button variant="primary" onClick={handleSave}>
-              Save Brand Colour
+              Save Brand Colours
             </Button>
             <Button variant="ghost" onClick={handleReset}>
               Reset to Default
@@ -319,6 +434,25 @@ export default function BrandSettings() {
                 View all courses →
               </span>
             </div>
+
+            {/* Icons */}
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold text-brand-muted uppercase tracking-wide">Icons</p>
+              <div className="flex items-center gap-4 text-lg" style={{ color: iconColor }}>
+                <i className="fa-solid fa-graduation-cap" />
+                <i className="fa-solid fa-file-pdf" />
+                <i className="fa-solid fa-award" />
+                <i className="fa-solid fa-chart-simple" />
+              </div>
+            </div>
+
+            {/* Body text */}
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold text-brand-muted uppercase tracking-wide">Body Text</p>
+              <p className="text-sm" style={{ color: textColor }}>
+                Headings and paragraph copy use this colour.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -331,6 +465,8 @@ export default function BrandSettings() {
             { label: "Primary", value: brand.primary },
             { label: "Dark / Hover", value: brand.dark },
             { label: "Light", value: brand.light },
+            { label: "Icon", value: brand.icon || brand.primary },
+            { label: "Text", value: brand.text || DEFAULTS.text },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-md border border-brand-border" style={{ backgroundColor: value }} />

@@ -16,10 +16,20 @@ export default {
           light: "rgb(var(--brand-primary-light) / <alpha-value>)",
           muted: "rgb(var(--brand-primary) / 0.12)",
         },
+        // Icon accent — its own token so a theme can recolour icons independently of
+        // buttons/fills. Defaults to the brand primary, so `text-icon` renders exactly
+        // like `text-emerald` until a theme actually sets an icon colour.
+        icon: {
+          DEFAULT: "rgb(var(--brand-icon) / <alpha-value>)",
+          muted: "rgb(var(--brand-icon) / 0.12)",
+        },
         surface: "#FFFFFF",
         canvas: "#F9FAFB",
         brand: {
-          text: "#111827",
+          // Var-driven so every existing `text-brand-text` becomes themeable. The :root
+          // default resolves to the previous literal #111827 — nothing shifts until a
+          // theme overrides it inside a ThemeScope.
+          text: "rgb(var(--brand-text) / <alpha-value>)",
           muted: "#6B7280",
           border: "#E5E7EB",
           danger: "#EF4444",

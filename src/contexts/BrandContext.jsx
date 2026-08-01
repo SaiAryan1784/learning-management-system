@@ -7,6 +7,8 @@ export const DEFAULTS = {
   primary: "#10B981",
   dark: "#059669",
   light: "#D1FAE5",
+  icon: "#10B981",
+  text: "#111827",
 };
 
 /* ─── colour math ──────────────────────────────────────── */
@@ -64,24 +66,38 @@ export function derivePalette(primaryHex) {
   };
 }
 
+// Every variable applyPaletteToElement can set MUST be listed here — this drives
+// clearPaletteFromElement, and a missing entry leaks that colour into the next lesson.
 const BRAND_VARS = [
   "--brand-primary",
   "--brand-primary-dark",
   "--brand-primary-light",
+  "--brand-icon",
+  "--brand-text",
   "--color-emerald",
   "--color-emerald-hover",
   "--color-emerald-light",
+  "--color-icon",
+  "--color-text",
 ];
 
 /** Apply a palette's CSS variables to any element (root for global, a container for scoped). */
 export function applyPaletteToElement(el, palette) {
   if (!el || !palette?.primary) return;
+  // Unset icon/text fall back to primary / the default body colour, so older themes
+  // that predate these fields keep rendering exactly as before.
+  const icon = palette.icon || palette.primary;
+  const text = palette.text || DEFAULTS.text;
   el.style.setProperty("--brand-primary",       hexToRgbComponents(palette.primary));
   el.style.setProperty("--brand-primary-dark",  hexToRgbComponents(palette.dark));
   el.style.setProperty("--brand-primary-light", hexToRgbComponents(palette.light));
+  el.style.setProperty("--brand-icon",           hexToRgbComponents(icon));
+  el.style.setProperty("--brand-text",           hexToRgbComponents(text));
   el.style.setProperty("--color-emerald",        palette.primary);
   el.style.setProperty("--color-emerald-hover",  palette.dark);
   el.style.setProperty("--color-emerald-light",  palette.light);
+  el.style.setProperty("--color-icon",           icon);
+  el.style.setProperty("--color-text",           text);
 }
 
 function clearPaletteFromElement(el) {
@@ -96,7 +112,8 @@ function applyToRoot(palette) {
 /**
  * Scopes a theme palette to its children only (e.g. a single lesson view).
  * The rest of the site keeps the global brand. Variables are removed on unmount.
- * Pass a theme object ({ primary, dark, light }) or null to inherit the global brand.
+ * Pass a theme object ({ primary, dark, light, icon, text }) or null to inherit the
+ * global brand. `icon` and `text` are optional.
  */
 export function ThemeScope({ theme, className = "", children }) {
   const ref = useRef(null);
@@ -109,12 +126,14 @@ export function ThemeScope({ theme, className = "", children }) {
         primary: theme.primary,
         dark: theme.dark || theme.primary,
         light: theme.light || theme.primary,
+        icon: theme.icon,
+        text: theme.text,
       });
     } else {
       clearPaletteFromElement(el);
     }
     return () => clearPaletteFromElement(el);
-  }, [theme?.primary, theme?.dark, theme?.light]);
+  }, [theme?.primary, theme?.dark, theme?.light, theme?.icon, theme?.text]);
 
   return (
     <div ref={ref} className={className}>
@@ -158,8 +177,17 @@ export function BrandProvider({ children }) {
       });
   }, []);
 
-  const setBrand = async (primaryHex) => {
-    const palette = derivePalette(primaryHex);
+  /**
+   * `extras` carries the colours that are picked rather than derived ({ icon, text }).
+   * Omitting it keeps the existing single-argument calls working — icon then tracks the
+   * new primary and text keeps whatever was saved.
+   */
+  const setBrand = async (primaryHex, extras = {}) => {
+    const palette = {
+      ...derivePalette(primaryHex),
+      icon: extras.icon || primaryHex,
+      text: extras.text || brand.text || DEFAULTS.text,
+    };
     // Optimistic update — apply immediately
     localStorage.setItem(STORAGE_KEY, JSON.stringify(palette));
     setBrandState(palette);
