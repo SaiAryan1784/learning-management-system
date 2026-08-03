@@ -154,7 +154,7 @@ export default function CertificateSetup() {
                   Upload a finished certificate (PNG, JPG, or PDF). It's shown to every recipient as-is.
                 </p>
                 <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
-                  <i className="fa-solid fa-cloud-arrow-up text-emerald" />
+                  <i className="fa-solid fa-cloud-arrow-up text-icon" />
                   {form.templateUrl ? "Replace template" : "Upload template"}
                   <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleTemplate(e.target.files?.[0])} />
                 </label>

@@ -494,7 +494,7 @@ export default function DashboardLayout() {
                       <div className="relative flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-xl bg-emerald/10 flex items-center justify-center">
-                            <i className="fa-solid fa-bell text-emerald text-[13px]" />
+                            <i className="fa-solid fa-bell text-icon text-[13px]" />
                           </div>
                           <div>
                             <span className="text-[15px] font-bold text-brand-text tracking-tight block leading-tight">Notifications</span>

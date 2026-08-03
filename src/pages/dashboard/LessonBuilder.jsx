@@ -873,7 +873,7 @@ export default function LessonBuilder() {
         return (
           <div className="space-y-2">
             <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
-              <i className="fa-solid fa-image text-emerald" /> {fileUrl(config) ? "Replace image" : "Upload image"}
+              <i className="fa-solid fa-image text-icon" /> {fileUrl(config) ? "Replace image" : "Upload image"}
               <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadFile(uid, e.target.files[0], "image")} />
             </label>
             {uploading ? (

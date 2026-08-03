@@ -67,7 +67,7 @@ export default function OSCourses() {
       ) : courses.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-surface border border-brand-border rounded-xl text-center">
           <div className="w-16 h-16 rounded-full bg-emerald/10 flex items-center justify-center mb-4">
-            <i className="fa-solid fa-book-open text-emerald text-2xl" />
+            <i className="fa-solid fa-book-open text-icon text-2xl" />
           </div>
           <h3 className="text-lg font-semibold text-brand-text mb-1">No published courses yet</h3>
           <p className="text-sm text-brand-muted mb-6 max-w-xs">

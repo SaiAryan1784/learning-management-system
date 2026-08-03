@@ -172,7 +172,7 @@ export default function LessonPickerModal({
                       <i
                         className={`fa-solid fa-chevron-${isOpenGroup ? "down" : "right"} text-[10px] text-brand-muted flex-shrink-0`}
                       ></i>
-                      <i className="fa-solid fa-folder text-emerald text-xs flex-shrink-0"></i>
+                      <i className="fa-solid fa-folder text-icon text-xs flex-shrink-0"></i>
                       <span className="text-sm font-medium text-brand-text truncate">
                         {course.title}
                       </span>

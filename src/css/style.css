@@ -23,6 +23,7 @@
   --color-emerald-hover: #059669;
   --color-emerald-light: #D1FAE5;
   --color-emerald-muted: rgba(16,185,129,0.12);
+  --color-icon: #10B981;
   --color-surface: #FFFFFF;
   --color-canvas: #F9FAFB;
   --color-text: #111827;
@@ -195,7 +196,7 @@ div.dt-container .dt-input:focus{border-color: #1C1C1E;outline: 0;box-shadow: in
 .add-form{padding: 20px;background-color: #fff;box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);border-radius: 12px;position: relative;width: 100%;margin:0 auto;display:block;}
 .assessment-header{display: flex;align-items: center;justify-content: space-between;}
 .opt-btn{position: absolute;right: -60px;top:7px;}
-.mn-ic{color:#db767c;margin: 0 auto 10px;display: table;}
+.mn-ic{color:var(--color-icon);margin: 0 auto 10px;display: table;}
 .datcard:hover .mn-ic{color:#fff;transition: all 0.5s ease-out;}
 .dash-tp{box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);background: #10B981;padding: 20px 20px 20px 20px;margin: 20px 0 0 0;border-radius: 12px;}
 .pg-tabs{display: flex;align-items: center;margin:20px 0 10px 0; background: #f3f4f8;border-radius: 32px;width: max-content;box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);}
@@ -207,15 +208,17 @@ div.dt-container .dt-input:focus{border-color: #1C1C1E;outline: 0;box-shadow: in
 .hero h1 {color:#10184a;}
 .hero h1 .highlight{color:#10B981;}
 .nav-link:focus-visible {outline: 0;box-shadow: unset;}
-/* Legacy default icon colour. Wrapped in :where() so it carries ZERO specificity —
-   it still colours bare icons, but any explicit utility class (text-icon, text-emerald,
-   text-white …) now wins. Without this it tied with those utilities on specificity and
-   won on source order, silently overriding every themed icon in the app. */
-:where(.fa-solid){color:#db767c}
+/* Default icon colour for every icon that doesn't set one itself — this is what the
+   Icon Colour setting drives (most icons in the app carry no colour class).
+   Wrapped in :where() so it carries ZERO specificity: any explicit utility class
+   (text-icon, text-white, text-brand-danger …) and every contextual rule below still
+   wins. Previously this was a flat #db767c that tied with those utilities on
+   specificity and beat them on source order, overriding themed icons app-wide. */
+:where(.fa-solid, .fa-regular, .fa-brands){color:var(--color-icon)}
 .sidebar .fa-solid{color:rgba(255,255,255,.6)}
 /* Allow Tailwind text-* classes on nav items to control icon color via inheritance */
 .sidebar .fa-solid, .sidebar .fa-regular, .sidebar .fa-brands { color: inherit; }
-.dropdown-link:hover .fa-solid{color:#10B981;}
+.dropdown-link:hover .fa-solid{color:var(--color-emerald-hover);}
 .logout-btn:hover .fa-solid{color:#fff;}
 div.dt-container .dt-paging .dt-paging-button.current{background: #1C1C1E;text-align: center;font-family: 'Montserrat', sans-serif;color: #fff!important;border: 1px solid rgba(154, 154, 154, 0.3);padding: 10px 18px;border-radius: 8px;width: max-content;transition: all .5s;position: relative;}
 div.dt-container .dt-paging .dt-paging-button:hover{color:#1C1C1E!important;}
@@ -1511,7 +1514,7 @@ transition:0.3s;
   transition: all .5s;
 }
 
-.bi{color:#db767c;}
+.bi{color:var(--color-icon);}
 .icon-box {
   font-size: 40px;
   color:#1C1C1E;
@@ -1636,7 +1639,7 @@ transition:0.3s;
   font-weight: 700;
   margin-bottom: 15px;
 }
-.help-card:hover .bi{color:#10B981;}
+.help-card:hover .bi{color:var(--color-emerald-hover);}
 .help-card:hover .btn-link{color:#10B981;}
 /* Resource Card Styles */
 .res-grd{padding: 20px 0;}
@@ -1678,7 +1681,7 @@ transition:0.3s;
 .card-body p{color: #000;font-size: 16px;line-height: 24px;}
 .btn-download{color:#1C1C1E;}
 .btn-download:hover{color:#10B981;}
-.btn-download:hover .bi{color:#10B981;}
+.btn-download:hover .bi{color:var(--color-emerald-hover);}
 /* Section Background */
 .contact-section {
   padding: 20px 0;

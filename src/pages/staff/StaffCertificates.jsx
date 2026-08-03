@@ -123,7 +123,7 @@ export default function StaffCertificates({ embedded = false }) {
               <Card className="flex flex-col h-full">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-11 h-11 rounded-xl bg-emerald-muted flex items-center justify-center flex-shrink-0">
-                    <i className="fa-solid fa-certificate text-emerald"></i>
+                    <i className="fa-solid fa-certificate text-icon"></i>
                   </div>
                   <div className="min-w-0">
                     <h4 className="text-body font-semibold text-brand-text truncate">

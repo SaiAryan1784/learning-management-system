@@ -396,7 +396,7 @@ export default function CertificateManager() {
                     Upload your finished certificate design (PNG, JPG, or PDF — e.g. from Canva). Shown to every recipient as-is and downloadable.
                   </p>
                   <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
-                    <i className="fa-solid fa-cloud-arrow-up text-emerald" />
+                    <i className="fa-solid fa-cloud-arrow-up text-icon" />
                     {designForm.designUrl ? "Replace design" : "Upload design"}
                     <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleDesignUpload(e.target.files?.[0])} />
                   </label>
