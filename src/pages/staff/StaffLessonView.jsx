@@ -108,7 +108,7 @@ function PathGroup({ path, currentLessonId, completedIds, courseId, navigate }) 
         <div className="px-4 py-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {lessons.map((lesson) => (
             <LessonTile
-              key={lesson._id}
+              key={lesson.occurrenceKey || lesson._id}
               lesson={lesson}
               currentLessonId={currentLessonId}
               completedIds={completedIds}
@@ -249,7 +249,10 @@ export default function StaffLessonView() {
   const handleComplete = async () => {
     try {
       setCompleting(true);
-      const res = await api.post(`/progress/lessons/${lessonId}/complete`);
+      // Tells the backend which course context this completion is happening
+      // in, so the sequential-unlock check is exact rather than permissive
+      // across every course that happens to reach this lesson.
+      const res = await api.post(`/progress/lessons/${lessonId}/complete`, { courseId });
       await loadProgress();
       (res.data?.newBadges || []).forEach((b) => toastr.success(`🏅 Badge earned: ${b.name}`));
       goNext();
@@ -446,7 +449,10 @@ export default function StaffLessonView() {
                 navigate={navigate}
               />
             ) : (
-              <div key={item._id} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div
+                key={item.occurrenceKey || item._id}
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+              >
                 <LessonTile
                   lesson={item}
                   currentLessonId={lessonId}

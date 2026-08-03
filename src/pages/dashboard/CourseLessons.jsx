@@ -6,6 +6,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { SectionLoader } from "../../components/ui/Spinner";
 import { Button } from "../../components/ui/Button";
 import PathFormModal from "../../components/dashboard/PathFormModal";
+import LessonPickerModal from "../../components/dashboard/LessonPickerModal";
 
 const OPTION_META = {
   resource: { label: "Resource", icon: "fa-file-lines", tone: "bg-blue-100 text-blue-600" },
@@ -22,7 +23,8 @@ const PATH_META = {
 };
 
 export default function CourseLessons() {
-  // pathId present = we're inside a path, showing only its lessons.
+  // pathId present = we're inside a path, showing the lessons IT REFERENCES
+  // (which may be homed in any course) rather than the course's own lessons.
   const { courseId, pathId } = useParams();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -32,6 +34,7 @@ export default function CourseLessons() {
   const [publishing, setPublishing] = useState(false);
   const [pathModalOpen, setPathModalOpen] = useState(false);
   const [editingPath, setEditingPath] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const loadCurriculum = async () => {
     try {
@@ -70,32 +73,79 @@ export default function CourseLessons() {
     loadCurriculum();
   }, [courseId, pathId]);
 
-  const handleDelete = async (item) => {
-    const isPath = item.kind === "path";
-    const confirmMsg = isPath
-      ? `Delete the path "${item.title}"?`
-      : "Delete this lesson?";
-    if (!window.confirm(confirmMsg)) return;
-
+  const removeFromPath = async (item) => {
+    if (!window.confirm(`Remove "${item.title}" from this path? The lesson stays in its course.`)) {
+      return;
+    }
     try {
-      await api.delete(
-        isPath
-          ? `/courses/${courseId}/paths/${item._id}`
-          : `/courses/${courseId}/lessons/${item._id}`,
-      );
-      toastr.success(isPath ? "Path deleted" : "Lesson deleted");
+      await api.delete(`/courses/${courseId}/paths/${pathId}/lessons/${item._id}`);
+      toastr.success("Removed from path");
       loadCurriculum();
     } catch (err) {
-      // A path holding lessons comes back as a 409 with a readable reason.
+      toastr.error(err.response?.data?.error || "Failed to remove lesson");
+    }
+  };
+
+  const deletePath = async (item) => {
+    const msg =
+      item.lessonCount > 0
+        ? `Remove this path and its ${item.lessonCount} lesson reference${item.lessonCount === 1 ? "" : "s"}? The lessons stay in their courses.`
+        : `Delete the empty path "${item.title}"?`;
+    if (!window.confirm(msg)) return;
+    try {
+      await api.delete(`/courses/${courseId}/paths/${item._id}`);
+      toastr.success("Path deleted");
+      loadCurriculum();
+    } catch (err) {
       toastr.error(err.response?.data?.error || "Delete failed");
     }
   };
 
+  // Deleting the lesson itself (not just a reference) is only ever offered at
+  // its home course — doing it from inside a path would destroy another
+  // course's content. A path referencing it that gets 409'd is asked to
+  // confirm and retry with ?force=true, which prunes the reference instead.
+  const deleteLesson = async (item) => {
+    if (!window.confirm("Delete this lesson?")) return;
+    try {
+      await api.delete(`/courses/${courseId}/lessons/${item._id}`);
+      toastr.success("Lesson deleted");
+      loadCurriculum();
+    } catch (err) {
+      const message = err.response?.data?.error || "";
+      if (err.response?.status === 409) {
+        if (window.confirm(`${message}\n\nDelete anyway?`)) {
+          try {
+            await api.delete(`/courses/${courseId}/lessons/${item._id}?force=true`);
+            toastr.success("Lesson deleted");
+            loadCurriculum();
+          } catch (err2) {
+            toastr.error(err2.response?.data?.error || "Delete failed");
+          }
+        }
+        return;
+      }
+      toastr.error(message || "Delete failed");
+    }
+  };
+
+  const handleDelete = (item) => {
+    if (item.kind === "path") return deletePath(item);
+    if (pathId) return removeFromPath(item);
+    return deleteLesson(item);
+  };
+
   const toggleRequired = async (lesson) => {
     try {
-      await api.put(`/courses/${courseId}/lessons/${lesson._id}`, {
-        required: !lesson.required,
-      });
+      if (pathId) {
+        await api.patch(`/courses/${courseId}/paths/${pathId}/lessons/${lesson._id}`, {
+          required: !lesson.required,
+        });
+      } else {
+        await api.put(`/courses/${courseId}/lessons/${lesson._id}`, {
+          required: !lesson.required,
+        });
+      }
       loadCurriculum();
     } catch {
       toastr.error("Failed to update lesson");
@@ -122,32 +172,52 @@ export default function CourseLessons() {
         title={pathId ? pathMeta?.title || "Path" : "Lessons"}
         subtitle={
           pathId
-            ? "Lessons inside this path — add and order them here"
+            ? "Lessons this path references — add existing ones or create new"
             : "A course is a folder of lessons and paths — add and order them here"
         }
       >
-        <Button
-          variant="primary"
-          size="sm"
-          leadingIcon={<i className="fa-solid fa-plus text-xs" />}
-          onClick={() => navigate(newLessonPath)}
-        >
-          Add Lesson
-        </Button>
-
-        {/* No nested paths in v1 — only offered at course level. */}
-        {!pathId && (
-          <Button
-            variant="secondary"
-            size="sm"
-            leadingIcon={<i className="fa-solid fa-folder-plus text-xs" />}
-            onClick={() => {
-              setEditingPath(null);
-              setPathModalOpen(true);
-            }}
-          >
-            Add Path
-          </Button>
+        {pathId ? (
+          <>
+            <Button
+              variant="primary"
+              size="sm"
+              leadingIcon={<i className="fa-solid fa-list-check text-xs" />}
+              onClick={() => setPickerOpen(true)}
+            >
+              Add existing lessons
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              leadingIcon={<i className="fa-solid fa-plus text-xs" />}
+              onClick={() => navigate(newLessonPath)}
+            >
+              Create new lesson
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="primary"
+              size="sm"
+              leadingIcon={<i className="fa-solid fa-plus text-xs" />}
+              onClick={() => navigate(newLessonPath)}
+            >
+              Add Lesson
+            </Button>
+            {/* No nested paths in v1 — only offered at course level. */}
+            <Button
+              variant="secondary"
+              size="sm"
+              leadingIcon={<i className="fa-solid fa-folder-plus text-xs" />}
+              onClick={() => {
+                setEditingPath(null);
+                setPathModalOpen(true);
+              }}
+            >
+              Add Path
+            </Button>
+          </>
         )}
 
         {!pathId && !published && (
@@ -182,7 +252,7 @@ export default function CourseLessons() {
           <i className="fa-solid fa-folder-open text-brand-muted text-3xl mb-3 block"></i>
           <p className="text-brand-muted text-sm">
             {pathId
-              ? "No lessons in this path yet. Add one to get started."
+              ? "No lessons in this path yet. Add existing ones or create a new one."
               : "Nothing here yet. Add a lesson, or a path to group lessons together."}
           </p>
         </div>
@@ -214,9 +284,13 @@ export default function CourseLessons() {
                     : undefined
                 }
               >
-                <span className="w-7 h-7 flex items-center justify-center rounded-md bg-canvas border border-brand-border text-xs font-bold text-brand-muted flex-shrink-0">
-                  {item.order}
-                </span>
+                {/* Path-referenced lessons (pathId view) carry no `order` — a
+                    path's ordering is its array position, not a number. */}
+                {item.order != null && (
+                  <span className="w-7 h-7 flex items-center justify-center rounded-md bg-canvas border border-brand-border text-xs font-bold text-brand-muted flex-shrink-0">
+                    {item.order}
+                  </span>
+                )}
                 <span
                   className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${meta.tone}`}
                 >
@@ -226,6 +300,11 @@ export default function CourseLessons() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-brand-text truncate">
                     {item.title}
+                    {item.isForeign && item.homeCourse && (
+                      <span className="ml-2 text-[10px] font-normal text-brand-muted">
+                        from {item.homeCourse.title}
+                      </span>
+                    )}
                   </p>
                   <p className="text-[11px] text-brand-muted">
                     {isPath ? (
@@ -266,13 +345,17 @@ export default function CourseLessons() {
                   )}
                   <button
                     className={actionBtn}
-                    onClick={() =>
-                      isPath
-                        ? (setEditingPath(item), setPathModalOpen(true))
-                        : navigate(
-                            `/dashboard/courses/${courseId}/lessons/${item._id}/edit`,
-                          )
-                    }
+                    onClick={() => {
+                      if (isPath) {
+                        setEditingPath(item);
+                        setPathModalOpen(true);
+                        return;
+                      }
+                      // Edit is always flat/home-course-scoped — a lesson
+                      // referenced from another course edits in its own home.
+                      const editCourseId = pathId ? item.homeCourse?._id || courseId : courseId;
+                      navigate(`/dashboard/courses/${editCourseId}/lessons/${item._id}/edit`);
+                    }}
                     title={isPath ? "Edit path" : "Edit lesson"}
                   >
                     <i className="fa fa-edit text-xs"></i>
@@ -280,9 +363,9 @@ export default function CourseLessons() {
                   <button
                     className={`${actionBtn} hover:bg-brand-danger/10 hover:text-brand-danger hover:border-brand-danger`}
                     onClick={() => handleDelete(item)}
-                    title={isPath ? "Delete path" : "Delete lesson"}
+                    title={isPath ? "Delete path" : pathId ? "Remove from path" : "Delete lesson"}
                   >
-                    <i className="fa fa-trash text-xs"></i>
+                    <i className={`fa ${pathId && !isPath ? "fa-circle-minus" : "fa-trash"} text-xs`}></i>
                   </button>
                   {isPath && (
                     <i className="fa-solid fa-chevron-right text-[10px] text-brand-muted ml-1"></i>
@@ -301,6 +384,17 @@ export default function CourseLessons() {
         path={editingPath}
         onSaved={loadCurriculum}
       />
+
+      {pathId && (
+        <LessonPickerModal
+          isOpen={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          courseId={courseId}
+          pathId={pathId}
+          existingLessonIds={items.map((i) => i._id)}
+          onAdded={loadCurriculum}
+        />
+      )}
     </div>
   );
 }

@@ -456,15 +456,16 @@ function SortableItem({ uid, kind, error, children, onRemove }) {
 }
 
 export default function LessonBuilder() {
-  // pathId is present when creating a lesson inside a path. On edit it comes
-  // from the loaded lesson instead, since the edit route stays flat.
+  // pathId is present only on the CREATE route reached from inside a path —
+  // a new lesson still lands in this course, with a reference auto-added to
+  // that path. There's no path-scoped EDIT route: a lesson has no single
+  // "parent path" anymore (it may be referenced by several, or none), so
+  // editing always lands back on the course's own flat lesson list.
   const { courseId, pathId, lessonId } = useParams();
   const navigate = useNavigate();
   const editing = Boolean(lessonId);
-  const [loadedPathId, setLoadedPathId] = useState(null);
-  const parentPathId = pathId || loadedPathId || null;
-  const backTo = parentPathId
-    ? `/dashboard/courses/${courseId}/paths/${parentPathId}/lessons`
+  const backTo = pathId
+    ? `/dashboard/courses/${courseId}/paths/${pathId}/lessons`
     : `/dashboard/courses/${courseId}/lessons`;
 
   const [step, setStep] = useState(editing ? 2 : 1);
@@ -505,7 +506,6 @@ export default function LessonBuilder() {
       try {
         const res = await api.get(`/courses/${courseId}/lessons/${lessonId}`);
         const l = res.data.lesson;
-        setLoadedPathId(l.path ? String(l.path) : null);
         setTitle(l.title || "");
         setOption(l.option || "guide");
         setThemeId(l.theme?._id || l.theme || "");
