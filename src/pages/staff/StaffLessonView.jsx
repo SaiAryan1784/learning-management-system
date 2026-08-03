@@ -7,6 +7,7 @@ import { PageLoader } from "../../components/ui/Spinner";
 import { Button, Badge, Card, ProgressBar } from "../../components/ui";
 import { ThemeScope } from "../../contexts/BrandContext";
 import FilePreview, { allowsDownload } from "../../components/lesson/FilePreview";
+import VideoEmbed from "../../components/lesson/VideoEmbed";
 import NumberScale from "../../components/lesson/NumberScale";
 import SignaturePad from "../../components/lesson/SignaturePad";
 import FlipCard from "../../components/lesson/FlipCard";
@@ -23,13 +24,6 @@ const fileUrl = (config) => {
   if (config.contentUrl) return config.contentUrl.startsWith("http") ? config.contentUrl : `${FILE_BASE_URL}${config.contentUrl}`;
   if (config.storageKey) return `${FILE_BASE_URL}/uploads/${config.storageKey}`;
   return "";
-};
-
-const youtubeEmbed = (url) => {
-  if (!url) return "";
-  if (url.includes("youtube.com/watch")) return `https://www.youtube.com/embed/${url.split("v=")[1]?.split("&")[0]}`;
-  if (url.includes("youtu.be/")) return `https://www.youtube.com/embed/${url.split("youtu.be/")[1]?.split("?")[0]}`;
-  return url;
 };
 
 /* ── curriculum navigation ── */
@@ -330,11 +324,7 @@ export default function StaffLessonView() {
       case "attach_file":
         return <FilePreview src={fileUrl(config)} mimeType={config.mimeType || "application/pdf"} fileName={config.fileName} height={500} allowDownload={allowsDownload(config)} />;
       case "video_link":
-        return (
-          <div className="mx-auto rounded-xl border border-brand-border bg-black overflow-hidden" style={{ aspectRatio: "16 / 9", width: Math.round((320 * 16) / 9), maxWidth: "100%" }}>
-            <iframe className="block w-full h-full" src={youtubeEmbed(config.contentUrl)} title="Lesson Video" allowFullScreen />
-          </div>
-        );
+        return <VideoEmbed url={config.contentUrl} height={320} title="Lesson video" />;
       case "text_answer":
         return (
           <div className="space-y-2">

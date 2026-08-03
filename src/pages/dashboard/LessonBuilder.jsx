@@ -16,6 +16,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
 import { ThemeScope } from "../../contexts/BrandContext";
 import FilePreview, { allowsDownload } from "../../components/lesson/FilePreview";
+import VideoEmbed from "../../components/lesson/VideoEmbed";
 import NumberScale from "../../components/lesson/NumberScale";
 import SignaturePad from "../../components/lesson/SignaturePad";
 import FlipCard from "../../components/lesson/FlipCard";
@@ -33,13 +34,6 @@ const fileUrl = (config) => {
   if (config.contentUrl) return config.contentUrl.startsWith("http") ? config.contentUrl : `${FILE_BASE_URL}${config.contentUrl}`;
   if (config.storageKey) return `${FILE_BASE_URL}/uploads/${config.storageKey}`;
   return "";
-};
-
-const youtubeEmbed = (url) => {
-  if (!url) return "";
-  if (url.includes("youtube.com/watch")) return `https://www.youtube.com/embed/${url.split("v=")[1]?.split("&")[0]}`;
-  if (url.includes("youtu.be/")) return `https://www.youtube.com/embed/${url.split("youtu.be/")[1]?.split("?")[0]}`;
-  return url;
 };
 
 // Field catalog
@@ -135,21 +129,11 @@ function StepIndicator({ current }) {
   );
 }
 
-// Bounded YouTube/embed preview (external URL, not an uploaded file → FilePreview
-// doesn't apply). YouTube allows cross-origin framing, so no header issues here.
+// Bounded YouTube preview (external URL, not an uploaded file → FilePreview doesn't
+// apply). VideoEmbed shows our own thumbnail + play button instead of YouTube's
+// branded poster, so the builder preview matches what the learner sees.
 function YouTubePreview({ url, height = 220 }) {
-  const src = youtubeEmbed(url);
-  if (!src) return null;
-  return (
-    <div className="mx-auto rounded-lg border border-brand-border bg-black overflow-hidden" style={{ aspectRatio: "16 / 9", width: Math.round((height * 16) / 9), maxWidth: "100%" }}>
-      <iframe
-        src={src}
-        title="Video preview"
-        allowFullScreen
-        className="block w-full h-full"
-      />
-    </div>
-  );
+  return <VideoEmbed url={url} height={height} title="Video preview" />;
 }
 
 // Lesson appearance selector. Visual rebuild per the client reference — a "Guide Primary"
