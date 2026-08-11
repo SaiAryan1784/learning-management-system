@@ -258,7 +258,7 @@ export default function CertificateManager() {
                   {filtered.map((cert) => (
                     <tr key={cert._id} className="border-b border-brand-border last:border-0">
                       <td className="px-4 py-3 text-brand-text font-medium">{cert.staff?.name || "—"}</td>
-                      <td className="px-4 py-3 text-brand-text">{cert.course?.title || "—"}</td>
+                      <td className="px-4 py-3 text-brand-text">{cert.subject?.title || cert.course?.title || "—"}</td>
                       <td className="px-4 py-3">
                         <Badge tone={STATUS_TONE[cert.status] || "neutral"} size="sm" className="capitalize">{cert.status}</Badge>
                       </td>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/api";
 import toastr from "toastr";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader, PageLoader, Button } from "../../components/ui";
 import FilePreview from "../../components/lesson/FilePreview";
@@ -50,6 +50,10 @@ function StepIndicator({ current }) {
 export default function CourseAdd() {
   const navigate = useNavigate();
   const { courseId } = useParams();
+  // Set when this page was opened from inside a Path ("Create new course").
+  // The course still stands on its own — the path just gains a reference to it.
+  const [searchParams] = useSearchParams();
+  const fromPathId = searchParams.get("pathId");
   const fileInputRef = useRef();
 
   const [loading, setLoading] = useState(false);
@@ -163,6 +167,21 @@ export default function CourseAdd() {
       }
       const id = savedCourseId || res.data.course?._id || res.data._id;
       setSavedCourseId(id);
+
+      // Created from a path: add the reference, then hand the admin back to
+      // the path so the new course is visible in the order they were building.
+      if (fromPathId && !savedCourseId) {
+        try {
+          await api.post(`/paths/${fromPathId}/courses`, { courseIds: [id] });
+          toastr.success("Added to the path");
+          navigate(`/dashboard/paths/${fromPathId}/courses`);
+          return;
+        } catch {
+          // The course itself saved fine — say so rather than implying it didn't.
+          toastr.warning("Course saved, but it could not be added to the path");
+        }
+      }
+
       navigate(`/dashboard/courses/${id}/lessons`);
     } catch (err) {
       toastr.error(err.response?.data?.message || "Save failed");

@@ -8,16 +8,17 @@ const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent transition-colors";
 
 /**
- * Create or rename a Guide — one topic made of several ordered pages.
- * (`path` is the API's wording for the same object.) `path` present = edit mode.
- * A guide is just a container, so this stays a modal rather than a full page —
- * the ordered page list behind it stays visible while naming.
+ * Create or edit a Path — an ordered, assignable group of courses.
+ * `path` present = edit mode. Sibling of `PathFormModal` (which does the same
+ * for Guides, one level down).
  */
-export default function PathFormModal({ isOpen, onClose, courseId, path, onSaved }) {
+export default function CoursePathFormModal({ isOpen, onClose, path, onSaved }) {
   const editing = Boolean(path?._id);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [sequentialUnlock, setSequentialUnlock] = useState(false);
+  const [certificateEnabled, setCertificateEnabled] = useState(false);
+  const [certificateTitle, setCertificateTitle] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -25,11 +26,13 @@ export default function PathFormModal({ isOpen, onClose, courseId, path, onSaved
     setTitle(path?.title || "");
     setDescription(path?.description || "");
     setSequentialUnlock(path?.sequentialUnlock === true);
+    setCertificateEnabled(path?.certificate?.enabled === true);
+    setCertificateTitle(path?.certificate?.title || "");
   }, [isOpen, path]);
 
   const handleSave = async () => {
     if (!title.trim()) {
-      toastr.error("Guide title is required");
+      toastr.error("Path title is required");
       return;
     }
     try {
@@ -38,18 +41,22 @@ export default function PathFormModal({ isOpen, onClose, courseId, path, onSaved
         title: title.trim(),
         description: description.trim(),
         sequentialUnlock,
+        certificate: {
+          enabled: certificateEnabled,
+          title: certificateTitle.trim(),
+        },
       };
       if (editing) {
-        await api.put(`/courses/${courseId}/paths/${path._id}`, payload);
-        toastr.success("Guide updated");
+        await api.put(`/paths/${path._id}`, payload);
+        toastr.success("Path updated");
       } else {
-        await api.post(`/courses/${courseId}/paths`, payload);
-        toastr.success("Guide created");
+        await api.post("/paths", payload);
+        toastr.success("Path created");
       }
       onSaved?.();
       onClose?.();
     } catch (err) {
-      toastr.error(err.response?.data?.error || "Failed to save guide");
+      toastr.error(err.response?.data?.error || "Failed to save path");
     } finally {
       setSaving(false);
     }
@@ -59,14 +66,14 @@ export default function PathFormModal({ isOpen, onClose, courseId, path, onSaved
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editing ? "Edit Guide" : "Add Guide"}
+      title={editing ? "Edit Path" : "New Path"}
       footer={
         <div className="flex justify-end gap-3">
           <Button variant="secondary" size="sm" onClick={onClose}>
             Cancel
           </Button>
           <Button variant="primary" size="sm" loading={saving} onClick={handleSave}>
-            {editing ? "Save changes" : "Create guide"}
+            {editing ? "Save changes" : "Create path"}
           </Button>
         </div>
       }
@@ -79,7 +86,7 @@ export default function PathFormModal({ isOpen, onClose, courseId, path, onSaved
           <input
             type="text"
             value={title}
-            placeholder="e.g. Lash + Company Culture"
+            placeholder="e.g. New Hire Onboarding"
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSave()}
             className={inputClass}
@@ -94,7 +101,7 @@ export default function PathFormModal({ isOpen, onClose, courseId, path, onSaved
           <textarea
             rows={3}
             value={description}
-            placeholder="What this guide covers (optional)"
+            placeholder="What this path covers (optional)"
             onChange={(e) => setDescription(e.target.value)}
             className={inputClass}
           />
@@ -109,13 +116,43 @@ export default function PathFormModal({ isOpen, onClose, courseId, path, onSaved
           />
           <span>
             <span className="block text-sm font-medium text-brand-text">
-              Unlock pages in order
+              Unlock courses in order
             </span>
             <span className="block text-xs text-brand-muted">
-              Learners must finish each required page before the next one opens.
+              Learners must finish each required course before the next one opens.
             </span>
           </span>
         </label>
+
+        <div className="pt-3 border-t border-brand-border space-y-3">
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={certificateEnabled}
+              onChange={(e) => setCertificateEnabled(e.target.checked)}
+              className="w-4 h-4 mt-0.5 rounded border-brand-border accent-emerald cursor-pointer"
+            />
+            <span>
+              <span className="block text-sm font-medium text-brand-text">
+                Issue a certificate for the whole path
+              </span>
+              <span className="block text-xs text-brand-muted">
+                Awarded once every required course is complete. Courses inside still
+                issue their own certificates.
+              </span>
+            </span>
+          </label>
+
+          {certificateEnabled && (
+            <input
+              type="text"
+              value={certificateTitle}
+              placeholder="Certificate title (optional)"
+              onChange={(e) => setCertificateTitle(e.target.value)}
+              className={inputClass}
+            />
+          )}
+        </div>
       </div>
     </Modal>
   );

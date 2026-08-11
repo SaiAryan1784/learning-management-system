@@ -127,7 +127,7 @@ export default function StaffCertificates({ embedded = false }) {
                   </div>
                   <div className="min-w-0">
                     <h4 className="text-body font-semibold text-brand-text truncate">
-                      {cert.course?.title}
+                      {cert.subject?.title || cert.course?.title}
                     </h4>
                     <p className="text-caption text-brand-muted">
                       Issued {new Date(cert.issuedAt).toLocaleDateString()}
@@ -157,8 +157,11 @@ export default function StaffCertificates({ embedded = false }) {
         maxWidth="max-w-2xl"
       >
         {selectedCert && (() => {
-          const base = selectedCert.course?.certificate || {};
-          // Merge: course values override the org-wide defaults; empty falls back to org.
+          // `subject` is the normalised course-or-path the certificate was
+          // earned for, so a path certificate renders with the path's own
+          // design instead of blowing up on a null `course`.
+          const base = selectedCert.subject?.certificate || selectedCert.course?.certificate || {};
+          // Merge: subject values override the org-wide defaults; empty falls back to org.
           const certCfg = {
             title: base.title || orgCert.title || "Certificate of Completion",
             signatoryName: base.signatoryName || orgCert.signatoryName || "",
@@ -236,7 +239,7 @@ export default function StaffCertificates({ embedded = false }) {
                   has successfully completed
                 </p>
                 <h3 className="text-subheading mb-4" style={{ color: certCfg.primaryColor }}>
-                  {selectedCert.course?.title}
+                  {selectedCert.subject?.title || selectedCert.course?.title}
                 </h3>
                 <div className="h-px bg-brand-border mb-4" />
                 <p className="text-caption text-brand-muted mb-2">

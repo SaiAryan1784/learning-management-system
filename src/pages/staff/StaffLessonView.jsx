@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../api/api";
 import toastr from "toastr";
 import { PageLoader } from "../../components/ui/Spinner";
 import { Button, Badge, Card, ProgressBar } from "../../components/ui";
-import { ThemeScope } from "../../contexts/BrandContext";
+import { ThemeScope, useBrand } from "../../contexts/BrandContext";
 import FilePreview, { allowsDownload } from "../../components/lesson/FilePreview";
 import VideoEmbed from "../../components/lesson/VideoEmbed";
 import NumberScale from "../../components/lesson/NumberScale";
@@ -19,6 +19,14 @@ const BASE_URL = api.defaults.baseURL || "";
 const FILE_BASE_URL =
   import.meta.env.VITE_FILE_BASE_URL || BASE_URL.replace(/\/api$/, "");
 
+// "guide" is the lesson TYPE (material + questions). It is not the Guide
+// container — that word belongs to the multi-page grouping now.
+const OPTION_LABEL = {
+  resource: "Resource",
+  guide: "Material + questions",
+  quiz: "Quiz",
+};
+
 const fileUrl = (config) => {
   if (!config) return "";
   if (config.contentUrl) return config.contentUrl.startsWith("http") ? config.contentUrl : `${FILE_BASE_URL}${config.contentUrl}`;
@@ -28,10 +36,25 @@ const fileUrl = (config) => {
 
 /* ── curriculum navigation ── */
 
-function LessonTile({ lesson, currentLessonId, completedIds, courseId, navigate }) {
+/**
+ * Link to a lesson, carrying which guide it was opened from.
+ *
+ * The same lesson can be referenced by several guides, and the route only
+ * carries a lesson id — so `?guide=` is what makes "Page 2 of 5 in THIS guide"
+ * and guide-scoped Next/Previous resolve to the guide the learner is actually
+ * reading. Without it we'd have to guess (the backend's `flatLessons[].pathId`
+ * is the FIRST occurrence, which is a coin flip for a shared lesson).
+ */
+function lessonHref(courseId, lessonId, guideId) {
+  const base = `/dashboard/staff/course/${courseId}/lesson/${lessonId}`;
+  return guideId ? `${base}?guide=${guideId}` : base;
+}
+
+function LessonTile({ lesson, currentLessonId, completedIds, courseId, guideId, navigate }) {
   const isActive = lesson._id === currentLessonId;
   const isCompleted = completedIds.has(lesson._id);
   const isLocked = lesson.locked === true;
+  const isPage = Boolean(guideId);
 
   let toneClass = "border-brand-border hover:border-emerald/40 bg-surface";
   if (isActive) toneClass = "border-emerald bg-emerald-muted shadow-soft";
@@ -43,15 +66,15 @@ function LessonTile({ lesson, currentLessonId, completedIds, courseId, navigate 
       whileHover={isLocked ? undefined : { y: -2 }}
       whileTap={isLocked ? undefined : { scale: 0.98 }}
       disabled={isLocked}
-      title={isLocked ? "Complete the previous lesson in this path first" : undefined}
+      title={isLocked ? "Finish the earlier pages in this guide first" : undefined}
       className={`text-left p-3 rounded-xl border transition-colors relative ${toneClass}`}
       onClick={() =>
-        !isLocked && navigate(`/dashboard/staff/course/${courseId}/lesson/${lesson._id}`)
+        !isLocked && navigate(lessonHref(courseId, lesson._id, guideId))
       }
     >
       <div className="flex items-center justify-between mb-1">
         <span className="text-[10px] font-semibold text-brand-muted uppercase">
-          Lesson {lesson.sequence}
+          {isPage ? `Page ${lesson.pageNumber}` : `Lesson ${lesson.sequence}`}
         </span>
         {isCompleted && <i className="fa-solid fa-circle-check text-icon text-xs"></i>}
         {!isCompleted && isLocked && (
@@ -66,47 +89,55 @@ function LessonTile({ lesson, currentLessonId, completedIds, courseId, navigate 
   );
 }
 
+/** A guide — one topic, several ordered pages — rendered as one collapsible unit. */
 function PathGroup({ path, currentLessonId, completedIds, courseId, navigate }) {
   const lessons = path.lessons || [];
   const holdsCurrent = lessons.some((l) => l._id === currentLessonId);
   // Open the group the learner is actually in; keep the rest collapsed.
   const [open, setOpen] = useState(holdsCurrent);
   const doneCount = lessons.filter((l) => completedIds.has(l._id)).length;
+  const percent = lessons.length > 0 ? Math.round((doneCount / lessons.length) * 100) : 0;
 
   return (
     <div className="border border-brand-border rounded-xl overflow-hidden">
       <button
         type="button"
-        className="w-full flex items-center justify-between px-4 py-3 bg-canvas text-left"
+        className="w-full px-4 py-3 bg-canvas text-left"
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="flex items-center gap-2 min-w-0">
-          <i className="fa-solid fa-folder-tree text-icon text-xs"></i>
-          <span className="text-sm font-semibold text-brand-text truncate">{path.title}</span>
-          {path.sequentialUnlock && (
-            <i
-              className="fa-solid fa-lock text-brand-muted text-[10px]"
-              title="Lessons unlock in order"
-            ></i>
-          )}
-        </span>
-        <span className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-[11px] text-brand-muted">
-            {doneCount}/{lessons.length}
+        <span className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2 min-w-0">
+            <i className="fa-solid fa-folder-tree text-icon text-xs"></i>
+            <span className="text-sm font-semibold text-brand-text truncate">{path.title}</span>
+            {path.sequentialUnlock && (
+              <i
+                className="fa-solid fa-lock text-brand-muted text-[10px]"
+                title="Pages unlock in order"
+              ></i>
+            )}
           </span>
-          <i className={`fa-solid fa-chevron-${open ? "up" : "down"} text-xs text-brand-muted`}></i>
+          <span className="flex items-center gap-3 flex-shrink-0">
+            <span className="text-[11px] text-brand-muted">
+              {doneCount} of {lessons.length} pages complete
+            </span>
+            <i className={`fa-solid fa-chevron-${open ? "up" : "down"} text-xs text-brand-muted`}></i>
+          </span>
+        </span>
+        <span className="block mt-2">
+          <ProgressBar percent={percent} size="xs" />
         </span>
       </button>
 
       {open && (
         <div className="px-4 py-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {lessons.map((lesson) => (
+          {lessons.map((lesson, i) => (
             <LessonTile
               key={lesson.occurrenceKey || lesson._id}
-              lesson={lesson}
+              lesson={{ ...lesson, pageNumber: i + 1 }}
               currentLessonId={currentLessonId}
               completedIds={completedIds}
               courseId={courseId}
+              guideId={path._id}
               navigate={navigate}
             />
           ))}
@@ -173,6 +204,9 @@ function MatchingField({ config, value, onChange }) {
 export default function StaffLessonView() {
   const { courseId, lessonId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedGuideId = searchParams.get("guide");
+  const { lessonTheme } = useBrand();
 
   const [courseData, setCourseData] = useState(null);
   const [progressData, setProgressData] = useState(null);
@@ -227,17 +261,51 @@ export default function StaffLessonView() {
     [courseData, allLessons]
   );
 
+  // Every guide this lesson appears in. `items` is authoritative about grouping
+  // and order — unlike `lesson.pathId`, which only records the first occurrence.
+  const guidesForCurrent = useMemo(
+    () =>
+      items
+        .filter((it) => it.kind === "path")
+        .filter((g) => (g.lessons || []).some((l) => l._id === lessonId)),
+    [items, lessonId]
+  );
+
+  // Which guide the learner is actually reading: the one they clicked in from,
+  // else the only/first one that holds this lesson, else none (top-level lesson).
+  const currentGuide =
+    guidesForCurrent.find((g) => String(g._id) === String(requestedGuideId)) ||
+    guidesForCurrent[0] ||
+    null;
+
+  const guidePages = currentGuide?.lessons || [];
+  const pageIndex = currentGuide ? guidePages.findIndex((l) => l._id === lessonId) : -1;
+
   const currentIndex = allLessons.findIndex((l) => l._id === lessonId);
-  const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
-  // Skip lessons still locked behind an incomplete prerequisite.
-  const nextLesson =
-    currentIndex >= 0
-      ? allLessons.slice(currentIndex + 1).find((l) => !l.locked) || null
-      : null;
+
+  // Inside a guide, Previous/Next walk that guide's pages and stop at its edges
+  // — a guide is one topic, so falling out of it mid-flow reads as a bug.
+  // A top-level lesson keeps walking the whole course.
+  let prevLesson = null;
+  let nextLesson = null;
+  if (currentGuide && pageIndex >= 0) {
+    prevLesson = pageIndex > 0 ? guidePages[pageIndex - 1] : null;
+    nextLesson = guidePages.slice(pageIndex + 1).find((l) => !l.locked) || null;
+  } else {
+    prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+    // Skip lessons still locked behind an incomplete prerequisite.
+    nextLesson =
+      currentIndex >= 0
+        ? allLessons.slice(currentIndex + 1).find((l) => !l.locked) || null
+        : null;
+  }
 
   const goNext = () => {
-    if (nextLesson) navigate(`/dashboard/staff/course/${courseId}/lesson/${nextLesson._id}`);
-    else navigate("/dashboard/my-dashboard");
+    if (nextLesson) {
+      navigate(lessonHref(courseId, nextLesson._id, currentGuide?._id));
+    } else {
+      navigate("/dashboard/my-dashboard");
+    }
   };
 
   const handleComplete = async () => {
@@ -390,9 +458,13 @@ export default function StaffLessonView() {
     return (
       <div className="p-10 text-center">
         <i className="fa-solid fa-lock text-brand-muted text-3xl mb-3 block"></i>
-        <p className="text-brand-text text-body font-medium mb-1">This lesson is locked</p>
+        <p className="text-brand-text text-body font-medium mb-1">
+          This {currentGuide ? "page" : "lesson"} is locked
+        </p>
         <p className="text-brand-muted text-caption mb-4">
-          Finish the earlier lessons in this path to unlock it.
+          {currentGuide
+            ? "Finish the earlier pages in this guide to unlock it."
+            : "Finish the earlier lessons to unlock it."}
         </p>
         <Button variant="secondary" size="sm" onClick={() => navigate("/dashboard/my-dashboard")}>
           Back to my dashboard
@@ -404,6 +476,16 @@ export default function StaffLessonView() {
   const isQuiz = currentLesson.option === "quiz";
   const alreadyPassed = completedIds.has(currentLesson._id) && isQuiz;
 
+  // A guide is one topic, so its last page ends the guide rather than silently
+  // spilling the learner into the next one.
+  const inGuide = Boolean(currentGuide);
+  const advanceLabel = nextLesson
+    ? inGuide ? "Next Page" : "Next Lesson"
+    : inGuide ? "Finish Guide" : "Finish";
+  const completeLabel = nextLesson
+    ? "Complete & Next"
+    : inGuide ? "Complete Guide" : "Complete Lesson";
+
   return (
     <div className="space-y-5">
       {/* Sticky header */}
@@ -413,9 +495,34 @@ export default function StaffLessonView() {
             <h1 className="text-base font-bold text-brand-text truncate" title={currentLesson.title}>
               {currentLesson.title}
             </h1>
-            <p className="text-xs text-brand-muted">
-              Lesson {currentIndex + 1} of {allLessons.length} &middot; <span className="capitalize">{currentLesson.option}</span>
-            </p>
+            {/* Inside a guide the learner's position is "which page of this
+                topic", not "which lesson of the whole course". */}
+            {currentGuide ? (
+              <div className="flex items-center gap-2 min-w-0">
+                <p className="text-xs text-brand-muted truncate">
+                  <span className="font-medium text-brand-text/70">{currentGuide.title}</span>
+                  {" · "}Page {pageIndex + 1} of {guidePages.length}
+                </p>
+                <span className="flex items-center gap-1 flex-shrink-0">
+                  {guidePages.map((p, i) => (
+                    <span
+                      key={p.occurrenceKey || p._id}
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        i === pageIndex
+                          ? "bg-emerald"
+                          : completedIds.has(p._id)
+                            ? "bg-emerald/40"
+                            : "bg-brand-border"
+                      }`}
+                    />
+                  ))}
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-brand-muted">
+                Lesson {currentIndex + 1} of {allLessons.length} &middot; {OPTION_LABEL[currentLesson.option] || currentLesson.option}
+              </p>
+            )}
           </div>
           <Badge tone={progressPercent === 100 ? "success" : "info"} size="sm">{progressPercent}%</Badge>
         </div>
@@ -424,7 +531,7 @@ export default function StaffLessonView() {
 
       <Card padded>
         <div className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-3">
-          Lessons
+          Course contents
         </div>
 
         <div className="space-y-4">
@@ -464,7 +571,9 @@ export default function StaffLessonView() {
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
         >
-          <ThemeScope theme={currentLesson.theme}>
+          {/* The org-wide lesson palette, scoped to this container so it never
+              reaches the surrounding app chrome. */}
+          <ThemeScope theme={lessonTheme}>
             <Card padded className="!p-6">
               <div className="space-y-4">
                 {(currentLesson.blocks || []).map((block) => (
@@ -485,7 +594,9 @@ export default function StaffLessonView() {
                   variant="ghost"
                   disabled={!prevLesson}
                   leadingIcon={<i className="fa-solid fa-arrow-left text-xs" />}
-                  onClick={() => prevLesson && navigate(`/dashboard/staff/course/${courseId}/lesson/${prevLesson._id}`)}
+                  onClick={() =>
+                    prevLesson && navigate(lessonHref(courseId, prevLesson._id, currentGuide?._id))
+                  }
                 >
                   Previous
                 </Button>
@@ -493,7 +604,7 @@ export default function StaffLessonView() {
                 {isQuiz ? (
                   quizResult?.passed || alreadyPassed ? (
                     <Button variant="primary" trailingIcon={<i className="fa-solid fa-arrow-right text-xs" />} onClick={goNext}>
-                      {nextLesson ? "Next Lesson" : "Finish"}
+                      {advanceLabel}
                     </Button>
                   ) : (
                     <Button variant="primary" loading={completing} trailingIcon={<i className="fa-solid fa-paper-plane text-xs" />} onClick={handleQuizSubmit}>
@@ -502,7 +613,7 @@ export default function StaffLessonView() {
                   )
                 ) : (
                   <Button variant="primary" loading={completing} trailingIcon={<i className="fa-solid fa-check text-xs" />} onClick={handleComplete}>
-                    {nextLesson ? "Complete & Next" : "Complete Lesson"}
+                    {completeLabel}
                   </Button>
                 )}
               </div>

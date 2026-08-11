@@ -1,5 +1,21 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import api from "../../api/api";
 import toastr from "toastr";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -10,20 +26,186 @@ import LessonPickerModal from "../../components/dashboard/LessonPickerModal";
 
 const OPTION_META = {
   resource: { label: "Resource", icon: "fa-file-lines", tone: "bg-blue-100 text-blue-600" },
-  guide: { label: "Guide", icon: "fa-book-open", tone: "bg-violet-100 text-violet-600" },
+  // Label deliberately NOT "Guide": that word now means the container.
+  guide: { label: "Material + Q", icon: "fa-book-open", tone: "bg-violet-100 text-violet-600" },
   quiz: { label: "Quiz", icon: "fa-clipboard-question", tone: "bg-amber-100 text-amber-600" },
 };
 
 // Kept separate from OPTION_META on purpose: that map is keyed by lesson.option,
-// so folding "path" into it would invite a wrong-key lookup rendering a blank badge.
-const PATH_META = {
-  label: "Path",
+// so folding the container type into it would invite a wrong-key lookup
+// rendering a blank badge. (`kind: "path"` is the API's wording; the UI calls
+// the same thing a Guide — a topic made of ordered pages.)
+const GUIDE_META = {
+  label: "Guide",
   icon: "fa-folder-tree",
   tone: "bg-emerald/10 text-emerald",
 };
 
+const actionBtn =
+  "flex items-center justify-center w-7 h-7 rounded-md border border-brand-border text-brand-muted hover:bg-emerald/10 hover:text-emerald hover:border-emerald transition-colors";
+
+/**
+ * One curriculum row — a lesson/page, or a guide container.
+ *
+ * `dragHandle` is rendered only inside a guide, where the order is the path's
+ * array position and therefore reorderable. At course level the order is a
+ * shared 1..n number space across two collections, resequenced server-side,
+ * so rows there stay static and show their number instead.
+ */
+function CurriculumRow({
+  item,
+  pathId,
+  onOpenGuide,
+  onEdit,
+  onDelete,
+  onToggleRequired,
+  dragHandle = null,
+  style,
+  innerRef,
+  extraClass = "",
+}) {
+  const isGuide = item.kind === "path";
+  const meta = isGuide ? GUIDE_META : OPTION_META[item.option] || OPTION_META.resource;
+  const inGuide = Boolean(pathId);
+
+  return (
+    <div
+      ref={innerRef}
+      style={style}
+      role={isGuide ? "button" : undefined}
+      tabIndex={isGuide ? 0 : undefined}
+      className={`flex items-center gap-4 px-4 py-3 transition-colors ${
+        isGuide ? "hover:bg-emerald/5 cursor-pointer" : "hover:bg-canvas"
+      } ${extraClass}`}
+      onClick={isGuide ? () => onOpenGuide(item) : undefined}
+      onKeyDown={
+        isGuide
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpenGuide(item);
+              }
+            }
+          : undefined
+      }
+    >
+      {dragHandle}
+
+      {/* Guide-referenced lessons carry no `order` — a guide's ordering is its
+          array position, not a number. */}
+      {item.order != null && (
+        <span className="w-7 h-7 flex items-center justify-center rounded-md bg-canvas border border-brand-border text-xs font-bold text-brand-muted flex-shrink-0">
+          {item.order}
+        </span>
+      )}
+      <span
+        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${meta.tone}`}
+      >
+        <i className={`fa-solid ${meta.icon} text-[10px]`}></i>
+        {meta.label}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-brand-text truncate">
+          {item.title}
+          {item.isForeign && item.homeCourse && (
+            <span className="ml-2 text-[10px] font-normal text-brand-muted">
+              from {item.homeCourse.title}
+            </span>
+          )}
+        </p>
+        <p className="text-[11px] text-brand-muted">
+          {isGuide ? (
+            <>
+              {item.lessonCount} page{item.lessonCount === 1 ? "" : "s"}
+              {item.sequentialUnlock ? " · Unlocks in order" : ""}
+            </>
+          ) : (
+            <>
+              {item.blockCount ?? item.blocks?.length ?? 0} fields
+              {item.required === false ? " · Optional" : ""}
+            </>
+          )}
+        </p>
+      </div>
+
+      <div
+        className="flex items-center gap-2 flex-shrink-0"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        role="presentation"
+      >
+        {!isGuide && (
+          <button
+            type="button"
+            className={actionBtn}
+            onClick={() => onToggleRequired(item)}
+            title={
+              item.required === false
+                ? "Optional — click to make required"
+                : "Required — click to make optional"
+            }
+          >
+            <i
+              className={`fa-solid ${
+                item.required === false ? "fa-circle-half-stroke" : "fa-asterisk"
+              } text-xs`}
+            ></i>
+          </button>
+        )}
+        <button
+          type="button"
+          className={actionBtn}
+          onClick={() => onEdit(item)}
+          title={isGuide ? "Edit guide" : inGuide ? "Edit page" : "Edit lesson"}
+        >
+          <i className="fa fa-edit text-xs"></i>
+        </button>
+        <button
+          type="button"
+          className={`${actionBtn} hover:bg-brand-danger/10 hover:text-brand-danger hover:border-brand-danger`}
+          onClick={() => onDelete(item)}
+          title={isGuide ? "Delete guide" : inGuide ? "Remove from guide" : "Delete lesson"}
+        >
+          <i className={`fa ${inGuide && !isGuide ? "fa-circle-minus" : "fa-trash"} text-xs`}></i>
+        </button>
+        {isGuide && (
+          <i className="fa-solid fa-chevron-right text-[10px] text-brand-muted ml-1"></i>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Draggable variant, used only inside a guide. */
+function SortableCurriculumRow(props) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.item._id,
+  });
+
+  return (
+    <CurriculumRow
+      {...props}
+      innerRef={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      extraClass={isDragging ? "opacity-60 bg-canvas relative z-10" : ""}
+      dragHandle={
+        <button
+          type="button"
+          className="flex items-center justify-center w-6 h-7 -ml-1 text-brand-muted hover:text-brand-text cursor-grab active:cursor-grabbing flex-shrink-0"
+          title="Drag to reorder"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <i className="fa-solid fa-grip-vertical text-xs"></i>
+        </button>
+      }
+    />
+  );
+}
+
 export default function CourseLessons() {
-  // pathId present = we're inside a path, showing the lessons IT REFERENCES
+  // pathId present = we're inside a guide, showing the pages IT REFERENCES
   // (which may be homed in any course) rather than the course's own lessons.
   const { courseId, pathId } = useParams();
   const navigate = useNavigate();
@@ -35,6 +217,11 @@ export default function CourseLessons() {
   const [pathModalOpen, setPathModalOpen] = useState(false);
   const [editingPath, setEditingPath] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const loadCurriculum = async () => {
     try {
@@ -73,28 +260,55 @@ export default function CourseLessons() {
     loadCurriculum();
   }, [courseId, pathId]);
 
+  /**
+   * Reorder pages within a guide. The endpoint wants the FULL ordered list, so
+   * we apply the move locally first (instant feedback) and re-fetch on failure
+   * rather than leaving the UI showing an order the server rejected.
+   */
+  const handleDragEnd = async ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = items.findIndex((i) => i._id === active.id);
+    const newIndex = items.findIndex((i) => i._id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const previous = items;
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    setItems(reordered);
+
+    try {
+      await api.patch(`/courses/${courseId}/paths/${pathId}/lessons/reorder`, {
+        lessonIds: reordered.map((i) => i._id),
+      });
+    } catch (err) {
+      setItems(previous);
+      toastr.error(err.response?.data?.error || "Could not save the new order");
+      loadCurriculum();
+    }
+  };
+
   const removeFromPath = async (item) => {
-    if (!window.confirm(`Remove "${item.title}" from this path? The lesson stays in its course.`)) {
+    if (!window.confirm(`Remove "${item.title}" from this guide? The lesson stays in its course.`)) {
       return;
     }
     try {
       await api.delete(`/courses/${courseId}/paths/${pathId}/lessons/${item._id}`);
-      toastr.success("Removed from path");
+      toastr.success("Removed from guide");
       loadCurriculum();
     } catch (err) {
-      toastr.error(err.response?.data?.error || "Failed to remove lesson");
+      toastr.error(err.response?.data?.error || "Failed to remove page");
     }
   };
 
   const deletePath = async (item) => {
     const msg =
       item.lessonCount > 0
-        ? `Remove this path and its ${item.lessonCount} lesson reference${item.lessonCount === 1 ? "" : "s"}? The lessons stay in their courses.`
-        : `Delete the empty path "${item.title}"?`;
+        ? `Delete the guide "${item.title}" and its ${item.lessonCount} page reference${item.lessonCount === 1 ? "" : "s"}? The lessons themselves stay in their courses.`
+        : `Delete the empty guide "${item.title}"?`;
     if (!window.confirm(msg)) return;
     try {
       await api.delete(`/courses/${courseId}/paths/${item._id}`);
-      toastr.success("Path deleted");
+      toastr.success("Guide deleted");
       loadCurriculum();
     } catch (err) {
       toastr.error(err.response?.data?.error || "Delete failed");
@@ -102,8 +316,8 @@ export default function CourseLessons() {
   };
 
   // Deleting the lesson itself (not just a reference) is only ever offered at
-  // its home course — doing it from inside a path would destroy another
-  // course's content. A path referencing it that gets 409'd is asked to
+  // its home course — doing it from inside a guide would destroy another
+  // course's content. A guide referencing it that gets 409'd is asked to
   // confirm and retry with ?force=true, which prunes the reference instead.
   const deleteLesson = async (item) => {
     if (!window.confirm("Delete this lesson?")) return;
@@ -135,6 +349,18 @@ export default function CourseLessons() {
     return deleteLesson(item);
   };
 
+  const handleEdit = (item) => {
+    if (item.kind === "path") {
+      setEditingPath(item);
+      setPathModalOpen(true);
+      return;
+    }
+    // Edit is always flat/home-course-scoped — a lesson referenced from another
+    // course edits in its own home.
+    const editCourseId = pathId ? item.homeCourse?._id || courseId : courseId;
+    navigate(`/dashboard/courses/${editCourseId}/lessons/${item._id}/edit`);
+  };
+
   const toggleRequired = async (lesson) => {
     try {
       if (pathId) {
@@ -152,7 +378,7 @@ export default function CourseLessons() {
     }
   };
 
-  const openPath = (item) =>
+  const openGuide = (item) =>
     navigate(`/dashboard/courses/${courseId}/paths/${item._id}/lessons`);
 
   const newLessonPath = pathId
@@ -163,17 +389,22 @@ export default function CourseLessons() {
     ? `/dashboard/courses/${courseId}/lessons`
     : "/dashboard/courses";
 
-  const actionBtn =
-    "flex items-center justify-center w-7 h-7 rounded-md border border-brand-border text-brand-muted hover:bg-emerald/10 hover:text-emerald hover:border-emerald transition-colors";
+  const rowProps = {
+    pathId,
+    onOpenGuide: openGuide,
+    onEdit: handleEdit,
+    onDelete: handleDelete,
+    onToggleRequired: toggleRequired,
+  };
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title={pathId ? pathMeta?.title || "Path" : "Lessons"}
+        title={pathId ? pathMeta?.title || "Guide" : "Lessons"}
         subtitle={
           pathId
-            ? "Lessons this path references — add existing ones or create new"
-            : "A course is a folder of lessons and paths — add and order them here"
+            ? "Pages in this guide, in order — drag to rearrange"
+            : "A course is a folder of lessons and guides — add and order them here"
         }
       >
         {pathId ? (
@@ -192,7 +423,7 @@ export default function CourseLessons() {
               leadingIcon={<i className="fa-solid fa-plus text-xs" />}
               onClick={() => navigate(newLessonPath)}
             >
-              Create new lesson
+              Create new page
             </Button>
           </>
         ) : (
@@ -205,7 +436,7 @@ export default function CourseLessons() {
             >
               Add Lesson
             </Button>
-            {/* No nested paths in v1 — only offered at course level. */}
+            {/* No nested guides in v1 — only offered at course level. */}
             <Button
               variant="secondary"
               size="sm"
@@ -215,7 +446,7 @@ export default function CourseLessons() {
                 setPathModalOpen(true);
               }}
             >
-              Add Path
+              Add Guide
             </Button>
           </>
         )}
@@ -252,128 +483,32 @@ export default function CourseLessons() {
           <i className="fa-solid fa-folder-open text-brand-muted text-3xl mb-3 block"></i>
           <p className="text-brand-muted text-sm">
             {pathId
-              ? "No lessons in this path yet. Add existing ones or create a new one."
-              : "Nothing here yet. Add a lesson, or a path to group lessons together."}
+              ? "No pages in this guide yet. Add existing lessons or create a new page."
+              : "Nothing here yet. Add a lesson, or a guide to group several pages under one topic."}
           </p>
         </div>
       ) : (
         <div className="bg-surface border border-brand-border rounded-xl divide-y divide-brand-border">
-          {items.map((item) => {
-            const isPath = item.kind === "path";
-            const meta = isPath
-              ? PATH_META
-              : OPTION_META[item.option] || OPTION_META.resource;
-
-            return (
-              <div
-                key={item._id}
-                role={isPath ? "button" : undefined}
-                tabIndex={isPath ? 0 : undefined}
-                className={`flex items-center gap-4 px-4 py-3 transition-colors ${
-                  isPath ? "hover:bg-emerald/5 cursor-pointer" : "hover:bg-canvas"
-                }`}
-                onClick={isPath ? () => openPath(item) : undefined}
-                onKeyDown={
-                  isPath
-                    ? (e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          openPath(item);
-                        }
-                      }
-                    : undefined
-                }
+          {pathId ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={items.map((i) => i._id)}
+                strategy={verticalListSortingStrategy}
               >
-                {/* Path-referenced lessons (pathId view) carry no `order` — a
-                    path's ordering is its array position, not a number. */}
-                {item.order != null && (
-                  <span className="w-7 h-7 flex items-center justify-center rounded-md bg-canvas border border-brand-border text-xs font-bold text-brand-muted flex-shrink-0">
-                    {item.order}
-                  </span>
-                )}
-                <span
-                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${meta.tone}`}
-                >
-                  <i className={`fa-solid ${meta.icon} text-[10px]`}></i>
-                  {meta.label}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-brand-text truncate">
-                    {item.title}
-                    {item.isForeign && item.homeCourse && (
-                      <span className="ml-2 text-[10px] font-normal text-brand-muted">
-                        from {item.homeCourse.title}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-[11px] text-brand-muted">
-                    {isPath ? (
-                      <>
-                        {item.lessonCount} lesson{item.lessonCount === 1 ? "" : "s"}
-                        {item.sequentialUnlock ? " · Unlocks in order" : ""}
-                      </>
-                    ) : (
-                      <>
-                        {item.blockCount ?? item.blocks?.length ?? 0} fields
-                        {item.theme?.name ? ` · Theme: ${item.theme.name}` : ""}
-                        {item.required === false ? " · Optional" : ""}
-                      </>
-                    )}
-                  </p>
-                </div>
-
-                <div
-                  className="flex items-center gap-2 flex-shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {!isPath && (
-                    <button
-                      className={actionBtn}
-                      onClick={() => toggleRequired(item)}
-                      title={
-                        item.required === false
-                          ? "Optional — click to make required"
-                          : "Required — click to make optional"
-                      }
-                    >
-                      <i
-                        className={`fa-solid ${
-                          item.required === false ? "fa-circle-half-stroke" : "fa-asterisk"
-                        } text-xs`}
-                      ></i>
-                    </button>
-                  )}
-                  <button
-                    className={actionBtn}
-                    onClick={() => {
-                      if (isPath) {
-                        setEditingPath(item);
-                        setPathModalOpen(true);
-                        return;
-                      }
-                      // Edit is always flat/home-course-scoped — a lesson
-                      // referenced from another course edits in its own home.
-                      const editCourseId = pathId ? item.homeCourse?._id || courseId : courseId;
-                      navigate(`/dashboard/courses/${editCourseId}/lessons/${item._id}/edit`);
-                    }}
-                    title={isPath ? "Edit path" : "Edit lesson"}
-                  >
-                    <i className="fa fa-edit text-xs"></i>
-                  </button>
-                  <button
-                    className={`${actionBtn} hover:bg-brand-danger/10 hover:text-brand-danger hover:border-brand-danger`}
-                    onClick={() => handleDelete(item)}
-                    title={isPath ? "Delete path" : pathId ? "Remove from path" : "Delete lesson"}
-                  >
-                    <i className={`fa ${pathId && !isPath ? "fa-circle-minus" : "fa-trash"} text-xs`}></i>
-                  </button>
-                  {isPath && (
-                    <i className="fa-solid fa-chevron-right text-[10px] text-brand-muted ml-1"></i>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                {items.map((item) => (
+                  <SortableCurriculumRow key={item._id} item={item} {...rowProps} />
+                ))}
+              </SortableContext>
+            </DndContext>
+          ) : (
+            items.map((item) => (
+              <CurriculumRow key={item._id} item={item} {...rowProps} />
+            ))
+          )}
         </div>
       )}
 

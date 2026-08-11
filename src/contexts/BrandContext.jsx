@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef } from "react";
 import api from "../api/api";
 
 const STORAGE_KEY = "lms-brand";
+const LESSON_THEME_KEY = "lms-lesson-theme";
 
 export const DEFAULTS = {
   primary: "#10B981",
@@ -157,6 +158,22 @@ export function BrandProvider({ children }) {
     }
   });
 
+  /**
+   * The ONE palette lesson content renders in (Settings → Lesson Theme).
+   * Never applied to :root — only handed to `ThemeScope` around lesson
+   * content — so it can differ from the site brand without leaking into the
+   * app chrome. `null` means "not configured yet"; callers fall back to the
+   * brand palette so a fresh org still looks right.
+   */
+  const [lessonTheme, setLessonThemeState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LESSON_THEME_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   // Apply CSS vars whenever brand changes
   useEffect(() => { applyToRoot(brand); }, [brand]);
 
@@ -170,6 +187,11 @@ export function BrandProvider({ children }) {
         if (bs?.primary) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(bs));
           setBrandState(bs);
+        }
+        const lt = res.data?.organization?.lessonTheme;
+        if (lt?.primary) {
+          localStorage.setItem(LESSON_THEME_KEY, JSON.stringify(lt));
+          setLessonThemeState(lt);
         }
       })
       .catch(() => {
@@ -201,8 +223,38 @@ export function BrandProvider({ children }) {
     await api.patch("/organization/brand", DEFAULTS);
   };
 
+  /**
+   * Saves the org-wide lesson palette. `dark`/`light` are derived from primary
+   * exactly as the brand palette is, so the two stay visually consistent.
+   */
+  const setLessonTheme = async (primaryHex, extras = {}) => {
+    const palette = {
+      ...derivePalette(primaryHex),
+      icon: extras.icon || primaryHex,
+      text: extras.text || lessonTheme?.text || DEFAULTS.text,
+    };
+    localStorage.setItem(LESSON_THEME_KEY, JSON.stringify(palette));
+    setLessonThemeState(palette);
+    await api.patch("/organization/lesson-theme", palette);
+  };
+
+  // Lessons render in the configured palette, or the site brand until one is set.
+  const effectiveLessonTheme = lessonTheme?.primary ? lessonTheme : brand;
+
   return (
-    <BrandContext.Provider value={{ brand, setBrand, resetBrand, DEFAULTS }}>
+    <BrandContext.Provider
+      value={{
+        brand,
+        setBrand,
+        resetBrand,
+        lessonTheme: effectiveLessonTheme,
+        // null until the org has explicitly saved one — lets Settings show
+        // "inheriting the brand colour" rather than a misleading saved value.
+        lessonThemeConfigured: Boolean(lessonTheme?.primary),
+        setLessonTheme,
+        DEFAULTS,
+      }}
+    >
       {children}
     </BrandContext.Provider>
   );

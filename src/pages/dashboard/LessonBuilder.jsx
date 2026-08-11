@@ -14,7 +14,7 @@ import "react-quill/dist/quill.snow.css";
 import "../../components/lesson/lessonContent.css";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
-import { ThemeScope } from "../../contexts/BrandContext";
+import { ThemeScope, useBrand } from "../../contexts/BrandContext";
 import FilePreview, { allowsDownload } from "../../components/lesson/FilePreview";
 import VideoEmbed from "../../components/lesson/VideoEmbed";
 import NumberScale from "../../components/lesson/NumberScale";
@@ -61,7 +61,7 @@ const GRADABLE = ["mcq", "matching"];
 
 const TYPE_OPTIONS = [
   { value: "resource", label: "Resource", desc: "Content only — reading or watching material to review.", icon: "fa-book-open" },
-  { value: "guide", label: "Guide", desc: "Content plus knowledge checks mixed together.", icon: "fa-chalkboard-user" },
+  { value: "guide", label: "Material + Questions", desc: "Content plus knowledge checks mixed together.", icon: "fa-chalkboard-user" },
   { value: "quiz", label: "Quiz", desc: "Knowledge checks only — scored with a pass mark.", icon: "fa-clipboard-question" },
 ];
 
@@ -134,95 +134,6 @@ function StepIndicator({ current }) {
 // branded poster, so the builder preview matches what the learner sees.
 function YouTubePreview({ url, height = 220 }) {
   return <VideoEmbed url={url} height={height} title="Video preview" />;
-}
-
-// Lesson appearance selector. Visual rebuild per the client reference — a "Guide Primary"
-// readout, Navigation/Content tabs, and a vertical list of full-width theme rows. The data
-// model is unchanged: rows are the org's themes and selecting one saves the per-lesson
-// `themeId`. "Default" clears the theme. (Navigation vs Content is presentational; both map
-// to the single per-lesson palette the model supports.)
-function ThemeSelector({ themes, themeId, setThemeId }) {
-  const [tab, setTab] = useState("navigation");
-  const selected = themes.find((t) => t._id === themeId) || null;
-  const primary = selected?.primary || "#10B981";
-  const rows = [{ _id: "", name: "Default", primary: "#6B7280" }, ...themes];
-  // Read-only readout of the full palette — editing lives in Settings → Lesson Themes.
-  const swatches = [
-    { label: "Primary", hex: primary },
-    { label: "Icon", hex: selected?.icon || primary },
-    { label: "Text", hex: selected?.text || "#111827" },
-  ];
-
-  return (
-    <div className="bg-surface border border-brand-border rounded-xl p-5 space-y-4">
-      {/* Guide palette */}
-      <div className="flex items-end gap-4 flex-wrap">
-        {swatches.map((s) => (
-          <div key={s.label}>
-            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">{s.label}</label>
-            <div className="flex items-center gap-2">
-              <span
-                className="w-9 h-9 rounded-lg border border-brand-border flex-shrink-0"
-                style={{ backgroundColor: s.hex }}
-              />
-              <input
-                readOnly
-                value={s.hex.toUpperCase()}
-                className="w-24 px-2.5 py-2 border border-brand-border rounded-lg text-xs font-mono text-brand-text bg-canvas"
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Navigation / Content tabs */}
-      <div>
-        <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-fit">
-          {[
-            { v: "navigation", label: "Navigation Theme" },
-            { v: "content", label: "Content Theme" },
-          ].map((t) => (
-            <button
-              key={t.v}
-              type="button"
-              onClick={() => setTab(t.v)}
-              className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${tab === t.v ? "bg-surface text-brand-text shadow-soft" : "text-brand-muted hover:text-brand-text"}`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-brand-muted mt-2">
-          {tab === "navigation"
-            ? "Applies to the left-side navigation panel."
-            : "Applies to the lesson content area."}
-        </p>
-      </div>
-
-      {/* Theme rows */}
-      <div className="space-y-2">
-        {rows.map((t) => {
-          const active = (themeId || "") === (t._id || "");
-          return (
-            <button
-              key={t._id || "default"}
-              type="button"
-              onClick={() => setThemeId(t._id)}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm font-bold uppercase tracking-wide transition-all"
-              style={
-                active
-                  ? { backgroundColor: "#1F2937", color: "#fff", borderColor: "#1F2937" }
-                  : { backgroundColor: t.primary, color: "#fff", borderColor: "transparent" }
-              }
-            >
-              <span className="truncate">{t.name}</span>
-              {active && <i className="fa-solid fa-check flex-shrink-0" />}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 /* ── Interactive preview-tab field components (real state, so the preview responds) ── */
@@ -448,6 +359,7 @@ export default function LessonBuilder() {
   const { courseId, pathId, lessonId } = useParams();
   const navigate = useNavigate();
   const editing = Boolean(lessonId);
+  const { lessonTheme } = useBrand();
   const backTo = pathId
     ? `/dashboard/courses/${courseId}/paths/${pathId}/lessons`
     : `/dashboard/courses/${courseId}/lessons`;
@@ -456,10 +368,8 @@ export default function LessonBuilder() {
   const [view, setView] = useState("edit"); // edit | preview
   const [title, setTitle] = useState("");
   const [option, setOption] = useState("guide");
-  const [themeId, setThemeId] = useState("");
   const [passPercent, setPassPercent] = useState(70);
   const [maxAttempts, setMaxAttempts] = useState(3);
-  const [themes, setThemes] = useState([]);
   const [blocks, setBlocks] = useState([]); // [{uid, kind, category, config, answerKey}]
   const [activeDrag, setActiveDrag] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -481,10 +391,6 @@ export default function LessonBuilder() {
   );
 
   useEffect(() => {
-    api.get("/themes").then((res) => setThemes(res.data.themes || [])).catch(() => {});
-  }, []);
-
-  useEffect(() => {
     if (!editing) return;
     const load = async () => {
       try {
@@ -492,7 +398,6 @@ export default function LessonBuilder() {
         const l = res.data.lesson;
         setTitle(l.title || "");
         setOption(l.option || "guide");
-        setThemeId(l.theme?._id || l.theme || "");
         setPassPercent(l.passPercent ?? 70);
         setMaxAttempts(l.maxAttempts ?? 3);
         setBlocks(
@@ -514,8 +419,6 @@ export default function LessonBuilder() {
     };
     load();
   }, [editing, courseId, lessonId]);
-
-  const selectedTheme = themes.find((t) => t._id === themeId) || null;
 
   const setUploading = (uid, on) =>
     setUploadingUids((prev) => {
@@ -752,7 +655,6 @@ export default function LessonBuilder() {
     const payload = {
       title: title.trim(),
       option,
-      themeId: themeId || null,
       ...(option === "quiz" ? { passPercent: Number(passPercent), maxAttempts: Number(maxAttempts) } : {}),
       blocks: blocks.map((b, i) => ({
         kind: b.kind,
@@ -1191,7 +1093,7 @@ export default function LessonBuilder() {
       {/* ── STEP 2 — Build ── */}
       {step === 2 && (
         <>
-          {/* Lesson meta — title as heading (inline edit) + theme; no type dropdown */}
+          {/* Lesson meta — title as heading (inline edit); no type dropdown */}
           <div className="bg-surface border border-brand-border rounded-xl p-5">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="min-w-0 flex-1">
@@ -1243,9 +1145,6 @@ export default function LessonBuilder() {
             </div>
           </div>
 
-          {/* Lesson appearance */}
-          <ThemeSelector themes={themes} themeId={themeId} setThemeId={setThemeId} />
-
           {/* Save / validation banner */}
           {formError && (
             <div className="flex items-start gap-2 rounded-lg border border-brand-danger/40 bg-brand-danger/5 px-4 py-3 text-sm text-brand-danger">
@@ -1277,8 +1176,10 @@ export default function LessonBuilder() {
             ))}
           </div>
 
+          {/* Preview renders in the org-wide lesson palette, the same one a
+              learner gets — the two can no longer disagree. */}
           {view === "preview" ? (
-            <ThemeScope theme={selectedTheme}>
+            <ThemeScope theme={lessonTheme}>
               <div className="bg-surface border border-brand-border rounded-xl p-6 space-y-4">
                 {blocks.length === 0 ? (
                   <p className="text-sm text-brand-muted text-center py-8">Add fields to preview</p>

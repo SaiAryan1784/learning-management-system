@@ -8,18 +8,27 @@ import { Button } from "../../components/ui/Button";
 import { SectionLoader } from "../../components/ui/Spinner";
 import { getCourseColor } from "../../utils/courseColor";
 import { useAuth } from "../../auth/AuthContext";
+import CoursePathFormModal from "../../components/dashboard/CoursePathFormModal";
 
 export default function OSCourses() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const [courses, setCourses] = useState([]);
+  const [paths, setPaths] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pathModalOpen, setPathModalOpen] = useState(false);
 
   const loadCourses = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/courses", { params: { status: "published", t: Date.now() } });
-      setCourses(res.data.courses || []);
+      // Paths are org-level and courses are published-only; one screen, two
+      // independent lists, so a failure in either must not blank the other.
+      const [courseRes, pathRes] = await Promise.all([
+        api.get("/courses", { params: { status: "published", t: Date.now() } }),
+        api.get("/paths").catch(() => ({ data: { paths: [] } })),
+      ]);
+      setCourses(courseRes.data.courses || []);
+      setPaths(pathRes.data.paths || []);
     } catch {
       toastr.error("Error loading courses");
     } finally {
@@ -30,6 +39,23 @@ export default function OSCourses() {
   useEffect(() => {
     loadCourses();
   }, []);
+
+  const handleDeletePath = async (path) => {
+    if (
+      !window.confirm(
+        `Delete the path "${path.title}"? The ${path.courseCount} course${path.courseCount === 1 ? "" : "s"} inside are NOT deleted, but anyone enrolled through this path loses those assignments.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await api.delete(`/paths/${path._id}`);
+      toastr.success("Path deleted");
+      loadCourses();
+    } catch (err) {
+      toastr.error(err.response?.data?.error || "Delete failed");
+    }
+  };
 
   const handleDelete = async (course) => {
     if (!window.confirm(`Delete "${course.title}"? This cannot be undone.`)) return;
@@ -53,6 +79,14 @@ export default function OSCourses() {
           Drafts
         </Link>
         <Button
+          variant="secondary"
+          size="sm"
+          leadingIcon={<i className="fa-solid fa-folder-plus text-xs" />}
+          onClick={() => setPathModalOpen(true)}
+        >
+          New Path
+        </Button>
+        <Button
           variant="primary"
           size="sm"
           leadingIcon={<i className="fa-solid fa-plus text-xs" />}
@@ -61,6 +95,75 @@ export default function OSCourses() {
           New Course
         </Button>
       </PageHeader>
+
+      {/* Paths — ordered groups of courses, assignable as one unit. Shown above
+          the course grid because a path is the bigger container. */}
+      {!loading && paths.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide">
+            Paths
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {paths.map((path) => (
+              <motion.div
+                key={path._id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className="bg-surface border border-emerald/30 rounded-xl overflow-hidden hover:shadow-elevated transition-shadow duration-200"
+              >
+                <div className="p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald/10 flex-shrink-0">
+                      <i className="fa-solid fa-folder-tree text-icon"></i>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-brand-text leading-snug line-clamp-2">
+                        {path.title}
+                      </p>
+                      <p className="text-[11px] text-brand-muted mt-1">
+                        {path.courseCount} course{path.courseCount === 1 ? "" : "s"}
+                        {path.enrolledCount > 0 ? ` · ${path.enrolledCount} enrolled` : ""}
+                        {path.status === "published" ? "" : " · Draft"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-brand-border">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leadingIcon={<i className="fa-solid fa-folder-open text-[10px]" />}
+                      onClick={() => navigate(`/dashboard/paths/${path._id}/courses`)}
+                    >
+                      Courses
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      leadingIcon={<i className="fa-solid fa-user-plus text-[10px]" />}
+                      onClick={() => navigate(`/dashboard/paths/${path._id}/assign`)}
+                    >
+                      Assign
+                    </Button>
+                    {hasPermission("courses:delete") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-400 hover:text-red-300"
+                        leadingIcon={<i className="fa-solid fa-trash text-[10px]" />}
+                        onClick={() => handleDeletePath(path)}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <SectionLoader />
@@ -144,6 +247,12 @@ export default function OSCourses() {
           })}
         </div>
       )}
+
+      <CoursePathFormModal
+        isOpen={pathModalOpen}
+        onClose={() => setPathModalOpen(false)}
+        onSaved={loadCourses}
+      />
     </div>
   );
 }

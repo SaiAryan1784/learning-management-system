@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { useBrand, derivePalette } from "../../contexts/BrandContext";
+import { useBrand, derivePalette, ThemeScope } from "../../contexts/BrandContext";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
-import api from "../../api/api";
 import toastr from "toastr";
 
 /** Swatch + hex text input pair. Only pushes valid 6-digit hex upward. */
@@ -32,178 +31,175 @@ function ColorField({ label, value, onChange, hint }) {
   );
 }
 
-const BLANK_THEME = { id: null, name: "", primary: "#10B981", icon: "#10B981", text: "#111827" };
-
-function ThemesManager() {
-  const [themes, setThemes] = useState([]);
-  const [form, setForm] = useState(BLANK_THEME);
-  // Until the admin touches Icon, it tracks Primary — the common case stays one pick.
-  const [iconTouched, setIconTouched] = useState(false);
+/**
+ * The organization's ONE lesson palette.
+ *
+ * Replaces the old named-theme library + per-lesson picker: there is a single
+ * palette, it lives here, and every lesson renders in it. The right-hand panel
+ * is a real `ThemeScope` around real lesson chrome, so what an admin sees here
+ * is exactly what a learner gets — the same reason the brand panel above has a
+ * live preview rather than bare swatches.
+ */
+function LessonThemePanel() {
+  const { lessonTheme, lessonThemeConfigured, setLessonTheme, DEFAULTS } = useBrand();
+  const [primary, setPrimary] = useState(lessonTheme.primary);
+  const [iconColor, setIconColor] = useState(lessonTheme.icon || lessonTheme.primary);
+  const [textColor, setTextColor] = useState(lessonTheme.text || DEFAULTS.text);
+  // Icon tracks Primary until an admin picks one explicitly — same rule the
+  // brand panel uses, so the common case stays a single decision.
+  const [iconTouched, setIconTouched] = useState(
+    Boolean(lessonTheme.icon && lessonTheme.icon !== lessonTheme.primary),
+  );
   const [saving, setSaving] = useState(false);
-  const editing = Boolean(form.id);
 
-  const load = async () => {
-    try {
-      const res = await api.get("/themes");
-      setThemes(res.data.themes || []);
-    } catch {
-      /* ignore */
-    }
+  // The palette the preview renders in — derived from the in-progress picks,
+  // not from what's saved, so the preview reacts as colours are chosen.
+  const draft = { ...derivePalette(primary), icon: iconColor, text: textColor };
+
+  const applyPrimary = (hex) => {
+    setPrimary(hex);
+    if (!iconTouched) setIconColor(hex);
   };
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  const reset = () => {
-    setForm(BLANK_THEME);
-    setIconTouched(false);
-  };
-
-  const setPrimary = (hex) =>
-    setForm((f) => ({ ...f, primary: hex, ...(iconTouched ? {} : { icon: hex }) }));
-
-  const startEdit = (t) => {
-    setForm({
-      id: t._id,
-      name: t.name,
-      primary: t.primary,
-      icon: t.icon || t.primary,
-      text: t.text || "#111827",
-    });
-    // An existing theme's icon is whatever was saved — never re-derive it from primary.
-    setIconTouched(true);
-  };
-
-  const save = async () => {
-    if (!form.name.trim()) return toastr.error("Theme name is required");
-    for (const [field, hex] of [["primary", form.primary], ["icon", form.icon], ["text", form.text]]) {
+  const handleSave = async () => {
+    for (const [field, hex] of [["primary", primary], ["icon", iconColor], ["text", textColor]]) {
       if (!isValidHex(hex)) return toastr.error(`Enter a valid hex color for ${field}`);
     }
     try {
       setSaving(true);
-      // dark + light stay derived from primary; icon and text are picked explicitly.
-      const payload = {
-        name: form.name.trim(),
-        ...derivePalette(form.primary),
-        icon: form.icon,
-        text: form.text,
-      };
-      if (editing) {
-        await api.put(`/themes/${form.id}`, payload);
-        toastr.success("Theme updated");
-      } else {
-        await api.post("/themes", payload);
-        toastr.success("Theme created");
-      }
-      reset();
-      load();
+      await setLessonTheme(primary, { icon: iconColor, text: textColor });
+      toastr.success("Lesson theme saved — all lessons updated");
     } catch (err) {
-      toastr.error(err.response?.data?.message || "Failed to save theme");
+      toastr.error(err.response?.data?.message || "Failed to save lesson theme");
     } finally {
       setSaving(false);
     }
   };
 
-  const remove = async (id) => {
-    if (!window.confirm("Delete this theme? Lessons using it will revert to default.")) return;
-    try {
-      await api.delete(`/themes/${id}`);
-      toastr.success("Theme deleted");
-      if (form.id === id) reset();
-      load();
-    } catch {
-      toastr.error("Delete failed");
-    }
-  };
-
   return (
-    <div className="bg-surface border border-brand-border rounded-xl p-6 space-y-5">
-      <div>
-        <h2 className="text-sm font-semibold text-brand-text uppercase tracking-wide">Lesson Themes</h2>
-        <p className="text-xs text-brand-muted mt-1">
-          Create reusable color palettes. Each lesson can pick a theme — it applies only to that lesson, not the whole site.
-        </p>
-      </div>
-
-      <div className="border border-brand-border rounded-lg p-4 space-y-4 bg-canvas">
-        <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide">
-          {editing ? `Editing “${form.name || "theme"}”` : "New Theme"}
-        </p>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* ── Controls ── */}
+      <div className="bg-surface border border-brand-border rounded-xl p-6 space-y-6">
+        <div>
+          <h2 className="text-sm font-semibold text-brand-text uppercase tracking-wide">
+            Lesson Theme
+          </h2>
+          <p className="text-xs text-brand-muted mt-1">
+            One palette for every lesson in your organization. It applies to lesson content
+            only — the rest of the site keeps the brand colour above.
+            {!lessonThemeConfigured && " Currently inheriting your brand colour."}
+          </p>
+        </div>
 
         <div className="flex items-start gap-4 flex-wrap">
-          <div className="flex-1 min-w-[180px]">
-            <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1">Theme Name</label>
-            <input
-              className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
-              placeholder="e.g. Ocean Blue"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            />
-          </div>
-          <ColorField label="Primary" value={form.primary} onChange={setPrimary} hint="Buttons & accents" />
+          <ColorField label="Primary" value={primary} onChange={applyPrimary} hint="Buttons & accents" />
           <ColorField
             label="Icon"
-            value={form.icon}
-            onChange={(hex) => { setIconTouched(true); setForm((f) => ({ ...f, icon: hex })); }}
+            value={iconColor}
+            onChange={(hex) => { setIconTouched(true); setIconColor(hex); }}
             hint="Icons only"
           />
-          <ColorField
-            label="Text"
-            value={form.text}
-            onChange={(hex) => setForm((f) => ({ ...f, text: hex }))}
-            hint="Body text"
-          />
+          <ColorField label="Text" value={textColor} onChange={setTextColor} hint="Body text" />
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button
-            variant="primary"
-            loading={saving}
-            onClick={save}
-            leadingIcon={<i className={`fa-solid ${editing ? "fa-check" : "fa-plus"} text-xs`} />}
-          >
-            {editing ? "Save Changes" : "Add Theme"}
+        <div>
+          <p className="text-xs text-brand-muted mb-3 uppercase tracking-wide font-semibold">Presets</p>
+          <div className="flex flex-wrap gap-3">
+            {PRESETS.map((p) => (
+              <motion.button
+                key={p.hex}
+                whileHover={{ scale: 1.12 }}
+                whileTap={{ scale: 0.95 }}
+                type="button"
+                title={p.name}
+                onClick={() => applyPrimary(p.hex)}
+                className="relative w-9 h-9 rounded-full border-2 transition-shadow"
+                style={{
+                  backgroundColor: p.hex,
+                  borderColor: primary === p.hex ? p.hex : "transparent",
+                  boxShadow: primary === p.hex ? `0 0 0 3px ${p.hex}40` : "none",
+                }}
+              >
+                {primary === p.hex && (
+                  <i className="fa-solid fa-check text-white text-[10px] absolute inset-0 flex items-center justify-center" style={{ display: "flex" }} />
+                )}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 pt-2 border-t border-brand-border">
+          <Button variant="primary" loading={saving} onClick={handleSave}>
+            Save Lesson Theme
           </Button>
-          {editing && <Button variant="ghost" onClick={reset}>Cancel</Button>}
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setPrimary(DEFAULTS.primary);
+              setIconColor(DEFAULTS.icon);
+              setTextColor(DEFAULTS.text);
+              setIconTouched(false);
+            }}
+          >
+            Reset to Default
+          </Button>
         </div>
       </div>
 
-      {themes.length === 0 ? (
-        <p className="text-xs text-brand-muted">No themes yet.</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {themes.map((t) => (
-            <div
-              key={t._id}
-              className={`flex items-center gap-3 border rounded-lg p-3 ${form.id === t._id ? "border-emerald ring-2 ring-emerald/20" : "border-brand-border"}`}
-            >
-              <button
-                type="button"
-                onClick={() => startEdit(t)}
-                className="flex items-center gap-3 min-w-0 flex-1 text-left"
-                title="Edit this theme"
-              >
-                <div className="flex gap-1 flex-shrink-0">
-                  {[t.primary, t.dark, t.light, t.icon || t.primary, t.text || "#111827"].map((hex, i) => (
-                    <span key={i} className="w-5 h-6 rounded border border-brand-border" style={{ backgroundColor: hex }} />
-                  ))}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-brand-text truncate">{t.name}</p>
-                  <p className="text-[11px] font-mono text-brand-muted">{t.primary}</p>
-                </div>
-              </button>
-              <button className="text-brand-danger hover:bg-brand-danger/10 w-7 h-7 rounded flex items-center justify-center flex-shrink-0" onClick={() => remove(t._id)} title="Delete">
-                <i className="fa-solid fa-trash text-xs"></i>
-              </button>
+      {/* ── Live lesson preview ── */}
+      <div className="bg-surface border border-brand-border rounded-xl p-6 space-y-5">
+        <h2 className="text-sm font-semibold text-brand-text uppercase tracking-wide">
+          Lesson Preview
+        </h2>
+        <p className="text-xs text-brand-muted">
+          A real lesson rendered in the palette above. Changes apply to every lesson on save.
+        </p>
+
+        {/* ThemeScope sets the same CSS variables a learner's lesson gets, so
+            these are the real components, not a mock-up of them. */}
+        <ThemeScope theme={draft} className="border border-brand-border rounded-xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <i className="fa-solid fa-book-open text-icon"></i>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-icon">Guide</span>
+          </div>
+
+          <h3 className="text-lg font-bold text-brand-text">Mission, Vision &amp; Values</h3>
+          <p className="text-sm text-brand-text/80">
+            Body copy uses the text colour. Headings, paragraphs and lists inside a lesson all
+            follow it.
+          </p>
+
+          <div className="rounded-lg border-l-4 border-emerald bg-emerald-muted/40 p-4">
+            <p className="text-sm text-brand-text">
+              Callout blocks pick up the primary colour on their bar and background.
+            </p>
+          </div>
+
+          <div className="border border-brand-border rounded-xl overflow-hidden">
+            <div className="w-full flex items-center justify-between px-4 py-3 bg-canvas">
+              <span className="text-sm font-semibold text-brand-text">Accordion section</span>
+              <i className="fa-solid fa-chevron-down text-xs text-brand-muted"></i>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+
+          <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border cursor-pointer">
+            <input type="radio" readOnly checked className="accent-emerald" />
+            <span className="text-sm text-brand-text">A knowledge-check answer</span>
+          </label>
+
+          <div className="flex items-center justify-between gap-3 pt-4 border-t border-brand-border">
+            <span className="text-xs text-brand-muted">Page 2 of 5</span>
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-emerald">
+              Complete &amp; Next
+              <i className="fa-solid fa-check text-xs" />
+            </span>
+          </div>
+        </ThemeScope>
+      </div>
     </div>
   );
 }
+
 
 const PRESETS = [
   { name: "Emerald",  hex: "#10B981" },
@@ -271,7 +267,7 @@ export default function BrandSettings() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Settings" subtitle="Customise the site accent colour and lesson themes" />
+      <PageHeader title="Settings" subtitle="Customise the site accent colour and the lesson theme" />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
@@ -479,8 +475,8 @@ export default function BrandSettings() {
         </div>
       </div>
 
-      {/* Lesson themes library */}
-      <ThemesManager />
+      {/* The single org-wide lesson palette */}
+      <LessonThemePanel />
     </div>
   );
 }

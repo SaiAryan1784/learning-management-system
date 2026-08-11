@@ -36,6 +36,8 @@ const CourseAdd         = lazy(() => import("./pages/dashboard/CourseAdd"));
 const CourseLessons     = lazy(() => import("./pages/dashboard/CourseLessons"));
 const LessonBuilder     = lazy(() => import("./pages/dashboard/LessonBuilder"));
 const CourseAssignStaff = lazy(() => import("./pages/dashboard/CourseAssignStaff"));
+const PathCourses       = lazy(() => import("./pages/dashboard/PathCourses"));
+const PathAssignStaff   = lazy(() => import("./pages/dashboard/PathAssignStaff"));
 const BadgeManager      = lazy(() => import("./pages/dashboard/BadgeManager"));
 const CertificateManager = lazy(() => import("./pages/dashboard/CertificateManager"));
 const CertificateSetup   = lazy(() => import("./pages/dashboard/CertificateSetup"));
@@ -160,10 +162,15 @@ function AppContent() {
           <Route path="courses/:courseId/lessons/new"              element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
           <Route path="courses/:courseId/lessons/:lessonId/edit"   element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
 
-          {/* Paths — same two components, scoped to a path instead of the course */}
+          {/* Guides — same two components, scoped to a guide instead of the course.
+              URLs stay on /paths/ so existing links keep working. */}
           <Route path="courses/:courseId/paths/:pathId/lessons"     element={<PermissionRoute><CourseLessons /></PermissionRoute>} />
           <Route path="courses/:courseId/paths/:pathId/lessons/new" element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
           <Route path="courses/:courseId/assign"                   element={<PermissionRoute><CourseAssignStaff /></PermissionRoute>} />
+
+          {/* Paths — org-level groups of courses */}
+          <Route path="paths/:pathId/courses" element={<PermissionRoute><PathCourses /></PermissionRoute>} />
+          <Route path="paths/:pathId/assign"  element={<PermissionRoute><PathAssignStaff /></PermissionRoute>} />
 
           {/* Staff */}
           <Route path="my-dashboard"                                        element={<PermissionRoute><StaffDashboard /></PermissionRoute>} />

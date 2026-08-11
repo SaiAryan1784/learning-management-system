@@ -51,6 +51,7 @@ export default function StaffDashboard() {
   const [resumingId, setResumingId] = useState(null);
   const [loggedInToday, setLoggedInToday] = useState(null);
   const [totalOrgCourses, setTotalOrgCourses] = useState(null);
+  const [paths, setPaths] = useState([]);
 
   const lastFetchRef = useRef(0);
 
@@ -60,12 +61,18 @@ export default function StaffDashboard() {
   const fetchDashboard = useCallback(async ({ silent = false } = {}) => {
     try {
       if (!silent) setLoading(true);
-      const calls = [api.get("/progress/me/dashboard")];
+      const calls = [
+        api.get("/progress/me/dashboard"),
+        // Paths are additive to this screen — a failure here must not blank
+        // the course list, which is the primary content.
+        api.get("/progress/me/assigned-paths").catch(() => null),
+      ];
       if (isAdminUser) calls.push(api.get("/progress/org/overview").catch(() => null));
-      const [res, orgRes] = await Promise.all(calls);
+      const [res, pathRes, orgRes] = await Promise.all(calls);
       lastFetchRef.current = Date.now();
       setSummary(res.data.summary);
       setCourses(res.data.courses);
+      setPaths(pathRes?.data?.assignedPaths || []);
       if (orgRes) {
         setLoggedInToday(orgRes.data?.summary?.usersLoggedInToday ?? null);
         setTotalOrgCourses(orgRes.data?.summary?.totalCourses ?? null);
@@ -172,6 +179,88 @@ export default function StaffDashboard() {
         </div>
       ) : courses.length > 0 ? (
         <div>
+          {/* Paths first — they are the bigger unit, and a learner on a path
+              should see the sequence rather than a flat pile of its courses. */}
+          {paths.length > 0 && (
+            <div className="mb-8 space-y-4">
+              <h2 className="text-subheading text-brand-text">Your Paths</h2>
+              {paths.map((path) => (
+                <Card key={path.pathId} padded>
+                  <div className="flex items-center gap-4 mb-4">
+                    <ProgressRing percent={path.progressPercent} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-body font-semibold text-brand-text leading-snug">
+                        {path.title}
+                      </p>
+                      <p className="text-caption text-brand-muted">
+                        {path.completedCourses} of {path.totalCourses} courses complete
+                        {path.dueDate && (
+                          <span className={path.overdue ? "text-brand-danger font-medium" : ""}>
+                            {" · Due "}
+                            {new Date(path.dueDate).toLocaleDateString()}
+                            {path.overdue && " · Overdue"}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <Badge
+                      tone={path.progressPercent === 100 ? "success" : "info"}
+                      size="sm"
+                      className="flex-shrink-0"
+                    >
+                      {path.progressPercent}%
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {path.courses.map((course, i) => (
+                      <button
+                        key={course.id}
+                        type="button"
+                        disabled={course.locked}
+                        title={
+                          course.locked
+                            ? "Finish the earlier courses in this path to unlock it"
+                            : undefined
+                        }
+                        onClick={() =>
+                          !course.locked &&
+                          handleStartOrResume({
+                            courseId: course.id,
+                            totalLessons: course.totalLessons,
+                          })
+                        }
+                        className={`text-left p-3 rounded-xl border transition-colors ${
+                          course.locked
+                            ? "border-brand-border bg-canvas opacity-60 cursor-not-allowed"
+                            : "border-brand-border bg-surface hover:border-emerald/40"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-semibold text-brand-muted uppercase">
+                            Course {i + 1}
+                          </span>
+                          {course.progressPercent === 100 ? (
+                            <i className="fa-solid fa-circle-check text-icon text-xs" />
+                          ) : course.locked ? (
+                            <i className="fa-solid fa-lock text-brand-muted text-xs" />
+                          ) : null}
+                        </div>
+                        <p className="text-caption font-medium text-brand-text line-clamp-2 mb-2">
+                          {course.title}
+                        </p>
+                        <ProgressBar percent={course.progressPercent} size="xs" />
+                        {course.required === false && (
+                          <span className="text-[10px] text-brand-muted">Optional</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
           <h2 className="text-subheading text-brand-text mb-4">Your Assigned Courses</h2>
           <motion.div
             initial="hidden"
