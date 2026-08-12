@@ -41,7 +41,7 @@ function ColorField({ label, value, onChange, hint }) {
  * live preview rather than bare swatches.
  */
 function LessonThemePanel() {
-  const { lessonTheme, lessonThemeConfigured, setLessonTheme, DEFAULTS } = useBrand();
+  const { brand, lessonTheme, lessonThemeConfigured, setLessonTheme, DEFAULTS } = useBrand();
   const [primary, setPrimary] = useState(lessonTheme.primary);
   const [iconColor, setIconColor] = useState(lessonTheme.icon || lessonTheme.primary);
   const [textColor, setTextColor] = useState(lessonTheme.text || DEFAULTS.text);
@@ -87,7 +87,7 @@ function LessonThemePanel() {
           <p className="text-xs text-brand-muted mt-1">
             One palette for every lesson in your organization. It applies to lesson content
             only — the rest of the site keeps the brand colour above.
-            {!lessonThemeConfigured && " Currently inheriting your brand colour."}
+            {!lessonThemeConfigured && " Not set yet — lessons currently use your brand colour."}
           </p>
         </div>
 
@@ -131,6 +131,19 @@ function LessonThemePanel() {
         <div className="flex items-center gap-3 pt-2 border-t border-brand-border">
           <Button variant="primary" loading={saving} onClick={handleSave}>
             Save Lesson Theme
+          </Button>
+          {/* The common case by far: an org wants lesson content to look like
+              the rest of their site. One click beats hunting for their hex. */}
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setPrimary(brand.primary);
+              setIconColor(brand.icon || brand.primary);
+              setTextColor(brand.text || DEFAULTS.text);
+              setIconTouched(true);
+            }}
+          >
+            Match brand colour
           </Button>
           <Button
             variant="ghost"

@@ -43,9 +43,9 @@
 .lesson-content h1 { font-size: 1.6em; font-weight: 700; margin: 0.6em 0 0.3em; }
 .lesson-content h2 { font-size: 1.35em; font-weight: 700; margin: 0.6em 0 0.3em; }
 .lesson-content h3 { font-size: 1.15em; font-weight: 600; margin: 0.6em 0 0.3em; }
-.lesson-content a { color: #059669; text-decoration: underline; }
+.lesson-content a { color: var(--color-emerald-hover, #059669); text-decoration: underline; }
 .lesson-content blockquote {
-  border-left: 3px solid #10B981;
+  border-left: 3px solid var(--color-emerald, #10B981);
   padding-left: 1em;
   margin: 0.6em 0;
   color: #4B5563;
@@ -132,7 +132,7 @@
   border-radius: 9999px;
   margin-bottom: 0.6rem;
 }
-.flip-front .flip-hint { background: #059669; color: #ffffff; }
+.flip-front .flip-hint { background: var(--color-emerald-hover, #059669); color: #ffffff; }
 .flip-back .flip-hint { background: rgba(255, 255, 255, 0.25); color: #ffffff; }
 .flip-text { font-size: 0.95rem; line-height: 1.5; }
 .flip-empty { opacity: 0.6; font-style: italic; }

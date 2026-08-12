@@ -29,6 +29,10 @@ export default function OwnerStaff() {
   const [activeTab, setActiveTab] = useState("active");
   const [editStaffId, setEditStaffId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
+  // Seat usage is computed server-side (see staffSeats.service) rather than
+  // derived from staffList here — the rules about who counts (platform admins,
+  // the owner's free seat) must not be duplicated in the UI and drift.
+  const [seats, setSeats] = useState(null);
 
   const loadData = async () => {
     try {
@@ -36,14 +40,16 @@ export default function OwnerStaff() {
       if ($.fn.DataTable.isDataTable("#staffTable")) {
         $("#staffTable").DataTable().destroy();
       }
-      const [staffRes, rolesRes, locRes] = await Promise.all([
+      const [staffRes, rolesRes, locRes, seatsRes] = await Promise.all([
         api.get("/staff"),
         api.get("/roles"),
         api.get("/locations"),
+        api.get("/staff/seats").catch(() => null),
       ]);
       setStaffList(staffRes.data.staff || []);
       setRoles(rolesRes.data.roles || []);
       setLocations(locRes.data.locations || []);
+      setSeats(seatsRes?.data || null);
     } catch (err) {
       toastr.error("Failed to load data", "error");
     } finally {
@@ -82,7 +88,12 @@ export default function OwnerStaff() {
       loadData();
       setOpenPop(false);
     } catch (err) {
-      toastr.error("Failed to send invite", "error");
+      toastr.error(
+        err.response?.data?.message ||
+          err.response?.data?.error ||
+          "Failed to send invite",
+        "error",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -161,10 +172,23 @@ export default function OwnerStaff() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Staff" subtitle="Manage your team members">
+      <PageHeader
+        title="Staff"
+        subtitle={
+          seats
+            ? `${seats.used} of ${seats.limit} seats used`
+            : "Manage your team members"
+        }
+      >
         <Button
           variant="primary"
           size="sm"
+          disabled={seats?.atLimit}
+          title={
+            seats?.atLimit
+              ? `Staff limit reached (${seats.used} of ${seats.limit}). Remove or deactivate someone to free a seat.`
+              : undefined
+          }
           leadingIcon={<i className="fa-solid fa-plus text-xs" />}
           onClick={() => {
             setEditStaffId(null);
