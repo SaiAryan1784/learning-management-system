@@ -217,6 +217,9 @@ export default function CourseLessons() {
   const [pathModalOpen, setPathModalOpen] = useState(false);
   const [editingPath, setEditingPath] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Course level only — inside a guide every row is a page, so a type filter
+  // there would have nothing to filter.
+  const [typeFilter, setTypeFilter] = useState("all"); // all | lessons | guides
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -389,6 +392,19 @@ export default function CourseLessons() {
     ? `/dashboard/courses/${courseId}/lessons`
     : "/dashboard/courses";
 
+  // Rows carry their own stored `order`, so a filtered list still shows each
+  // item's real position in the course — filtering must not renumber 3 and 4
+  // into 1 and 2 and imply an order that isn't there.
+  const visibleItems =
+    pathId || typeFilter === "all"
+      ? items
+      : items.filter((i) =>
+          typeFilter === "guides" ? i.kind === "path" : i.kind !== "path",
+        );
+
+  const guideCount = items.filter((i) => i.kind === "path").length;
+  const lessonCount = items.length - guideCount;
+
   const rowProps = {
     pathId,
     onOpenGuide: openGuide,
@@ -476,6 +492,30 @@ export default function CourseLessons() {
         </Link>
       </PageHeader>
 
+      {!loading && !pathId && items.length > 0 && (
+        <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-canvas border border-brand-border">
+          {[
+            { key: "all", label: `All (${items.length})` },
+            { key: "lessons", label: `Lessons (${lessonCount})` },
+            { key: "guides", label: `Guides (${guideCount})` },
+          ].map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setTypeFilter(f.key)}
+              className={[
+                "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                typeFilter === f.key
+                  ? "bg-surface text-brand-text shadow-soft"
+                  : "text-brand-muted hover:text-brand-text",
+              ].join(" ")}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <SectionLoader />
       ) : items.length === 0 ? (
@@ -487,6 +527,15 @@ export default function CourseLessons() {
               : "Nothing here yet. Add a lesson, or a guide to group several pages under one topic."}
           </p>
         </div>
+      ) : visibleItems.length === 0 ? (
+        <div className="bg-surface border border-brand-border rounded-xl p-12 text-center">
+          <i className="fa-solid fa-filter text-brand-muted text-3xl mb-3 block"></i>
+          <p className="text-brand-muted text-sm">
+            {typeFilter === "guides"
+              ? "No guides in this course yet — add one to group several pages under a topic."
+              : "No standalone lessons in this course — everything here lives inside a guide."}
+          </p>
+        </div>
       ) : (
         <div className="bg-surface border border-brand-border rounded-xl divide-y divide-brand-border">
           {pathId ? (
@@ -496,16 +545,16 @@ export default function CourseLessons() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={items.map((i) => i._id)}
+                items={visibleItems.map((i) => i._id)}
                 strategy={verticalListSortingStrategy}
               >
-                {items.map((item) => (
+                {visibleItems.map((item) => (
                   <SortableCurriculumRow key={item._id} item={item} {...rowProps} />
                 ))}
               </SortableContext>
             </DndContext>
           ) : (
-            items.map((item) => (
+            visibleItems.map((item) => (
               <CurriculumRow key={item._id} item={item} {...rowProps} />
             ))
           )}

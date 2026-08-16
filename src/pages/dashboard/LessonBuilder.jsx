@@ -207,19 +207,24 @@ function PreviewAccordion({ config }) {
 function PreviewMatching({ config }) {
   const [picks, setPicks] = useState({});
   const rights = (config.pairs || []).map((p) => p.right).filter(Boolean);
+  // Layout must stay identical to `MatchingField` in StaffLessonView — this is
+  // the preview of that component, and the two silently drifting apart is how
+  // an author ends up shipping a question that only looks right in the builder.
   return (
     <div className="space-y-2">
       {(config.pairs || []).map((p, i) => (
-        <div key={i} className="flex items-center gap-3">
-          <span className="flex-1 px-3 py-2 rounded-lg bg-canvas border border-brand-border text-sm">{p.left}</span>
-          <i className="fa-solid fa-arrow-right text-brand-muted text-xs"></i>
+        <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <span className="min-w-0 sm:flex-1 px-3 py-2 rounded-lg bg-canvas border border-brand-border text-sm break-words">
+            {p.left}
+          </span>
+          <i className="fa-solid fa-arrow-right text-brand-muted text-xs rotate-90 sm:rotate-0 self-center flex-shrink-0"></i>
           <select
-            className="flex-1 px-3 py-2 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
+            className="min-w-0 sm:flex-1 w-full px-3 py-2 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
             value={picks[i] || ""}
             onChange={(e) => setPicks((s) => ({ ...s, [i]: e.target.value }))}
           >
             <option value="">Select match…</option>
-            {rights.map((r) => <option key={r} value={r}>{r}</option>)}
+            {rights.map((r) => <option key={r} value={r} title={r}>{r}</option>)}
           </select>
         </div>
       ))}

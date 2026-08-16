@@ -13,6 +13,7 @@ import {
   ProgressBar,
 } from "../../components/ui";
 import RingStatCard from "../../components/dashboard/RingStatCard";
+import CourseCover from "../../components/dashboard/CourseCover";
 
 const RING_COLORS = ["#9B2C4E", "#D69A1F", "#1AA179", "#13525B"];
 
@@ -277,6 +278,16 @@ export default function StaffDashboard() {
                   transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <Card className="flex flex-col h-full" padded>
+                    {/* Cover sits inside the card's padding rather than
+                        bleeding to the edges — Card owns its own padding and
+                        overriding it here would desync this card from every
+                        other Card on the dashboard. */}
+                    <CourseCover
+                      title={course.title}
+                      coverImageUrl={course.coverImageUrl}
+                      className="rounded-lg mb-3"
+                    />
+
                     {/* Title + status */}
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <p className="text-body font-semibold text-brand-text leading-snug line-clamp-2 flex-1">

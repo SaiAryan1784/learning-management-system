@@ -64,6 +64,7 @@ export default function CourseAdd() {
 
   const [form, setForm] = useState({
     title: "", description: "",
+    coverImageUrl: "",
     certificate: {
       enabled: true,
       mode: "",
@@ -75,8 +76,7 @@ export default function CourseAdd() {
       logoUrl: "",
     },
   });
-  const [coverFile, setCoverFile] = useState(null);
-  const [coverPreview, setCoverPreview] = useState(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingDesign, setUploadingDesign] = useState(false);
 
   useEffect(() => {
@@ -89,6 +89,7 @@ export default function CourseAdd() {
         setForm({
           title: d.title,
           description: d.description,
+          coverImageUrl: d.coverImageUrl || "",
           certificate: {
             enabled: d.certificate?.enabled ?? true,
             mode: d.certificate?.mode || "template",
@@ -145,11 +146,48 @@ export default function CourseAdd() {
     }
   };
 
-  const handleCoverChange = (e) => {
+  /**
+   * Upload the cover the moment it is chosen, and keep only the returned URL.
+   *
+   * This used to stash the File in state and show an `URL.createObjectURL`
+   * preview that was never uploaded and never saved — the image looked applied,
+   * then vanished on reload. Uploading on select (the same thing the
+   * certificate design field above does) means what you see is what is stored.
+   */
+  const handleCoverChange = async (e) => {
     const file = e.target.files?.[0];
+    // Reset the input so re-picking the same file still fires a change event.
+    e.target.value = "";
     if (!file) return;
-    setCoverFile(file);
-    setCoverPreview(URL.createObjectURL(file));
+
+    if (!file.type.startsWith("image/")) {
+      toastr.error("Cover must be an image (PNG, JPG or WebP)");
+      return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      toastr.error("Image is larger than 25 MB — compress it and try again");
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      setUploadingCover(true);
+      const res = await api.post("/uploads/lessons/file/image", fd);
+      setForm((p) => ({ ...p, coverImageUrl: res.data.publicUrl }));
+      toastr.success("Cover uploaded — save the course to keep it");
+    } catch (err) {
+      const status = err.response?.status;
+      toastr.error(
+        status === 413
+          ? "Image too large (max 25 MB)"
+          : !err.response
+          ? "Upload blocked — the image may be too large or the server is unreachable"
+          : err.response.data?.message || "Upload failed"
+      );
+    } finally {
+      setUploadingCover(false);
+    }
   };
 
   const handleStep1Submit = async (e) => {
@@ -234,11 +272,15 @@ export default function CourseAdd() {
                     <h3 className="text-xs font-semibold text-brand-muted uppercase tracking-wide">Cover Image</h3>
                     <div
                       className="relative w-full aspect-video rounded-xl overflow-hidden cursor-pointer group"
-                      style={{ background: coverPreview ? undefined : avatarColor + "20" }}
-                      onClick={() => fileInputRef.current?.click()}
+                      style={{ background: form.coverImageUrl ? undefined : avatarColor + "20" }}
+                      onClick={() => !uploadingCover && fileInputRef.current?.click()}
                     >
-                      {coverPreview ? (
-                        <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
+                      {form.coverImageUrl ? (
+                        <img
+                          src={toAbsoluteUrl(form.coverImageUrl)}
+                          alt="Cover"
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                           <div
@@ -250,25 +292,37 @@ export default function CourseAdd() {
                           <p className="text-xs text-brand-muted">Click to upload cover</p>
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-white text-xs font-semibold">
-                          <i className="fa-solid fa-camera mr-1.5" />
-                          {coverPreview ? "Change" : "Upload"}
-                        </span>
-                      </div>
+                      {uploadingCover ? (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <span className="text-white text-xs font-semibold">
+                            <i className="fa-solid fa-spinner fa-spin mr-1.5" />
+                            Uploading…
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="text-white text-xs font-semibold">
+                            <i className="fa-solid fa-camera mr-1.5" />
+                            {form.coverImageUrl ? "Change" : "Upload"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/*"
+                      accept="image/png,image/jpeg,image/webp"
                       className="hidden"
                       onChange={handleCoverChange}
                     />
-                    {coverPreview && (
+                    <p className="text-[11px] text-brand-muted">
+                      Shown on the course card. Landscape (16:9) works best.
+                    </p>
+                    {form.coverImageUrl && !uploadingCover && (
                       <button
                         type="button"
                         className="text-xs text-brand-danger hover:underline"
-                        onClick={() => { setCoverFile(null); setCoverPreview(null); }}
+                        onClick={() => setForm((p) => ({ ...p, coverImageUrl: "" }))}
                       >
                         Remove image
                       </button>

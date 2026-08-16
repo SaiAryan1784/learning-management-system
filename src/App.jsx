@@ -5,6 +5,7 @@ import useIdleLogout from "./pages/UserIdleLogout";
 import { PageLoader } from "./components/ui/Spinner";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
+import NewVersionBanner from "./components/NewVersionBanner";
 import { Toaster } from "sonner";
 
 /* ── Public pages ─────────────────────────────────────── */
@@ -205,6 +206,9 @@ export default function App() {
       <BrowserRouter>
         <AppContent />
       </BrowserRouter>
+      {/* Outside the router on purpose — a stale bundle is a property of the
+          tab, not of whatever page happens to be open. */}
+      <NewVersionBanner />
       <Toaster
         position="top-right"
         duration={3500}

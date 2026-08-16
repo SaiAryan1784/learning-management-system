@@ -176,22 +176,31 @@ function MatchingField({ config, value, onChange }) {
     onChange([...others, { left, right }]);
   };
 
+  // Prompt and answer stack on phones and sit side by side from `sm` up. The
+  // `min-w-0` on both halves is what actually lets them shrink — without it a
+  // flex child refuses to go below its content width and long answers get
+  // clipped off the edge of the card instead of wrapping.
   return (
     <div className="space-y-2">
       {lefts.map((left) => {
         const current = (value || []).find((v) => v.left === left)?.right || "";
         return (
-          <div key={left} className="flex items-center gap-3">
-            <span className="flex-1 px-3 py-2 rounded-lg bg-canvas border border-brand-border text-sm">{left}</span>
-            <i className="fa-solid fa-arrow-right text-brand-muted text-xs"></i>
+          <div key={left} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <span className="min-w-0 sm:flex-1 px-3 py-2 rounded-lg bg-canvas border border-brand-border text-sm break-words">
+              {left}
+            </span>
+            <i className="fa-solid fa-arrow-right text-brand-muted text-xs rotate-90 sm:rotate-0 self-center flex-shrink-0"></i>
             <select
-              className="flex-1 px-3 py-2 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
+              className="min-w-0 sm:flex-1 w-full px-3 py-2 border border-brand-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald"
               value={current}
               onChange={(e) => setRightFor(left, e.target.value)}
             >
               <option value="">Select match…</option>
+              {/* A native <select> truncates long option text with no way to
+                  style around it — `title` at least makes the full answer
+                  readable on hover. */}
               {rights.map((r) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r} title={r}>{r}</option>
               ))}
             </select>
           </div>

@@ -6,9 +6,9 @@ import toastr from "toastr";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
 import { SectionLoader } from "../../components/ui/Spinner";
-import { getCourseColor } from "../../utils/courseColor";
 import { useAuth } from "../../auth/AuthContext";
 import CoursePathFormModal from "../../components/dashboard/CoursePathFormModal";
+import CourseCover from "../../components/dashboard/CourseCover";
 
 export default function OSCourses() {
   const navigate = useNavigate();
@@ -65,6 +65,23 @@ export default function OSCourses() {
       loadCourses();
     } catch (err) {
       toastr.error(err.response?.data?.error || err.response?.data?.message || "Delete failed");
+    }
+  };
+
+  const handleArchive = async (course) => {
+    if (
+      !window.confirm(
+        `Archive "${course.title}"? Staff stop seeing it and it leaves this list, but nothing is deleted — their progress and certificates are kept. You can restore it from the Archived tab in Drafts, where it comes back as a draft.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await api.patch(`/courses/${course._id}/archive`, { archived: true });
+      toastr.success("Course archived");
+      loadCourses();
+    } catch (err) {
+      toastr.error(err.response?.data?.error || err.response?.data?.message || "Archive failed");
     }
   };
 
@@ -180,7 +197,6 @@ export default function OSCourses() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {courses.map((course) => {
-            const color = getCourseColor(course.title);
             return (
               <motion.div
                 key={course._id}
@@ -189,19 +205,11 @@ export default function OSCourses() {
                 transition={{ duration: 0.25 }}
                 className="bg-surface border border-brand-border rounded-xl overflow-hidden hover:shadow-elevated transition-shadow duration-200"
               >
-                <div className="h-2 w-full" style={{ backgroundColor: color }} />
+                <CourseCover title={course.title} coverImageUrl={course.coverImageUrl} />
                 <div className="p-4">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                      style={{ backgroundColor: color }}
-                    >
-                      {course.title?.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-brand-text leading-snug line-clamp-2">{course.title}</p>
-                      <p className="text-[11px] text-brand-muted mt-1">{course.lessonCount ?? 0} lessons</p>
-                    </div>
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-brand-text leading-snug line-clamp-2">{course.title}</p>
+                    <p className="text-[11px] text-brand-muted mt-1">{course.lessonCount ?? 0} lessons</p>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-brand-border">
@@ -230,15 +238,26 @@ export default function OSCourses() {
                       Assign
                     </Button>
                     {hasPermission("courses:delete") && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-400 hover:text-red-300"
-                        leadingIcon={<i className="fa-solid fa-trash text-[10px]" />}
-                        onClick={() => handleDelete(course)}
-                      >
-                        Delete
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          leadingIcon={<i className="fa-solid fa-box-archive text-[10px]" />}
+                          onClick={() => handleArchive(course)}
+                          title="Retire this course without deleting anything"
+                        >
+                          Archive
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-400 hover:text-red-300"
+                          leadingIcon={<i className="fa-solid fa-trash text-[10px]" />}
+                          onClick={() => handleDelete(course)}
+                        >
+                          Delete
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>

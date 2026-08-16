@@ -33,6 +33,26 @@ const DOC_OPTIONS = {
 };
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
+const LOAD_TIMEOUT_MS = 20000;
+
+/**
+ * Turn a pdf.js failure into one plain sentence for the learner.
+ *
+ * Worth distinguishing: "could not be reached" points at the link or the
+ * server, "isn't a readable PDF" points at the document. Without this the only
+ * report we ever get back is "the PDF doesn't work".
+ */
+function describeLoadError(err) {
+  switch (err?.name) {
+    case "MissingPDFException":
+    case "UnexpectedResponseException":
+      return "The file could not be reached.";
+    case "InvalidPDFException":
+      return "The file isn’t a readable PDF.";
+    default:
+      return "";
+  }
+}
 const PAGE_GAP = 16; // px between page cards, must match the wrapper's space-y
 
 /** A single page: reserves its layout box immediately, rasterises only once near the viewport. */
@@ -136,6 +156,7 @@ export default function PdfViewer({ src, fileName, height = 480, className = "" 
   const [pdf, setPdf] = useState(null);
   const [numPages, setNumPages] = useState(0);
   const [status, setStatus] = useState("loading"); // loading | ready | error
+  const [errorDetail, setErrorDetail] = useState("");
   const [zoom, setZoom] = useState(1);
   const [page, setPage] = useState(1);
   const [width, setWidth] = useState(0);
@@ -147,9 +168,20 @@ export default function PdfViewer({ src, fileName, height = 480, className = "" 
     let task = null;
 
     setStatus("loading");
+    setErrorDetail("");
     setPdf(null);
     setNumPages(0);
     setPage(1);
+
+    // A stalled fetch never rejects, so without this the viewer spins forever
+    // and the learner is left staring at a spinner with no way forward. Time it
+    // out into the error state, which offers an escape hatch.
+    const timeout = setTimeout(() => {
+      if (!cancelled) {
+        setErrorDetail("It took too long to load.");
+        setStatus("error");
+      }
+    }, LOAD_TIMEOUT_MS);
 
     loadPdfjs()
       .then((pdfjs) => {
@@ -159,12 +191,16 @@ export default function PdfViewer({ src, fileName, height = 480, className = "" 
       })
       .then((loaded) => {
         if (!loaded || cancelled) return; // cleanup already destroyed the loading task
+        clearTimeout(timeout);
         setPdf(loaded);
         setNumPages(loaded.numPages);
         setStatus("ready");
       })
-      .catch(() => {
-        if (!cancelled) setStatus("error");
+      .catch((err) => {
+        if (cancelled) return;
+        clearTimeout(timeout);
+        setErrorDetail(describeLoadError(err));
+        setStatus("error");
       });
 
     // Lesson navigation mounts and unmounts these constantly; without this each one
@@ -172,6 +208,7 @@ export default function PdfViewer({ src, fileName, height = 480, className = "" 
     // document it produced too, so there is nothing else to clean up.
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
       task?.destroy?.();
     };
   }, [src]);
@@ -208,11 +245,29 @@ export default function PdfViewer({ src, fileName, height = 480, className = "" 
   if (status === "error") {
     return (
       <div
-        className={`flex flex-col items-center justify-center gap-2 rounded-lg border border-brand-border bg-canvas px-4 text-center text-brand-muted text-xs ${className}`}
+        className={`flex flex-col items-center justify-center gap-2 rounded-lg border border-brand-border bg-canvas px-4 py-6 text-center text-brand-muted text-xs ${className}`}
         style={{ minHeight: 160 }}
       >
         <i className="fa-solid fa-triangle-exclamation text-amber-500 text-base" />
-        <span>Couldn’t load {fileName || "this PDF"}.</span>
+        <span>
+          Couldn’t show a preview of {fileName || "this PDF"}.
+          {errorDetail ? ` ${errorDetail}` : ""}
+        </span>
+        {/* Deliberately offered even when the block hides downloads. Hiding the
+            download link is a presentation preference; leaving a learner with a
+            broken preview and no way to read the document at all is a dead end.
+            Do not "tidy this up" behind the allowDownload flag. */}
+        {src && (
+          <a
+            href={src}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-icon hover:underline inline-flex items-center gap-1.5"
+          >
+            <i className="fa-solid fa-arrow-up-right-from-square text-[10px]" />
+            Open in a new tab instead
+          </a>
+        )}
       </div>
     );
   }
