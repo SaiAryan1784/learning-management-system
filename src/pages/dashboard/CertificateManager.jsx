@@ -37,6 +37,13 @@ export default function CertificateManager() {
   const [issueForm, setIssueForm] = useState({ staffId: "", courseId: "" });
   const [issuing, setIssuing] = useState(false);
 
+  // Backfill — staff who earned a certificate before certificates were switched
+  // on. Issuance only ever fires on a learner action, so without this they are
+  // invisible and stay uncertified forever.
+  const [eligible, setEligible] = useState([]);
+  const [selected, setSelected] = useState(() => new Set());
+  const [bulkIssuing, setBulkIssuing] = useState(false);
+
   // Design editing
   const [designCourse, setDesignCourse] = useState(null);
   const [designForm, setDesignForm] = useState(emptyDesign);
@@ -46,12 +53,15 @@ export default function CertificateManager() {
 
   const load = async () => {
     try {
-      const [certRes, staffRes, courseRes] = await Promise.all([
+      const [certRes, staffRes, courseRes, eligibleRes] = await Promise.all([
         api.get("/certificates/org"),
         api.get("/staff").catch(() => ({ data: { staff: [] } })),
         api.get("/courses").catch(() => ({ data: { courses: [] } })),
+        // Managers without certificates:issue simply see no backfill tab.
+        api.get("/certificates/eligible").catch(() => ({ data: { eligible: [] } })),
       ]);
       setCertificates(certRes.data.certificates || []);
+      setEligible(eligibleRes.data.eligible || []);
       setStaff((staffRes.data.staff || []).filter((s) => s.inviteStatus === "accepted"));
       setCourses(courseRes.data.courses || []);
       // Has the org configured its default certificate template yet?
@@ -158,6 +168,62 @@ export default function CertificateManager() {
     }
   };
 
+  const rowKey = (r) => `${r.courseId}:${r.staffId}`;
+
+  const toggleRow = (r) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const k = rowKey(r);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelected((prev) =>
+      prev.size === eligible.length ? new Set() : new Set(eligible.map(rowKey)),
+    );
+  };
+
+  const handleBulkIssue = async () => {
+    const pairs = eligible
+      .filter((r) => selected.has(rowKey(r)))
+      .map((r) => ({ staffId: r.staffId, courseId: r.courseId }));
+    if (pairs.length === 0) return;
+
+    if (
+      !window.confirm(
+        `Issue ${pairs.length} certificate${pairs.length === 1 ? "" : "s"}? Each person is notified.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setBulkIssuing(true);
+      const res = await api.post("/certificates/issue-bulk", { pairs });
+      const { issuedCount = 0, skippedCount = 0 } = res.data || {};
+      toastr.success(res.data?.message || "Certificates issued");
+      // Anything skipped was stale or no longer qualifies — say so rather than
+      // reporting a clean success the numbers don't support.
+      if (skippedCount > 0) {
+        toastr.warning(
+          `${skippedCount} skipped — they no longer qualify or already hold one.`,
+        );
+      }
+      if (issuedCount > 0) setView("issued");
+      setSelected(new Set());
+      await load();
+    } catch (err) {
+      toastr.error(
+        err.response?.data?.error || err.response?.data?.message || "Bulk issue failed",
+      );
+    } finally {
+      setBulkIssuing(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader title="Manage Certificates" subtitle="Issued certificates and per-course certificate designs">
@@ -200,6 +266,11 @@ export default function CertificateManager() {
       <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-fit">
         {[
           { v: "issued", label: "Issued", icon: "fa-certificate" },
+          {
+            v: "eligible",
+            label: `Ready to Issue${eligible.length ? ` (${eligible.length})` : ""}`,
+            icon: "fa-user-check",
+          },
           { v: "designs", label: "Certificate Designs", icon: "fa-palette" },
         ].map((t) => (
           <button
@@ -281,6 +352,96 @@ export default function CertificateManager() {
       )}
 
       {/* ── DESIGNS ── */}
+      {/* ── READY TO ISSUE (backfill) ── */}
+      {view === "eligible" && (
+        <>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <p className="text-sm text-brand-muted max-w-2xl">
+              These people finished the course and passed every quiz, but have no
+              certificate — usually because they completed it before certificates
+              were switched on. Issuing here awards exactly what the system would
+              have awarded them at the time.
+            </p>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={selected.size === 0}
+              loading={bulkIssuing}
+              leadingIcon={<i className="fa-solid fa-certificate text-xs" />}
+              onClick={handleBulkIssue}
+            >
+              Issue {selected.size > 0 ? selected.size : ""} Selected
+            </Button>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : eligible.length === 0 ? (
+            <Card padded={false}>
+              <EmptyState
+                icon={<i className="fa-solid fa-circle-check" />}
+                title="Everyone is up to date"
+                description="Nobody is waiting on a certificate they have already earned."
+              />
+            </Card>
+          ) : (
+            <Card padded={false} className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-caption text-brand-muted border-b border-brand-border">
+                    <th className="px-4 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        className="accent-emerald w-4 h-4 align-middle"
+                        checked={selected.size === eligible.length && eligible.length > 0}
+                        onChange={toggleAll}
+                        aria-label="Select all"
+                      />
+                    </th>
+                    <th className="px-4 py-3 font-semibold">Staff</th>
+                    <th className="px-4 py-3 font-semibold">Course</th>
+                    <th className="px-4 py-3 font-semibold">Completed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eligible.map((r) => {
+                    const k = rowKey(r);
+                    return (
+                      <tr
+                        key={k}
+                        className="border-b border-brand-border last:border-0 hover:bg-canvas cursor-pointer"
+                        onClick={() => toggleRow(r)}
+                      >
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            className="accent-emerald w-4 h-4 align-middle"
+                            checked={selected.has(k)}
+                            onChange={() => toggleRow(r)}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`Select ${r.staffName || "staff member"}`}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-brand-text">{r.staffName || "—"}</p>
+                          <p className="text-caption text-brand-muted">{r.staffEmail || ""}</p>
+                        </td>
+                        <td className="px-4 py-3 text-brand-text">{r.courseTitle || "—"}</td>
+                        <td className="px-4 py-3 text-brand-muted">
+                          {r.completedAt ? new Date(r.completedAt).toLocaleDateString() : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </>
+      )}
+
       {view === "designs" && (
         loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
