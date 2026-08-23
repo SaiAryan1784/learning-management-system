@@ -47,12 +47,31 @@ export function resolveFileKind({ mimeType, src, fileName }) {
 
 /**
  * Whether an attach_file block should show its download link.
- * Hidden unless explicitly enabled — blocks saved before `hideDownload` existed have no
- * key at all, and those must default to hidden too. Single source of truth for the
- * builder editor, the builder preview tab and the learner view.
+ *
+ * Allowed unless the author explicitly turned it off. This used to require
+ * `hideDownload === false`, so a block with no key at all — every PDF added
+ * before the flag existed — was silently undownloadable, and learners had no
+ * way to save a document they were told to read. Downloading a training
+ * document is the normal expectation; hiding it is the special case.
+ *
+ * Single source of truth for the builder editor, the builder preview tab and
+ * the learner view.
  */
 export function allowsDownload(config = {}) {
-  return config.hideDownload === false;
+  return config.hideDownload !== true;
+}
+
+/**
+ * URL that actually saves the file instead of opening it in a tab.
+ *
+ * An <a download> attribute is ignored by browsers whenever the href is
+ * cross-origin, and uploads are served from the API host while the SPA runs on
+ * the web host — so the attribute alone never worked here. `?download=1` makes
+ * the server send Content-Disposition: attachment, which does.
+ */
+export function downloadUrl(src) {
+  if (!src) return "";
+  return src + (src.includes("?") ? "&" : "?") + "download=1";
 }
 
 const KIND_ICON = {
@@ -109,9 +128,7 @@ export default function FilePreview({
       <span>Couldn’t load preview.</span>
       {allowDownload && (
         <a
-          href={src}
-          target="_blank"
-          rel="noreferrer"
+          href={downloadUrl(src)}
           className="font-semibold text-icon hover:underline"
         >
           <i className="fa-solid fa-download mr-1" />
@@ -145,9 +162,7 @@ export default function FilePreview({
             <p className="text-sm font-semibold text-brand-text truncate">{fileName || "File"}</p>
             {allowDownload && (
               <a
-                href={src}
-                target="_blank"
-                rel="noreferrer"
+                href={downloadUrl(src)}
                 className="text-xs font-semibold text-icon hover:underline"
               >
                 <i className="fa-solid fa-download mr-1" />
@@ -179,10 +194,7 @@ export default function FilePreview({
             </a>
             <span className="text-brand-border text-xs">|</span>
             <a
-              href={src}
-              download
-              target="_blank"
-              rel="noreferrer"
+              href={downloadUrl(src)}
               className="text-xs font-semibold text-icon hover:underline inline-flex items-center gap-1.5"
             >
               <i className="fa-solid fa-download text-[10px]" />

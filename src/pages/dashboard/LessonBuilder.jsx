@@ -80,8 +80,9 @@ function defaultConfig(kind) {
     case "divider": return { thickness: 2, style: "solid" };
     case "video_link": return { sourceType: "external_url", contentUrl: "" };
     case "image": return { sourceType: "stored_file" };
-    // Download link is off by default — admins opt a specific PDF back in.
-    case "attach_file": return { sourceType: "stored_file", hideDownload: true };
+    // Downloadable by default — a training document learners cannot save is
+    // the exception, not the rule. Authors opt OUT per block.
+    case "attach_file": return { sourceType: "stored_file", hideDownload: false };
     case "text_answer": return { prompt: "" };
     case "mcq": return { prompt: "", multiple: false, options: [{ key: "A", text: "" }, { key: "B", text: "" }] };
     case "survey": return { prompt: "", scaleMax: 5 };
@@ -804,10 +805,10 @@ export default function LessonBuilder() {
                 <input
                   type="checkbox"
                   className="accent-emerald w-4 h-4"
-                  checked={!allowsDownload(config)}
-                  onChange={(e) => updateConfig(uid, { hideDownload: e.target.checked })}
+                  checked={allowsDownload(config)}
+                  onChange={(e) => updateConfig(uid, { hideDownload: !e.target.checked })}
                 />
-                Hide download link
+                Let learners download this file
               </label>
             </div>
             {uploading ? (
