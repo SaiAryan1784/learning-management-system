@@ -30,6 +30,21 @@ const DOC_OPTIONS = {
   cMapUrl: `${BASE}pdfjs/cmaps/`,
   cMapPacked: true,
   standardFontDataUrl: `${BASE}pdfjs/standard_fonts/`,
+
+  /* pdf.js fetches a PDF in HTTP byte-range requests, and out of the box that is
+     64KB per request WITH eager prefetch of the whole document. Measured against
+     this backend, ONE 7.8 MB PDF was 63 requests; these options bring it to 4.
+     63 is most of a 100/min budget, so two PDFs on a page 429'd partway through
+     and the file uploaded fine but refused to preview. 1 MB chunks with autofetch
+     off means the xref tail plus only the pages actually scrolled to, which is
+     already how PdfPage renders.
+
+     Do NOT "simplify" this to disableRange: true. A PDF's xref table lives at the
+     END of the file, so with ranges off pdf.js must download the entire document
+     before the load promise resolves, and a big file on a slow line would blow
+     LOAD_TIMEOUT_MS instead. */
+  rangeChunkSize: 1024 * 1024,
+  disableAutoFetch: true,
 };
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
@@ -38,17 +53,29 @@ const LOAD_TIMEOUT_MS = 20000;
 /**
  * Turn a pdf.js failure into one plain sentence for the learner.
  *
- * Worth distinguishing: "could not be reached" points at the link or the
- * server, "isn't a readable PDF" points at the document. Without this the only
- * report we ever get back is "the PDF doesn't work".
+ * Worth distinguishing: a transport failure points at the server or the link,
+ * "isn't a readable PDF" points at the document. Without this the only report we
+ * ever get back is "the PDF doesn't work" — and for months that is exactly what
+ * happened, because the cases below were written against pdf.js v3 names
+ * (MissingPDFException / UnexpectedResponseException) that v5 replaced with a
+ * single ResponseException. Every HTTP failure fell through to "" and the user
+ * saw a bare "Couldn't show a preview of X.pdf." with no cause at all.
+ *
+ * These are pdf.js's own exception names — re-check them against
+ * pdfjs-dist/build/pdf.mjs on any major upgrade.
  */
 function describeLoadError(err) {
   switch (err?.name) {
-    case "MissingPDFException":
-    case "UnexpectedResponseException":
-      return "The file could not be reached.";
+    case "ResponseException":
+      if (err.missing) return "The file could not be found on the server.";
+      if (err.status === 429) return "The server is busy — try again in a minute.";
+      return `The file could not be reached (HTTP ${err.status || "error"}).`;
     case "InvalidPDFException":
       return "The file isn’t a readable PDF.";
+    case "PasswordException":
+      return "The file is password-protected.";
+    case "UnknownErrorException":
+      return "The viewer couldn’t open this file.";
     default:
       return "";
   }
@@ -199,6 +226,9 @@ export default function PdfViewer({ src, fileName, height = 480, className = "" 
       .catch((err) => {
         if (cancelled) return;
         clearTimeout(timeout);
+        // The on-screen sentence is deliberately non-technical, so keep the raw
+        // failure somewhere a screen-share of DevTools can reach it.
+        console.error("[PdfViewer] load failed", src, err);
         setErrorDetail(describeLoadError(err));
         setStatus("error");
       });

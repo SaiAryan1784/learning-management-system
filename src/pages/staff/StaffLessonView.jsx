@@ -12,6 +12,7 @@ import NumberScale from "../../components/lesson/NumberScale";
 import SignaturePad from "../../components/lesson/SignaturePad";
 import FlipCard from "../../components/lesson/FlipCard";
 import "../../components/lesson/lessonContent.css";
+import { onFilePick } from "../../utils/fileInput";
 
 const BASE_URL = api.defaults.baseURL || "";
 // VITE_FILE_BASE_URL is set explicitly in .env.production so uploads always resolve
@@ -447,7 +448,7 @@ export default function StaffLessonView() {
         return (
           <div className="space-y-2">
             <p className="text-sm font-medium text-brand-text">{config.prompt}</p>
-            <input type="file" className="text-xs text-brand-muted" onChange={(e) => uploadAnswerFile(block._id, e.target.files[0])} />
+            <input type="file" className="text-xs text-brand-muted" onChange={onFilePick((file) => uploadAnswerFile(block._id, file))} />
             {value?.fileName && <p className="text-xs text-emerald">{value.fileName}</p>}
           </div>
         );

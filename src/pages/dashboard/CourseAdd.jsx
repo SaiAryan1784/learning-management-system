@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader, PageLoader, Button } from "../../components/ui";
 import FilePreview from "../../components/lesson/FilePreview";
 import { getCourseColor } from "../../utils/courseColor";
+import { onFilePick } from "../../utils/fileInput";
 
 const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
 const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
@@ -393,9 +394,9 @@ export default function CourseAdd() {
                             {form.certificate.designUrl ? "Replace design" : "Upload design"}
                             <input
                               type="file"
-                              accept="image/*,application/pdf"
+                              accept="image/*,.pdf,application/pdf"
                               className="hidden"
-                              onChange={(e) => handleDesignUpload(e.target.files?.[0])}
+                              onChange={onFilePick(handleDesignUpload)}
                             />
                           </label>
                           {uploadingDesign ? (

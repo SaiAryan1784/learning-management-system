@@ -20,6 +20,7 @@ import VideoEmbed from "../../components/lesson/VideoEmbed";
 import NumberScale from "../../components/lesson/NumberScale";
 import SignaturePad from "../../components/lesson/SignaturePad";
 import FlipCard from "../../components/lesson/FlipCard";
+import { onFilePick } from "../../utils/fileInput";
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
@@ -782,7 +783,7 @@ export default function LessonBuilder() {
           <div className="space-y-2">
             <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
               <i className="fa-solid fa-image text-icon" /> {fileUrl(config) ? "Replace image" : "Upload image"}
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadFile(uid, e.target.files[0], "image")} />
+              <input type="file" accept="image/*" className="hidden" onChange={onFilePick((file) => uploadFile(uid, file, "image"))} />
             </label>
             {uploading ? (
               <div className="flex items-center gap-2 rounded-lg border border-brand-border bg-canvas px-3 py-6 text-xs text-brand-muted">
@@ -799,7 +800,9 @@ export default function LessonBuilder() {
             <div className="flex items-center gap-4 flex-wrap">
               <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
                 <i className="fa-solid fa-file-pdf text-icon" /> {fileUrl(config) ? "Replace PDF" : "Upload PDF"}
-                <input type="file" accept="application/pdf" className="hidden" onChange={(e) => uploadFile(uid, e.target.files[0], "attach_file")} />
+                {/* Both forms of the filter: macOS matches "application/pdf" by UTI and
+                    greys out PDFs from some exporters, leaving the picker unusable. */}
+                <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={onFilePick((file) => uploadFile(uid, file, "attach_file"))} />
               </label>
               <label className="inline-flex items-center gap-2 text-xs font-semibold text-brand-text cursor-pointer select-none">
                 <input

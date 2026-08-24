@@ -4,6 +4,7 @@ import api from "../../api/api";
 import toastr from "toastr";
 import { PageHeader, Card, Button, Badge, Modal, EmptyState, SkeletonCard } from "../../components/ui";
 import FilePreview from "../../components/lesson/FilePreview";
+import { onFilePick } from "../../utils/fileInput";
 
 const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
 const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
@@ -559,7 +560,7 @@ export default function CertificateManager() {
                   <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
                     <i className="fa-solid fa-cloud-arrow-up text-icon" />
                     {designForm.designUrl ? "Replace design" : "Upload design"}
-                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleDesignUpload(e.target.files?.[0])} />
+                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={onFilePick(handleDesignUpload)} />
                   </label>
                   {uploadingDesign ? (
                     <div className="flex items-center gap-2 rounded-lg border border-brand-border bg-canvas px-3 py-6 text-xs text-brand-muted">

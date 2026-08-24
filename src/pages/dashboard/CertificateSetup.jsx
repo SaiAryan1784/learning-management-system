@@ -5,6 +5,7 @@ import toastr from "toastr";
 import { PageHeader, Card, Button } from "../../components/ui";
 import FilePreview from "../../components/lesson/FilePreview";
 import { CERT_FONTS } from "../staff/StaffCertificates";
+import { onFilePick } from "../../utils/fileInput";
 
 const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
 const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
@@ -156,7 +157,7 @@ export default function CertificateSetup() {
                 <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
                   <i className="fa-solid fa-cloud-arrow-up text-icon" />
                   {form.templateUrl ? "Replace template" : "Upload template"}
-                  <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleTemplate(e.target.files?.[0])} />
+                  <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={onFilePick(handleTemplate)} />
                 </label>
                 {uploadingTemplate ? (
                   <div className="flex items-center gap-2 rounded-lg border border-brand-border bg-canvas px-3 py-6 text-xs text-brand-muted">
@@ -186,7 +187,7 @@ export default function CertificateSetup() {
                     <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50">
                       <i className={`fa-solid ${uploadingLogo ? "fa-spinner fa-spin" : "fa-cloud-arrow-up"} text-emerald`} />
                       {form.logoUrl ? "Replace logo" : "Upload logo"}
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLogo(e.target.files?.[0])} />
+                      <input type="file" accept="image/*" className="hidden" onChange={onFilePick(handleLogo)} />
                     </label>
                   </div>
                 </div>
