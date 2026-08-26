@@ -83,11 +83,12 @@ function describeLoadError(err) {
 const PAGE_GAP = 16; // px between page cards, must match the wrapper's space-y
 
 /** A single page: reserves its layout box immediately, rasterises only once near the viewport. */
-function PdfPage({ pdf, pageNumber, containerWidth, zoom, onVisible }) {
+function PdfPage({ pdf, pageNumber, containerWidth, zoom, root, onVisible }) {
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const [dims, setDims] = useState(null); // unscaled page size, CSS px at scale 1
   const [rendered, setRendered] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [visible, setVisible] = useState(false);
 
   // Page metadata is cheap relative to rasterising, and we need the real aspect ratio
@@ -98,11 +99,29 @@ function PdfPage({ pdf, pageNumber, containerWidth, zoom, onVisible }) {
       if (cancelled) return;
       const vp = page.getViewport({ scale: 1 });
       setDims({ width: vp.width, height: vp.height });
-    }).catch(() => { /* page-level failure is reported by the parent's doc load */ });
+    }).catch((err) => {
+      // This used to swallow the error on the theory that the parent's document
+      // load would report it. It does not: by the time a page fails, that promise
+      // has already resolved, so the only visible effect was a spinner that never
+      // stopped and nothing in the console to explain it.
+      if (cancelled) return;
+      console.error("[PdfViewer] page", pageNumber, "metadata failed", err);
+      setFailed(true);
+    });
     return () => { cancelled = true; };
   }, [pdf, pageNumber]);
 
-  // Render when the page is anywhere near the viewport, and re-render on zoom/resize.
+  // Render when the page is anywhere near this viewer's own scroll box, and
+  // re-render on zoom/resize.
+  //
+  // `root` MUST be that scroll box, not the viewport. rootMargin only ever grows
+  // the ROOT's rectangle — intersection is still clipped by every scrolling
+  // ancestor in between. With root:null this component sits behind two of them
+  // (the lesson builder's pane and this viewer's own 480px box), so the 400px
+  // prefetch bought nothing at all: a page only rendered once it was physically
+  // on screen, and pages 2+ needed the user to find and scroll an inner
+  // container they could not see. Every page past the first showed a spinner
+  // forever, which is exactly what "the PDF won't preview" turned out to be.
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -113,11 +132,11 @@ function PdfPage({ pdf, pageNumber, containerWidth, zoom, onVisible }) {
           if (entry.intersectionRatio > 0.5) onVisible?.(pageNumber);
         }
       },
-      { root: null, rootMargin: "400px 0px", threshold: [0, 0.5] },
+      { root, rootMargin: "400px 0px", threshold: [0, 0.5] },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [pageNumber, onVisible]);
+  }, [pageNumber, onVisible, root]);
 
   const scale = dims && containerWidth ? (containerWidth / dims.width) * zoom : 0;
 
@@ -128,6 +147,17 @@ function PdfPage({ pdf, pageNumber, containerWidth, zoom, onVisible }) {
 
     let task = null;
     let cancelled = false;
+
+    // A rejection is not the only way this goes wrong: a page whose content
+    // stream is damaged can leave pdf.js's worker running forever, so render()
+    // neither resolves nor rejects. The document load has LOAD_TIMEOUT_MS for
+    // exactly this; without the same guard here a single bad page sits on a
+    // spinner for the rest of the session with nothing in the console.
+    const stall = setTimeout(() => {
+      if (cancelled) return;
+      console.error("[PdfViewer] page", pageNumber, "timed out while rendering");
+      setFailed(true);
+    }, LOAD_TIMEOUT_MS);
 
     pdf.getPage(pageNumber).then((page) => {
       if (cancelled) return;
@@ -147,13 +177,29 @@ function PdfPage({ pdf, pageNumber, containerWidth, zoom, onVisible }) {
         transform: dpr === 1 ? null : [dpr, 0, 0, dpr, 0, 0],
       });
       task.promise.then(
-        () => { if (!cancelled) setRendered(true); },
-        () => { /* cancelled mid-render — expected on zoom/unmount */ },
+        () => {
+          clearTimeout(stall);
+          if (!cancelled) setRendered(true);
+        },
+        (err) => {
+          clearTimeout(stall);
+          // Cancelling on zoom/resize/unmount is normal control flow here.
+          // Anything else is a real failure and must not vanish silently.
+          if (cancelled || err?.name === "RenderingCancelledException") return;
+          console.error("[PdfViewer] page", pageNumber, "render failed", err);
+          setFailed(true);
+        },
       );
-    }).catch(() => { /* handled by the parent */ });
+    }).catch((err) => {
+      clearTimeout(stall);
+      if (cancelled) return;
+      console.error("[PdfViewer] page", pageNumber, "failed", err);
+      setFailed(true);
+    });
 
     return () => {
       cancelled = true;
+      clearTimeout(stall);
       task?.cancel();
     };
   }, [pdf, pageNumber, scale, visible, dims]);
@@ -171,7 +217,14 @@ function PdfPage({ pdf, pageNumber, containerWidth, zoom, onVisible }) {
       <canvas ref={canvasRef} className="block" />
       {!rendered && (
         <div className="absolute inset-0 flex items-center justify-center bg-white text-brand-muted text-xs">
-          <i className="fa-solid fa-spinner fa-spin" />
+          {failed ? (
+            <span className="px-3 text-center">
+              <i className="fa-solid fa-triangle-exclamation text-amber-500" />{" "}
+              Page {pageNumber} couldn’t be drawn.
+            </span>
+          ) : (
+            <i className="fa-solid fa-spinner fa-spin" />
+          )}
         </div>
       )}
     </div>
@@ -180,6 +233,13 @@ function PdfPage({ pdf, pageNumber, containerWidth, zoom, onVisible }) {
 
 export default function PdfViewer({ src, fileName, height = 480, className = "" }) {
   const scrollRef = useRef(null);
+  // Also kept in state: PdfPage needs this node as its IntersectionObserver root,
+  // and a plain ref would not re-run the child's effect once the node attaches.
+  const [scrollEl, setScrollEl] = useState(null);
+  const setScrollNode = useCallback((node) => {
+    scrollRef.current = node;
+    setScrollEl(node);
+  }, []);
   const [pdf, setPdf] = useState(null);
   const [numPages, setNumPages] = useState(0);
   const [status, setStatus] = useState("loading"); // loading | ready | error
@@ -245,17 +305,24 @@ export default function PdfViewer({ src, fileName, height = 480, className = "" 
 
   /* ── available width drives fit-to-width scale ── */
   useEffect(() => {
-    const el = scrollRef.current;
+    const el = scrollEl;
     if (!el) return;
     const measure = () => {
+      const available = el.clientWidth;
+      // A zero width means layout has not settled (or an ancestor is collapsed).
+      // Committing it would clamp to the 120px floor below and rasterise every
+      // page as a thumbnail, which is not recoverable without another resize.
+      // Skipping leaves the previous width in place; the ResizeObserver fires
+      // again as soon as there is a real box to measure.
+      if (available <= 0) return;
       // 32px = the horizontal padding on the scroll container.
-      setWidth(Math.max(el.clientWidth - 32, 120));
+      setWidth(Math.max(available - 32, 120));
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [status]);
+  }, [scrollEl]);
 
   const goTo = useCallback((n) => {
     const target = Math.min(Math.max(n, 1), numPages);
@@ -344,7 +411,7 @@ export default function PdfViewer({ src, fileName, height = 480, className = "" 
       </div>
 
       <div
-        ref={scrollRef}
+        ref={setScrollNode}
         className="relative overflow-y-auto overflow-x-auto bg-canvas px-4 py-4"
         style={{ height: viewportHeight }}
       >
@@ -363,6 +430,7 @@ export default function PdfViewer({ src, fileName, height = 480, className = "" 
                 pageNumber={i + 1}
                 containerWidth={width}
                 zoom={zoom}
+                root={scrollEl}
                 onVisible={setPage}
               />
             ))}
