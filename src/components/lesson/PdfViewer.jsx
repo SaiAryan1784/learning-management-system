@@ -14,6 +14,30 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
  * Note this is presentation, not access control — see the security note in FilePreview.
  */
 
+// pdfjs-dist 5.7.284 calls Map.prototype.getOrInsertComputed / WeakMap.prototype's
+// equivalent internally (getOptionalContentConfig, its page-render cache, etc.) with
+// no feature check and no fallback. That's a TC39 proposal method no shipping browser
+// has yet — Node has it (newer V8), which is exactly why this never showed up in a
+// Node-side repro of the real file: `page.render()` throws
+// "getOrInsertComputed is not a function" the instant it's called, in every real
+// browser. Polyfilling it here, before pdf.js is ever imported, is the actual fix —
+// not a workaround for our code, a shim for a library that shipped assuming an API
+// that doesn't exist yet.
+for (const C of [Map, WeakMap]) {
+  if (typeof C.prototype.getOrInsertComputed !== "function") {
+    Object.defineProperty(C.prototype, "getOrInsertComputed", {
+      value(key, callbackfn) {
+        if (this.has(key)) return this.get(key);
+        const value = callbackfn(key);
+        this.set(key, value);
+        return value;
+      },
+      writable: true,
+      configurable: true,
+    });
+  }
+}
+
 /* pdf.js is ~350KB gzipped. Load it on first use so lessons without a PDF never pay
    for it, and memoise the promise so N blocks on one page share a single import. */
 let pdfjsPromise = null;
