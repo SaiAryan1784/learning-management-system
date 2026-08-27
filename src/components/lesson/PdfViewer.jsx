@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+// Same file, twice on purpose: once evaluated here to patch this thread's globals,
+// once as source text to hand to the worker. See loadPdfjs below.
+import "../../utils/jsCompat";
+import jsCompatSrc from "../../utils/jsCompat?raw";
 
 /**
  * PDF viewer that renders pages to <canvas> with pdf.js.
@@ -14,28 +18,48 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
  * Note this is presentation, not access control — see the security note in FilePreview.
  */
 
-// pdfjs-dist 5.7.284 calls Map.prototype.getOrInsertComputed / WeakMap.prototype's
-// equivalent internally (getOptionalContentConfig, its page-render cache, etc.) with
-// no feature check and no fallback. That's a TC39 proposal method no shipping browser
-// has yet — Node has it (newer V8), which is exactly why this never showed up in a
-// Node-side repro of the real file: `page.render()` throws
-// "getOrInsertComputed is not a function" the instant it's called, in every real
-// browser. Polyfilling it here, before pdf.js is ever imported, is the actual fix —
-// not a workaround for our code, a shim for a library that shipped assuming an API
-// that doesn't exist yet.
-for (const C of [Map, WeakMap]) {
-  if (typeof C.prototype.getOrInsertComputed !== "function") {
-    Object.defineProperty(C.prototype, "getOrInsertComputed", {
-      value(key, callbackfn) {
-        if (this.has(key)) return this.get(key);
-        const value = callbackfn(key);
-        this.set(key, value);
-        return value;
-      },
-      writable: true,
-      configurable: true,
-    });
-  }
+/**
+ * Point pdf.js at a worker that has the jsCompat shims installed.
+ *
+ * A Web Worker gets a fresh global scope, so importing jsCompat at the top of this
+ * file fixes the main thread and nothing else — and pdf.js does all its parsing,
+ * font repair and rasterisation planning in the worker, against the same unguarded
+ * APIs. Both scopes have to be patched or the bug just moves.
+ *
+ * So: build a tiny module whose only two statements are `import <shims>` and
+ * `import <real worker>`. ES modules evaluate their dependencies depth-first in
+ * source order, and the shim module has no dependencies of its own, so it is
+ * guaranteed to have finished running before a single line of pdf.js worker code
+ * executes. No message can arrive in between — the worker's initial evaluation
+ * completes before any `message` task is dispatched to it.
+ *
+ * Why a blob instead of a real worker entry file: `?url` copies
+ * pdf.worker.min.mjs through byte-for-byte, and it must stay that way. Routing it
+ * through Vite's worker bundler would re-bundle the Emscripten-compiled JBIG2 and
+ * OpenJPEG payloads inside it, which compute their own base via `import.meta.url`.
+ * Not worth risking image decoding to save a blob URL.
+ */
+let workerSrcPromise = null;
+function resolveWorkerSrc() {
+  workerSrcPromise ??= (() => {
+    try {
+      const shimUrl = URL.createObjectURL(
+        new Blob([jsCompatSrc], { type: "text/javascript" })
+      );
+      const realUrl = new URL(workerUrl, window.location.href).href;
+      return URL.createObjectURL(
+        new Blob([`import ${JSON.stringify(shimUrl)};\nimport ${JSON.stringify(realUrl)};\n`], {
+          type: "text/javascript",
+        })
+      );
+    } catch {
+      // Blob workers blocked (a CSP without blob: in worker-src, say). An unpatched
+      // worker still renders the overwhelming majority of documents, so degrade to
+      // it rather than losing the viewer outright.
+      return workerUrl;
+    }
+  })();
+  return workerSrcPromise;
 }
 
 /* pdf.js is ~350KB gzipped. Load it on first use so lessons without a PDF never pay
@@ -43,7 +67,7 @@ for (const C of [Map, WeakMap]) {
 let pdfjsPromise = null;
 function loadPdfjs() {
   pdfjsPromise ??= import("pdfjs-dist").then((mod) => {
-    mod.GlobalWorkerOptions.workerSrc = workerUrl;
+    mod.GlobalWorkerOptions.workerSrc = resolveWorkerSrc();
     return mod;
   });
   return pdfjsPromise;
