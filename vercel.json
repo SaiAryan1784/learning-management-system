@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "http://72.60.223.107:8000/api/$1"
+      "destination": "https://api.learningopts.com/api/$1"
     },
     {
       "source": "/(.*)",
