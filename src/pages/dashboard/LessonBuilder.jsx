@@ -20,9 +20,15 @@ import VideoEmbed from "../../components/lesson/VideoEmbed";
 import NumberScale from "../../components/lesson/NumberScale";
 import SignaturePad from "../../components/lesson/SignaturePad";
 import FlipCard from "../../components/lesson/FlipCard";
+import UploadDropzone from "../../components/lesson/UploadDropzone";
 import { onFilePick } from "../../utils/fileInput";
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
+// Mirrors allowedMimeByType.image on the server. Narrower than "image/*" on
+// purpose: the picker greys out what the server would reject anyway, so an
+// author finds out at pick time instead of after a 25 MB upload.
+const IMAGE_ACCEPT = "image/png,image/jpeg,image/webp,image/gif,image/avif";
 
 const BASE_URL = api.defaults.baseURL || "";
 // VITE_FILE_BASE_URL is set explicitly in .env.production so uploads always resolve
@@ -781,16 +787,26 @@ export default function LessonBuilder() {
       case "image":
         return (
           <div className="space-y-2">
-            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
-              <i className="fa-solid fa-image text-icon" /> {fileUrl(config) ? "Replace image" : "Upload image"}
-              <input type="file" accept="image/*" className="hidden" onChange={onFilePick((file) => uploadFile(uid, file, "image"))} />
-            </label>
+            {fileUrl(config) && !uploading && (
+              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
+                <i className="fa-solid fa-image text-icon" /> Replace image
+                <input type="file" accept={IMAGE_ACCEPT} className="hidden" onChange={onFilePick((file) => uploadFile(uid, file, "image"))} />
+              </label>
+            )}
             {uploading ? (
               <div className="flex items-center gap-2 rounded-lg border border-brand-border bg-canvas px-3 py-6 text-xs text-brand-muted">
                 <i className="fa-solid fa-spinner fa-spin" /> Uploading…
               </div>
-            ) : (
+            ) : fileUrl(config) ? (
               <FilePreview src={fileUrl(config)} mimeType={config.mimeType} fileName={config.fileName} height={220} />
+            ) : (
+              <UploadDropzone
+                accept={IMAGE_ACCEPT}
+                icon="fa-image"
+                label="Upload an image"
+                hint="JPG, PNG, GIF, WebP or AVIF — up to 25 MB"
+                onFile={(file) => uploadFile(uid, file, "image")}
+              />
             )}
           </div>
         );
@@ -798,12 +814,14 @@ export default function LessonBuilder() {
         return (
           <div className="space-y-2">
             <div className="flex items-center gap-4 flex-wrap">
-              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
-                <i className="fa-solid fa-file-pdf text-icon" /> {fileUrl(config) ? "Replace PDF" : "Upload PDF"}
-                {/* Both forms of the filter: macOS matches "application/pdf" by UTI and
-                    greys out PDFs from some exporters, leaving the picker unusable. */}
-                <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={onFilePick((file) => uploadFile(uid, file, "attach_file"))} />
-              </label>
+              {fileUrl(config) && !uploading && (
+                <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-border text-xs font-semibold text-brand-text cursor-pointer hover:border-emerald/50 w-fit">
+                  <i className="fa-solid fa-file-pdf text-icon" /> Replace PDF
+                  {/* Both forms of the filter: macOS matches "application/pdf" by UTI and
+                      greys out PDFs from some exporters, leaving the picker unusable. */}
+                  <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={onFilePick((file) => uploadFile(uid, file, "attach_file"))} />
+                </label>
+              )}
               <label className="inline-flex items-center gap-2 text-xs font-semibold text-brand-text cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -818,13 +836,21 @@ export default function LessonBuilder() {
               <div className="flex items-center gap-2 rounded-lg border border-brand-border bg-canvas px-3 py-6 text-xs text-brand-muted">
                 <i className="fa-solid fa-spinner fa-spin" /> Uploading…
               </div>
-            ) : (
+            ) : fileUrl(config) ? (
               <FilePreview
                 src={fileUrl(config)}
                 mimeType={config.mimeType || "application/pdf"}
                 fileName={config.fileName}
                 height={260}
                 allowDownload={allowsDownload(config)}
+              />
+            ) : (
+              <UploadDropzone
+                accept=".pdf,application/pdf"
+                icon="fa-file-pdf"
+                label="Upload a PDF"
+                hint="PDF only — up to 25 MB"
+                onFile={(file) => uploadFile(uid, file, "attach_file")}
               />
             )}
           </div>

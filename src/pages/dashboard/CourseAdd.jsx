@@ -312,7 +312,7 @@ export default function CourseAdd() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/png,image/jpeg,image/webp"
+                      accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
                       className="hidden"
                       onChange={handleCoverChange}
                     />
