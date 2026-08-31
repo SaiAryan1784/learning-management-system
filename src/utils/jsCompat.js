@@ -25,6 +25,17 @@
  *
  * Guarded call sites are deliberately NOT shimmed: pdf.js checks Float16Array via
  * `isFloat16ArraySupported` before use, so that one degrades on its own.
+ *
+ * SHIM WHOLE PROPOSALS, NOT INDIVIDUAL CALL SITES. The first version of this file
+ * covered only the methods that had a call site at the time — toBase64/fromBase64
+ * but not toHex — and the viewer promptly failed one stage later on `toHex` in the
+ * worker instead. Sibling methods of the same proposal ship together in browsers
+ * and get used together by libraries, so a per-call-site shim just moves the
+ * failure. When adding an entry, cover its whole proposal surface.
+ *
+ * To re-audit after a pdfjs-dist bump, grep the BUILT bundles — note the worker is
+ * `.mjs`, so a `*.js` glob silently misses the file where most parsing lives:
+ *   cd dist/assets && grep -o "\.methodName(" pdf-*.js pdf.worker.min-*.mjs
  */
 
 const def = (obj, name, value) => {
@@ -99,11 +110,51 @@ def(Math, "sumPrecise", function (items) {
   return sum + compensation;
 });
 
-/* ── Uint8Array base64 helpers (Chrome 140 / Firefox 133 / Safari 18.2) ────────
-   Shipped in Chrome only in late 2025, so a large share of real users lack it.
-   `toBase64` builds the `@font-face { src: url(data:...) }` rule pdf.js falls back
-   to when the native FontFace path is unavailable; `fromBase64` decodes embedded
+/* ── Uint8Array base64/hex helpers (Chrome 140 / Firefox 133 / Safari 18.2) ────
+   Shipped in Chrome only in late 2025, so a large share of real users lack them.
+
+   ALL SIX methods of the proposal are shimmed, not just the ones with a visible
+   call site today. Shipping a partial shim is what caused the second outage: the
+   first pass covered toBase64/fromBase64 and skipped toHex, so the viewer got
+   past the Map/Promise failures and then died in the worker on
+
+     TypeError: a.toHex is not a function
+
+   from `PDFDocument#fingerprints`, which is computed on EVERY document load —
+   so every preview still failed, just one stage later. These methods ship as a
+   set; treat them as a set.
+
+   Reachability: `toHex` = document fingerprints (every load, worker). `toBase64`
+   = the `@font-face { src: url(data:...) }` fallback rule. `fromBase64` = embedded
    signature and XFA payloads. */
+const HEX = "0123456789abcdef";
+
+def(Uint8Array.prototype, "toHex", function () {
+  let out = "";
+  for (let i = 0; i < this.length; i++) {
+    out += HEX[this[i] >> 4] + HEX[this[i] & 15];
+  }
+  return out;
+});
+def(Uint8Array, "fromHex", function (string) {
+  if (string.length % 2 !== 0) {
+    throw new SyntaxError("String should have an even number of characters");
+  }
+  const out = new Uint8Array(string.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    const byte = parseInt(string.substr(i * 2, 2), 16);
+    if (Number.isNaN(byte)) throw new SyntaxError("String contains non-hex characters");
+    out[i] = byte;
+  }
+  return out;
+});
+def(Uint8Array.prototype, "setFromHex", function (string) {
+  const src = Uint8Array.fromHex(string);
+  const written = Math.min(src.length, this.length);
+  this.set(src.subarray(0, written));
+  return { read: written * 2, written };
+});
+
 def(Uint8Array.prototype, "toBase64", function () {
   let binary = "";
   // Chunked so a large font does not blow the argument limit on String.fromCharCode.
@@ -117,6 +168,51 @@ def(Uint8Array, "fromBase64", function (string) {
   const out = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
   return out;
+});
+def(Uint8Array.prototype, "setFromBase64", function (string) {
+  const src = Uint8Array.fromBase64(string);
+  const written = Math.min(src.length, this.length);
+  this.set(src.subarray(0, written));
+  return { read: string.length, written };
+});
+
+/* ── ArrayBuffer.prototype.transfer{,ToFixedLength} (Chrome 114 / Safari 17.4) ─
+   Two unguarded worker call sites, both in the font-info compiler
+   (`compileSystemFontInfo` / `compileFontInfo`), which over-allocates a buffer
+   and then truncates it to the bytes actually written.
+
+   The real method DETACHES the source; a polyfill cannot detach, so this copies
+   instead. pdf.js drops the source on the next line in both call sites, so the
+   observable result is identical — but do not reuse this shim anywhere that
+   relies on the source becoming unusable. */
+if (typeof globalThis.ArrayBuffer === "function") {
+  const transferTo = function (newLength) {
+    const len = newLength === undefined ? this.byteLength : newLength;
+    const out = new ArrayBuffer(len);
+    new Uint8Array(out).set(
+      new Uint8Array(this, 0, Math.min(len, this.byteLength)),
+    );
+    return out;
+  };
+  def(ArrayBuffer.prototype, "transferToFixedLength", transferTo);
+  def(ArrayBuffer.prototype, "transfer", transferTo);
+}
+
+/* ── Array.prototype.findLast/findLastIndex (Chrome 97 / Firefox 104 / Safari 15.4)
+   One unguarded call site in the main-thread bundle, narrowing search params.
+   Old enough that it is unlikely to be anyone's failure on its own — included
+   because it is unguarded and free, on the same principle as the rest. */
+def(Array.prototype, "findLast", function (predicate, thisArg) {
+  for (let i = this.length - 1; i >= 0; i--) {
+    if (predicate.call(thisArg, this[i], i, this)) return this[i];
+  }
+  return undefined;
+});
+def(Array.prototype, "findLastIndex", function (predicate, thisArg) {
+  for (let i = this.length - 1; i >= 0; i--) {
+    if (predicate.call(thisArg, this[i], i, this)) return i;
+  }
+  return -1;
 });
 
 /* ── Set.prototype.intersection (Chrome 122 / Firefox 127 / Safari 17) ─────────
