@@ -256,3 +256,82 @@ if (typeof globalThis.AbortSignal === "function") {
 def(Object, "hasOwn", function (obj, key) {
   return Object.prototype.hasOwnProperty.call(Object(obj), key);
 });
+
+/* ── {Array,String,TypedArray}.prototype.at (Chrome 92 / Firefox 90 / Safari 15.4)
+   57 unguarded call sites across the two bundles — by count the most-used modern
+   method in pdf.js. Almost every one is the `at(-1)` last-element idiom, in the
+   shading, font and CMap parsers. Old enough that it is unlikely to be anyone's
+   failure today, but it is unguarded and the polyfill is exact. */
+{
+  const at = function (index) {
+    const len = this.length;
+    const i = Math.trunc(index) || 0;
+    const k = i < 0 ? len + i : i;
+    return k < 0 || k >= len ? undefined : this[k];
+  };
+  for (const proto of [Array.prototype, String.prototype]) def(proto, "at", at);
+  // All TypedArrays share one hidden prototype; patch it once via any instance.
+  def(Object.getPrototypeOf(Uint8Array.prototype), "at", at);
+}
+
+/* ── String.prototype.replaceAll (Chrome 85 / Firefox 77 / Safari 13.1) ────────
+   44 unguarded call sites. Old, but free to cover.
+
+   Both branches delegate to the native `replace`, which matters: pdf.js calls
+   this with FUNCTION replacements (`replaceAll(/-([a-zA-Z])/g, (e,t) => ...)`)
+   and with `$`-substitution (`replaceAll(/\\(.)/g, "$1")`). A naive
+   split(pattern).join(replacement) silently breaks both, so the string branch
+   escapes the literal into a global RegExp and hands it to `replace` rather than
+   reimplementing substitution. An empty pattern also behaves correctly that way
+   — `new RegExp("", "g")` matches at every position, which is what the spec says. */
+def(String.prototype, "replaceAll", function (pattern, replacement) {
+  if (pattern instanceof RegExp) {
+    if (!pattern.global) {
+      throw new TypeError("replaceAll must be called with a global RegExp");
+    }
+    return this.replace(pattern, replacement);
+  }
+  const escaped = String(pattern).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return this.replace(new RegExp(escaped, "g"), replacement);
+});
+
+/* ── WeakRef / FinalizationRegistry (Chrome 84 / Firefox 79 / Safari 14.1) ─────
+   One unguarded site each: a WeakRef around a cached canvas on the main thread,
+   and a FinalizationRegistry that frees the qcms WASM colour transformer in the
+   worker.
+
+   Both fallbacks trade memory for not crashing, which is the right trade here:
+   this WeakRef holds a STRONG reference, so the canvas it points at is never
+   collected, and this FinalizationRegistry never fires, so the WASM transformer
+   is never freed. On a browser this old that is a slow leak in a long session
+   instead of a dead viewer. Do not reuse these where the weakness is load-bearing. */
+if (typeof globalThis.WeakRef !== "function") {
+  globalThis.WeakRef = function WeakRef(target) {
+    this._target = target;
+  };
+  globalThis.WeakRef.prototype.deref = function () {
+    return this._target;
+  };
+}
+if (typeof globalThis.FinalizationRegistry !== "function") {
+  globalThis.FinalizationRegistry = function FinalizationRegistry() {};
+  globalThis.FinalizationRegistry.prototype.register = function () {};
+  globalThis.FinalizationRegistry.prototype.unregister = function () {
+    return false;
+  };
+}
+
+/* ── DELIBERATELY NOT SHIMMED ──────────────────────────────────────────────────
+   `structuredClone` (Chrome 98 / Firefox 94 / Safari 15.4) has 4 unguarded call
+   sites in the main bundle, including LoopbackPort#postMessage. It is left alone
+   on purpose: a faithful implementation has to handle cycles, Maps, Sets, typed
+   arrays AND the `{transfer}` detach semantics, and a polyfill cannot detach at
+   all. A subtly-wrong deep clone corrupts page data silently, which is strictly
+   worse than the clear TypeError you get without one. Chrome 98 is Feb 2022, so
+   this is below any browser we have evidence of. Revisit only if it is actually
+   reported.
+
+   Verified GUARDED by pdf.js itself, so intentionally absent: Float16Array
+   (`isFloat16ArraySupported`), ImageDecoder (`isImageDecoderSupported`),
+   OffscreenCanvas (`isOffscreenCanvasSupported`), crypto.randomUUID (typeof
+   check), and Compression/DecompressionStream (inside try blocks). */
