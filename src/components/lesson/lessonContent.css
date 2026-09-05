@@ -63,6 +63,9 @@
   border: 0;
   border-bottom: 1px solid #E5E7EB;
   background: #F9FAFB;
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 .quill-clean .ql-editor {
   height: auto;
