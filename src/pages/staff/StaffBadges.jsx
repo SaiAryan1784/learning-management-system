@@ -15,9 +15,8 @@ import {
 
 export default function StaffBadges({ embedded = false }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const roleName = user?.role?.name?.trim().toLowerCase();
-  const isAdmin = roleName === "owner" || roleName === "admin";
+  const { hasPermission } = useAuth();
+  const isAdmin = hasPermission("settings:update");
 
   const [badges, setBadges] = useState([]);
   const [earnedCount, setEarnedCount] = useState(0);

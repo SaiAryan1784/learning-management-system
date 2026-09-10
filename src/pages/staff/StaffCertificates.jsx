@@ -24,9 +24,8 @@ export const CERT_FONTS = {
 
 export default function StaffCertificates({ embedded = false }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const roleName = user?.role?.name?.trim().toLowerCase();
-  const isAdmin = roleName === "owner" || roleName === "admin";
+  const { hasPermission } = useAuth();
+  const isAdmin = hasPermission("certificates:issue");
 
   const [certificates, setCertificates] = useState([]);
   const [selectedCert, setSelectedCert] = useState(null);
