@@ -9,6 +9,7 @@ import { SectionLoader } from "../../components/ui/Spinner";
 import { useAuth } from "../../auth/AuthContext";
 import CoursePathFormModal from "../../components/dashboard/CoursePathFormModal";
 import CourseCover from "../../components/dashboard/CourseCover";
+import { PERM } from "../../auth/access";
 
 export default function OSCourses() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function OSCourses() {
   const [paths, setPaths] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pathModalOpen, setPathModalOpen] = useState(false);
+  const [publishingId, setPublishingId] = useState(null);
 
   const loadCourses = async () => {
     try {
@@ -39,6 +41,19 @@ export default function OSCourses() {
   useEffect(() => {
     loadCourses();
   }, []);
+
+  const handlePublishPath = async (path) => {
+    try {
+      setPublishingId(path._id);
+      await api.patch(`/paths/${path._id}/publish`);
+      toastr.success("Path published — you can assign it now");
+      loadCourses();
+    } catch (err) {
+      toastr.error(err.response?.data?.error || "Could not publish this path");
+    } finally {
+      setPublishingId(null);
+    }
+  };
 
   const handleDeletePath = async (path) => {
     if (
@@ -141,8 +156,21 @@ export default function OSCourses() {
                       <p className="text-[11px] text-brand-muted mt-1">
                         {path.courseCount} course{path.courseCount === 1 ? "" : "s"}
                         {path.enrolledCount > 0 ? ` · ${path.enrolledCount} enrolled` : ""}
-                        {path.status === "published" ? "" : " · Draft"}
                       </p>
+                      <span
+                        className={`inline-flex items-center gap-1.5 mt-2 px-2 py-1 rounded-md text-[10px] font-semibold ${
+                          path.status === "published"
+                            ? "bg-emerald/10 text-emerald"
+                            : "bg-amber-500/10 text-amber-600"
+                        }`}
+                      >
+                        <i
+                          className={`fa-solid ${
+                            path.status === "published" ? "fa-circle-check" : "fa-pen-ruler"
+                          } text-[9px]`}
+                        />
+                        {path.status === "published" ? "Published" : "Draft — not assignable"}
+                      </span>
                     </div>
                   </div>
 
@@ -155,14 +183,28 @@ export default function OSCourses() {
                     >
                       Courses
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      leadingIcon={<i className="fa-solid fa-user-plus text-[10px]" />}
-                      onClick={() => navigate(`/dashboard/paths/${path._id}/assign`)}
-                    >
-                      Assign
-                    </Button>
+                    {path.status === "published" ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leadingIcon={<i className="fa-solid fa-user-plus text-[10px]" />}
+                        onClick={() => navigate(`/dashboard/paths/${path._id}/assign`)}
+                      >
+                        Assign
+                      </Button>
+                    ) : (
+                      hasPermission(PERM.coursesPublish) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          loading={publishingId === path._id}
+                          leadingIcon={<i className="fa-solid fa-rocket text-[10px]" />}
+                          onClick={() => handlePublishPath(path)}
+                        >
+                          Publish
+                        </Button>
+                      )
+                    )}
                     {hasPermission("courses:delete") && (
                       <Button
                         variant="ghost"

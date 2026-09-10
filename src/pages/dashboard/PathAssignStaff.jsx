@@ -115,19 +115,26 @@ export default function PathAssignStaff() {
             : "Select staff members to assign this path"
         }
       >
-        <button
-          type="button"
-          className={`flex items-center gap-2 text-white text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg transition-colors ${
-            selected.length === 0
-              ? "bg-emerald/40 cursor-not-allowed"
-              : "bg-emerald hover:bg-emerald-hover"
-          }`}
-          onClick={() => selected.length > 0 && setShowPopup(true)}
-          disabled={selected.length === 0}
-        >
-          <i className="fa-solid fa-user-plus text-xs"></i>
-          Assign ({selected.length})
-        </button>
+        {(() => {
+          // A draft path is refused by the server, so block here rather than
+          // letting someone pick staff and fail at submit.
+          const isDraft = !!path && path.status !== "published";
+          const blocked = selected.length === 0 || isDraft;
+          return (
+            <button
+              type="button"
+              className={`flex items-center gap-2 text-white text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg transition-colors ${
+                blocked ? "bg-emerald/40 cursor-not-allowed" : "bg-emerald hover:bg-emerald-hover"
+              }`}
+              onClick={() => !blocked && setShowPopup(true)}
+              disabled={blocked}
+              title={isDraft ? "Publish this path before assigning it" : undefined}
+            >
+              <i className="fa-solid fa-user-plus text-xs"></i>
+              Assign ({selected.length})
+            </button>
+          );
+        })()}
         <Link
           to={`/dashboard/paths/${pathId}/courses`}
           className="flex items-center justify-center w-8 h-8 bg-charcoal-light hover:bg-charcoal-muted text-white/60 rounded-lg transition-colors"
@@ -135,6 +142,19 @@ export default function PathAssignStaff() {
           <i className="fa-solid fa-arrow-left text-xs"></i>
         </Link>
       </PageHeader>
+
+      {path && path.status !== "published" && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+          <i className="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-brand-text">This path is still a draft</p>
+            <p className="text-brand-muted mt-0.5">
+              Publish it before assigning — open the path and use Publish, or use the
+              Publish button on its card in Courses.
+            </p>
+          </div>
+        </div>
+      )}
 
       {staff.length === 0 ? (
         <div className="bg-surface border border-brand-border rounded-xl p-12 text-center">
