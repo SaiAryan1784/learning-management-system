@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
-import { PERM } from "./auth/access";
+import { PERM, COURSE_ADMIN, can } from "./auth/access";
 import useIdleLogout from "./pages/UserIdleLogout";
 import { PageLoader } from "./components/ui/Spinner";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -92,8 +92,7 @@ const Guard = ({ children, permission }) => {
   const { user, loading, hasPermission } = useAuth();
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
-  if (!permission) return children;
-  return hasPermission(permission) ? children : <Navigate to="/dashboard" replace />;
+  return can(hasPermission, permission) ? children : <Navigate to="/dashboard" replace />;
 };
 
 const SuperAdminRoute = ({ children }) => {
@@ -161,8 +160,8 @@ function AppContent() {
           <Route path="badges/manage"       element={<Guard permission={PERM.settingsUpdate}><BadgeManager /></Guard>} />
 
           {/* Course authoring */}
-          <Route path="courses"               element={<Guard permission={PERM.coursesRead}><OSCourses /></Guard>} />
-          <Route path="courses/drafts"        element={<Guard permission={PERM.coursesRead}><CourseDrafts /></Guard>} />
+          <Route path="courses"               element={<Guard permission={COURSE_ADMIN}><OSCourses /></Guard>} />
+          <Route path="courses/drafts"        element={<Guard permission={PERM.coursesCreate}><CourseDrafts /></Guard>} />
           <Route path="course-add/:courseId?" element={<Guard permission={PERM.coursesCreate}><CourseAdd /></Guard>} />
 
           <Route path="courses/:courseId/lessons"                element={<Guard permission={PERM.lessonsRead}><CourseLessons /></Guard>} />

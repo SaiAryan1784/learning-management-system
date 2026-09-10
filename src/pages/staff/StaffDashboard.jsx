@@ -44,7 +44,7 @@ function ProgressRing({ percent = 0, size = 56, stroke = 5 }) {
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { hasPermission } = useAuth();
 
   const [summary, setSummary] = useState(null);
   const [courses, setCourses] = useState([]);
@@ -56,8 +56,12 @@ export default function StaffDashboard() {
 
   const lastFetchRef = useRef(0);
 
-  const roleName = user?.role?.name?.trim().toLowerCase();
-  const isAdminUser = roleName === "owner" || roleName === "admin";
+  // Same predicate as Admin.jsx uses to pick the team dashboard: whoever may
+  // read org-wide progress and reports gets the org-wide totals here. Learners
+  // hold progress:read for their OWN progress, so reports:read is what actually
+  // separates a team view from a personal one.
+  const isAdminUser =
+    hasPermission("progress:read") && hasPermission("reports:read");
 
   const fetchDashboard = useCallback(async ({ silent = false } = {}) => {
     try {
@@ -343,8 +347,10 @@ export default function StaffDashboard() {
           </motion.div>
         </div>
       ) : (() => {
-        const roleName = user?.role?.name?.trim().toLowerCase();
-        const isAdmin = roleName === "owner" || roleName === "admin";
+        // Whoever may assign training gets the shortcut to the catalogue —
+        // asking what they can do, not what their role is called, so this
+        // matches what the sidebar and the router will actually let them open.
+        const isAdmin = hasPermission("courses:assign");
         return (
           <Card padded={false}>
             <EmptyState

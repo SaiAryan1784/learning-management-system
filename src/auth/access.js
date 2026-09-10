@@ -11,6 +11,21 @@
  * typo produces a silent lockout, not an error.
  */
 
+/**
+ * Does this viewer satisfy a page's requirement?
+ *
+ * `required` is null (any authenticated user), a permission string, or an
+ * array meaning "any one of these". The array form exists because some pages
+ * serve two different jobs: the course catalogue is reachable by authors
+ * (courses:create) and by people who only assign training (courses:assign),
+ * but must NOT be reachable by a learner who merely holds courses:read.
+ */
+export function can(hasPermission, required) {
+  if (required === null || required === undefined) return true;
+  if (Array.isArray(required)) return required.some((p) => hasPermission(p));
+  return hasPermission(required);
+}
+
 /** Permission required by each page, keyed by page concept. */
 export const PERM = Object.freeze({
   managerDashboard: "reports:read",
@@ -38,6 +53,14 @@ export const PERM = Object.freeze({
 });
 
 /**
+ * The course catalogue is an authoring and assignment screen, not a learner
+ * screen. Every role including Staff holds courses:read (they need it to read
+ * their assigned material), so gating the catalogue on that would show a
+ * learner the New Course, Delete and Assign controls.
+ */
+export const COURSE_ADMIN = Object.freeze([PERM.coursesCreate, PERM.coursesAssign]);
+
+/**
  * Sidebar structure for every non-platform-admin user.
  *
  * `permission: null` means any authenticated user — used for the pages that
@@ -58,7 +81,7 @@ export const NAV_SECTIONS = Object.freeze([
     items: [
       { label: "Locations", icon: "fa-location-dot", path: "/dashboard/locations", permission: PERM.locationsRead },
       { label: "Staff", icon: "fa-users", path: "/dashboard/staff", permission: PERM.staffRead },
-      { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses", permission: PERM.coursesRead },
+      { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses", permission: COURSE_ADMIN },
     ],
   },
   {
@@ -94,8 +117,7 @@ export const REPORTS_ITEMS = Object.freeze([
   { label: "Audit Trail", icon: "fa-list", path: "/dashboard/reports/audit-trail", permission: PERM.auditRead },
 ]);
 
-const allowed = (hasPermission) => (item) =>
-  item.permission === null || hasPermission(item.permission);
+const allowed = (hasPermission) => (item) => can(hasPermission, item.permission);
 
 /**
  * Filter the sidebar for one user. `hasPermission` comes from useAuth() and
