@@ -61,11 +61,13 @@ export default function OwnerLocations() {
   }, [locations]);
 
   const handleSubmit = async () => {
+    // Only the name is required — the schema has always had address, phone and
+    // email optional. An email that IS supplied still has to be well formed.
     if (!form.name.trim()) { toastr.error("Location name is required", "error"); return; }
-    if (!form.address.trim()) { toastr.error("Address is required", "error"); return; }
-    if (!form.phone.trim()) { toastr.error("Phone is required", "error"); return; }
-    if (!form.email.trim()) { toastr.error("Email is required", "error"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { toastr.error("Enter a valid email", "error"); return; }
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      toastr.error("Enter a valid email", "error");
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -238,12 +240,12 @@ export default function OwnerLocations() {
       >
         <div className="space-y-4">
           {[
-            { label: "Location Name", field: "name", placeholder: "e.g. Head Office" },
+            { label: "Location Name", field: "name", placeholder: "e.g. Head Office", required: true },
             { label: "Address", field: "address", placeholder: "123 Main Street" },
             { label: "Phone", field: "phone", placeholder: "+1 555 000 0000" },
             { label: "Email", field: "email", placeholder: "location@example.com", type: "email", hint: "Contact email for this location. Use “Invite manager” later to send a manager account invite." },
-          ].map(({ label, field, placeholder, type, hint }) => (
-            <FormField key={field} label={label} required hint={hint}>
+          ].map(({ label, field, placeholder, type, hint, required }) => (
+            <FormField key={field} label={label} required={required} hint={hint}>
               <Input
                 type={type || "text"}
                 placeholder={placeholder}
