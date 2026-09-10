@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, NavLink, useLocation } from "react-router-dom";
 import GlobalSearch from "../components/GlobalSearch";
 import { useAuth } from "../auth/AuthContext";
+import { visibleSections, visibleReports } from "../auth/access";
 import { useEffect, useState, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageLoader, SectionLoader } from "../components/ui/Spinner";
@@ -122,10 +123,10 @@ export default function DashboardLayout() {
 
   if (loading) return <PageLoader />;
 
-  const roleName = user?.role?.name?.trim().toLowerCase();
+  // Platform admins get a different shell entirely (organizations, not org
+  // content), so that one distinction stays. Everything else is decided by
+  // permission, from the same module the router reads.
   const isSuperAdmin = user?.isPlatformAdmin === true;
-  const isOwnerAdmin = !isSuperAdmin && (roleName === "admin" || roleName === "owner");
-  const isStaff = !isSuperAdmin && roleName !== "admin" && roleName !== "owner";
 
   const handleLogout = () => {
     logout();
@@ -188,32 +189,13 @@ export default function DashboardLayout() {
       <div className="my-2 border-t border-charcoal-light" />
     );
 
-  const managementMenu = [
-    { label: "Locations", icon: "fa-location-dot", path: "/dashboard/locations" },
-    { label: "Staff", icon: "fa-users", path: "/dashboard/staff" },
-    { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses" },
-  ];
-
-  const recognitionMenu = [
-    { label: "Recognition", icon: "fa-award", path: "/dashboard/certificates" },
-  ];
-
-  const complianceMenu = [
-    { label: "Compliance Settings", icon: "fa-sliders", path: "/dashboard/compliance/settings" },
-    { label: "Policies", icon: "fa-shield-halved", path: "/dashboard/compliance/policies" },
-    { label: "Run Assignments", icon: "fa-rotate", path: "/dashboard/compliance/run-assignments" },
-  ];
-
-  const reportsMenu = [
-    { label: "Compliance Overview", icon: "fa-chart-line", path: "/dashboard/reports/compliance" },
-    { label: "Staff Compliance", icon: "fa-user-check", path: "/dashboard/reports/staff-compliance" },
-    { label: "Certificate Expiry", icon: "fa-clock", path: "/dashboard/reports/certificate-expiry" },
-    { label: "Notification Logs", icon: "fa-bell", path: "/dashboard/reports/notification-logs" },
-    { label: "Audit Trail", icon: "fa-list", path: "/dashboard/reports/audit-trail" },
-  ];
+  // Both the sidebar and the router read src/auth/access.js, so a link can
+  // never point at a route the guard will refuse.
+  const sections = visibleSections(hasPermission);
+  const reportsItems = visibleReports(hasPermission);
 
   const ReportsNavGroup = () => {
-    const isAnyActive = reportsMenu.some((item) => location.pathname.startsWith(item.path));
+    const isAnyActive = reportsItems.some((item) => location.pathname.startsWith(item.path));
 
     const handleToggle = () => {
       if (!sidebarOpen) {
@@ -277,7 +259,7 @@ export default function DashboardLayout() {
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               className="overflow-hidden pl-3 border-l border-white/10 ml-4"
             >
-              {reportsMenu.map((item) => (
+              {reportsItems.map((item) => (
                 <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
               ))}
             </motion.div>
@@ -310,58 +292,33 @@ export default function DashboardLayout() {
 
         {/* Nav Items */}
         <div className="flex-1 min-h-0 px-2 py-3 overflow-y-auto no-scrollbar">
-          {!isSuperAdmin && (
-            <NavItem to="/dashboard" end icon="fa-house" label="Dashboard" />
-          )}
-
-          {isSuperAdmin && (
+          {isSuperAdmin ? (
             <>
               <SectionLabel>Platform</SectionLabel>
               <NavItem to="/dashboard" end icon="fa-building" label="Organizations" />
               <NavItem to="/dashboard/organizations/new" icon="fa-circle-plus" label="Add Client" />
             </>
-          )}
-
-          {isOwnerAdmin && (
+          ) : (
             <>
-              <SectionLabel>Management</SectionLabel>
-              {managementMenu.map((item) => (
-                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
+              {sections.map((section) => (
+                <div key={section.label || "root"}>
+                  {section.label && <SectionLabel>{section.label}</SectionLabel>}
+                  {section.items.map((item) => (
+                    <NavItem
+                      key={item.path}
+                      to={item.path}
+                      icon={item.icon}
+                      label={item.label}
+                      end={item.end}
+                    />
+                  ))}
+                </div>
               ))}
 
-              <SectionLabel>Recognition</SectionLabel>
-              {recognitionMenu.map((item) => (
-                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
-              ))}
-
-              <SectionLabel>Compliance</SectionLabel>
-              {complianceMenu.map((item) => (
-                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
-              ))}
-
-              <SectionLabel>Reports</SectionLabel>
-              <ReportsNavGroup />
-
-              <SectionLabel>System</SectionLabel>
-              <NavItem to="/dashboard/settings" icon="fa-gear" label="Settings" />
-            </>
-          )}
-
-          {isStaff && (
-            <>
-              {managementMenu.map((item) => (
-                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
-              ))}
-
-              <SectionLabel>Recognition</SectionLabel>
-              {recognitionMenu.map((item) => (
-                <NavItem key={item.path} to={item.path} icon={item.icon} label={item.label} />
-              ))}
-
-              {hasPermission("compliance:run") && (
+              {reportsItems.length > 0 && (
                 <>
-                  <SectionLabel>Compliance</SectionLabel>
-                  <NavItem to="/dashboard/compliance/run-assignments" icon="fa-rotate" label="Run Assignments" />
+                  <SectionLabel>Reports</SectionLabel>
+                  <ReportsNavGroup />
                 </>
               )}
             </>
