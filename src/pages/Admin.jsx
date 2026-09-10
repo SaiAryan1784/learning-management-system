@@ -8,11 +8,10 @@ export default function Admin() {
   const { isSuperAdmin, hasPermission } = useAuth();
 
   // Which dashboard fits is a question about capability, not about what the
-  // role happens to be called: ManagerDashboard reads org-wide progress and
-  // compliance reports, so show it to whoever may read those. Anyone else gets
-  // their own learning. Managers reach their own courses via "My Learning".
-  const canSeeTeam =
-    hasPermission(PERM.staffProgress) && hasPermission(PERM.reportsRead);
+  // role happens to be called: ManagerDashboard reads other people's progress
+  // and compliance reports, both gated on reports:read. Anyone else gets their
+  // own learning. Managers reach their own courses via "My Learning".
+  const canSeeTeam = hasPermission(PERM.reportsRead);
 
   if (isSuperAdmin) {
     return (

@@ -29,7 +29,10 @@ export function can(hasPermission, required) {
 /** Permission required by each page, keyed by page concept. */
 export const PERM = Object.freeze({
   managerDashboard: "reports:read",
-  staffProgress: "progress:read",
+  // Reading someone else's progress, not your own — the API gates the team
+  // views on reports:read for the same reason: every learner holds
+  // progress:read for their own record.
+  staffProgress: "reports:read",
 
   staffRead: "staff:read",
   locationsRead: "locations:read",

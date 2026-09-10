@@ -56,12 +56,11 @@ export default function StaffDashboard() {
 
   const lastFetchRef = useRef(0);
 
-  // Same predicate as Admin.jsx uses to pick the team dashboard: whoever may
-  // read org-wide progress and reports gets the org-wide totals here. Learners
-  // hold progress:read for their OWN progress, so reports:read is what actually
-  // separates a team view from a personal one.
-  const isAdminUser =
-    hasPermission("progress:read") && hasPermission("reports:read");
+  // Same predicate as Admin.jsx uses to pick the team dashboard. Learners hold
+  // progress:read for their OWN progress, so reports:read is what actually
+  // separates a team view from a personal one — and it is what the org-overview
+  // endpoint called below requires.
+  const isAdminUser = hasPermission("reports:read");
 
   const fetchDashboard = useCallback(async ({ silent = false } = {}) => {
     try {
