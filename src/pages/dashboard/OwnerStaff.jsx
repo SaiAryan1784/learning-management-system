@@ -18,8 +18,17 @@ import {
 } from "../../components/ui";
 
 export default function OwnerStaff() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
+
+  // The page itself only needs staff:read, so roles that may view the team
+  // without administering it (Manager) reach it. Each action is gated on the
+  // permission the API enforces, so nothing is offered that would 403.
+  const canCreateStaff = hasPermission("staff:create");
+  const canUpdateStaff = hasPermission("staff:update");
+  const canDeleteStaff = hasPermission("staff:delete");
+  const canViewProgress = hasPermission("reports:read");
+
   const [staffList, setStaffList] = useState([]);
   const [roles, setRoles] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -180,24 +189,26 @@ export default function OwnerStaff() {
             : "Manage your team members"
         }
       >
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={seats?.atLimit}
-          title={
-            seats?.atLimit
-              ? `Staff limit reached (${seats.used} of ${seats.limit}). Remove or deactivate someone to free a seat.`
-              : undefined
-          }
-          leadingIcon={<i className="fa-solid fa-plus text-xs" />}
-          onClick={() => {
-            setEditStaffId(null);
-            setForm({ email: "", roleId: "", locations: [] });
-            setOpenPop(true);
-          }}
-        >
-          Add Staff
-        </Button>
+        {canCreateStaff && (
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={seats?.atLimit}
+            title={
+              seats?.atLimit
+                ? `Staff limit reached (${seats.used} of ${seats.limit}). Remove or deactivate someone to free a seat.`
+                : undefined
+            }
+            leadingIcon={<i className="fa-solid fa-plus text-xs" />}
+            onClick={() => {
+              setEditStaffId(null);
+              setForm({ email: "", roleId: "", locations: [] });
+              setOpenPop(true);
+            }}
+          >
+            Add Staff
+          </Button>
+        )}
         <Link
           to="/dashboard"
           className="flex items-center justify-center w-8 h-8 bg-charcoal-light hover:bg-charcoal-muted text-white/60 rounded-lg transition-colors no-underline"
@@ -252,10 +263,12 @@ export default function OwnerStaff() {
                   <td>{statusBadge(s)}</td>
                   <td>
                     <div className="flex items-center gap-2">
-                      <button className={actionBtn} onClick={() => handleEdit(s)} title="Edit Staff">
-                        <i className="fa fa-edit text-xs"></i>
-                      </button>
-                      {s.inviteStatus === "accepted" && (
+                      {canUpdateStaff && (
+                        <button className={actionBtn} onClick={() => handleEdit(s)} title="Edit Staff">
+                          <i className="fa fa-edit text-xs"></i>
+                        </button>
+                      )}
+                      {s.inviteStatus === "accepted" && canViewProgress && (
                         <button
                           className={actionBtn}
                           onClick={() => navigate(`/dashboard/staff-progress/${s._id}`)}
@@ -264,13 +277,15 @@ export default function OwnerStaff() {
                           <i className="fa fa-chart-line text-xs"></i>
                         </button>
                       )}
-                      <button
-                        className={`${actionBtn} hover:bg-brand-danger/10 hover:text-brand-danger hover:border-brand-danger`}
-                        onClick={() => handleDelete(s._id)}
-                        title="Delete Staff"
-                      >
-                        <i className="fa fa-trash text-xs"></i>
-                      </button>
+                      {canDeleteStaff && (
+                        <button
+                          className={`${actionBtn} hover:bg-brand-danger/10 hover:text-brand-danger hover:border-brand-danger`}
+                          onClick={() => handleDelete(s._id)}
+                          title="Delete Staff"
+                        >
+                          <i className="fa fa-trash text-xs"></i>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
