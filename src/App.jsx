@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { PERM } from "./auth/access";
 import useIdleLogout from "./pages/UserIdleLogout";
 import { PageLoader } from "./components/ui/Spinner";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -74,26 +75,24 @@ function RootRoute() {
 }
 
 /* ── Route guards ─────────────────────────────────────── */
-const PermissionRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  if (loading) return <PageLoader />;
-  if (!user) return <Navigate to="/login" replace />;
 
-  const roleName = user?.role?.name?.trim().toLowerCase();
-  const isSuperAdmin = user?.isPlatformAdmin === true;
-  const isOwnerAdmin = !isSuperAdmin && (roleName === "admin" || roleName === "owner");
-  const isStaff = !isSuperAdmin && roleName !== "admin" && roleName !== "owner";
-
-  if (isSuperAdmin || isOwnerAdmin) return children;
-  if (isStaff) return <Navigate to="/dashboard" replace />;
-  return children;
-};
-
-const PermissionOrRoleRoute = ({ children, permission }) => {
+/**
+ * The app's only permission guard.
+ *
+ * No `permission` prop means "any authenticated user" — that is the correct
+ * gate for the pages that serve viewers their own data. hasPermission()
+ * already returns true for platform admins and for a role holding "*", so
+ * neither needs special-casing here.
+ *
+ * This used to branch on whether the role was named "admin" or "owner", which
+ * locked every Manager and Provider out of the whole application, their own
+ * learning pages included.
+ */
+const Guard = ({ children, permission }) => {
   const { user, loading, hasPermission } = useAuth();
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user?.isPlatformAdmin === true) return children;
+  if (!permission) return children;
   return hasPermission(permission) ? children : <Navigate to="/dashboard" replace />;
 };
 
@@ -141,56 +140,59 @@ function AppContent() {
           <Route path="modules" element={<SuperAdminRoute><Modules /></SuperAdminRoute>} />
           <Route path="organizations/new" element={<SuperAdminRoute><CreateClientOrg /></SuperAdminRoute>} />
 
-          {/* Manager */}
-          <Route path="manager"                  element={<PermissionRoute><ManagerDashboard /></PermissionRoute>} />
-          <Route path="staff-progress/:staffId"  element={<PermissionRoute><ManagerStaffDetails /></PermissionRoute>} />
+          {/* The viewer's own learning — never permission-gated */}
+          <Route path="my-dashboard"                            element={<Guard><StaffDashboard /></Guard>} />
+          <Route path="staff/course/:courseId/lesson/:lessonId" element={<Guard><StaffLessonView /></Guard>} />
+          <Route path="certificates"                            element={<Guard><Recognition /></Guard>} />
 
-          {/* Owner / admin */}
-          <Route path="staff"            element={<PermissionOrRoleRoute permission="staff:create"><OwnerStaff /></PermissionOrRoleRoute>} />
-          <Route path="certificates"     element={<PermissionRoute><Recognition /></PermissionRoute>} />
-          <Route path="certificates/manage" element={<PermissionRoute><CertificateManager /></PermissionRoute>} />
-          <Route path="certificates/setup"  element={<PermissionRoute><CertificateSetup /></PermissionRoute>} />
-          <Route path="badges"           element={<Navigate to="/dashboard/certificates" replace />} />
-          <Route path="badges/manage"    element={<PermissionRoute><BadgeManager /></PermissionRoute>} />
-          <Route path="locations"        element={<PermissionRoute><OwnerLocations /></PermissionRoute>} />
-          <Route path="roles"            element={<PermissionRoute><OwnerRoles /></PermissionRoute>} />
+          {/* Team oversight */}
+          <Route path="manager"                 element={<Guard permission={PERM.managerDashboard}><ManagerDashboard /></Guard>} />
+          <Route path="staff-progress/:staffId" element={<Guard permission={PERM.staffProgress}><ManagerStaffDetails /></Guard>} />
 
-          <Route path="courses"                  element={<PermissionRoute><OSCourses /></PermissionRoute>} />
-          <Route path="courses/drafts"           element={<PermissionRoute><CourseDrafts /></PermissionRoute>} />
-          <Route path="course-add/:courseId?"    element={<PermissionRoute><CourseAdd /></PermissionRoute>} />
+          {/* Org management */}
+          <Route path="staff"     element={<Guard permission={PERM.staffRead}><OwnerStaff /></Guard>} />
+          <Route path="locations" element={<Guard permission={PERM.locationsRead}><OwnerLocations /></Guard>} />
+          <Route path="roles"     element={<Guard permission={PERM.rolesRead}><OwnerRoles /></Guard>} />
 
-          <Route path="courses/:courseId/lessons"                  element={<PermissionRoute><CourseLessons /></PermissionRoute>} />
-          <Route path="courses/:courseId/lessons/new"              element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
-          <Route path="courses/:courseId/lessons/:lessonId/edit"   element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
+          {/* Recognition administration */}
+          <Route path="certificates/manage" element={<Guard permission={PERM.certificatesManage}><CertificateManager /></Guard>} />
+          <Route path="certificates/setup"  element={<Guard permission={PERM.settingsUpdate}><CertificateSetup /></Guard>} />
+          <Route path="badges"              element={<Navigate to="/dashboard/certificates" replace />} />
+          <Route path="badges/manage"       element={<Guard permission={PERM.settingsUpdate}><BadgeManager /></Guard>} />
+
+          {/* Course authoring */}
+          <Route path="courses"               element={<Guard permission={PERM.coursesRead}><OSCourses /></Guard>} />
+          <Route path="courses/drafts"        element={<Guard permission={PERM.coursesRead}><CourseDrafts /></Guard>} />
+          <Route path="course-add/:courseId?" element={<Guard permission={PERM.coursesCreate}><CourseAdd /></Guard>} />
+
+          <Route path="courses/:courseId/lessons"                element={<Guard permission={PERM.lessonsRead}><CourseLessons /></Guard>} />
+          <Route path="courses/:courseId/lessons/new"            element={<Guard permission={PERM.lessonsCreate}><LessonBuilder /></Guard>} />
+          <Route path="courses/:courseId/lessons/:lessonId/edit" element={<Guard permission={PERM.lessonsUpdate}><LessonBuilder /></Guard>} />
 
           {/* Guides — same two components, scoped to a guide instead of the course.
               URLs stay on /paths/ so existing links keep working. */}
-          <Route path="courses/:courseId/paths/:pathId/lessons"     element={<PermissionRoute><CourseLessons /></PermissionRoute>} />
-          <Route path="courses/:courseId/paths/:pathId/lessons/new" element={<PermissionRoute><LessonBuilder /></PermissionRoute>} />
-          <Route path="courses/:courseId/assign"                   element={<PermissionRoute><CourseAssignStaff /></PermissionRoute>} />
+          <Route path="courses/:courseId/paths/:pathId/lessons"     element={<Guard permission={PERM.lessonsRead}><CourseLessons /></Guard>} />
+          <Route path="courses/:courseId/paths/:pathId/lessons/new" element={<Guard permission={PERM.lessonsCreate}><LessonBuilder /></Guard>} />
+          <Route path="courses/:courseId/assign"                    element={<Guard permission={PERM.coursesAssign}><CourseAssignStaff /></Guard>} />
 
           {/* Paths — org-level groups of courses */}
-          <Route path="paths/:pathId/courses" element={<PermissionRoute><PathCourses /></PermissionRoute>} />
-          <Route path="paths/:pathId/assign"  element={<PermissionRoute><PathAssignStaff /></PermissionRoute>} />
-
-          {/* Staff */}
-          <Route path="my-dashboard"                                        element={<PermissionRoute><StaffDashboard /></PermissionRoute>} />
-          <Route path="staff/course/:courseId/lesson/:lessonId"            element={<PermissionRoute><StaffLessonView /></PermissionRoute>} />
+          <Route path="paths/:pathId/courses" element={<Guard permission={PERM.coursesRead}><PathCourses /></Guard>} />
+          <Route path="paths/:pathId/assign"  element={<Guard permission={PERM.coursesAssign}><PathAssignStaff /></Guard>} />
 
           {/* Compliance */}
-          <Route path="compliance/settings"       element={<PermissionRoute><ComplianceSettings /></PermissionRoute>} />
-          <Route path="compliance/policies"       element={<PermissionRoute><CompliancePolicies /></PermissionRoute>} />
-          <Route path="compliance/run-assignments" element={<PermissionOrRoleRoute permission="compliance:run"><RunAssignments /></PermissionOrRoleRoute>} />
+          <Route path="compliance/settings"        element={<Guard permission={PERM.settingsRead}><ComplianceSettings /></Guard>} />
+          <Route path="compliance/policies"        element={<Guard permission={PERM.settingsRead}><CompliancePolicies /></Guard>} />
+          <Route path="compliance/run-assignments" element={<Guard permission={PERM.complianceRun}><RunAssignments /></Guard>} />
 
           {/* Reports */}
-          <Route path="reports/compliance"         element={<PermissionRoute><ComplianceOverview /></PermissionRoute>} />
-          <Route path="reports/staff-compliance"   element={<PermissionRoute><StaffComplianceReports /></PermissionRoute>} />
-          <Route path="reports/audit-trail"        element={<PermissionRoute><AuditTrail /></PermissionRoute>} />
-          <Route path="reports/notification-logs"  element={<PermissionRoute><NotificationLogs /></PermissionRoute>} />
-          <Route path="reports/certificate-expiry" element={<PermissionRoute><CertificateExpiry /></PermissionRoute>} />
+          <Route path="reports/compliance"         element={<Guard permission={PERM.reportsRead}><ComplianceOverview /></Guard>} />
+          <Route path="reports/staff-compliance"   element={<Guard permission={PERM.reportsRead}><StaffComplianceReports /></Guard>} />
+          <Route path="reports/audit-trail"        element={<Guard permission={PERM.auditRead}><AuditTrail /></Guard>} />
+          <Route path="reports/notification-logs"  element={<Guard permission={PERM.reportsRead}><NotificationLogs /></Guard>} />
+          <Route path="reports/certificate-expiry" element={<Guard permission={PERM.reportsRead}><CertificateExpiry /></Guard>} />
 
           {/* Settings */}
-          <Route path="settings" element={<PermissionRoute><BrandSettings /></PermissionRoute>} />
+          <Route path="settings" element={<Guard permission={PERM.settingsUpdate}><BrandSettings /></Guard>} />
         </Route>
 
       </Routes>
