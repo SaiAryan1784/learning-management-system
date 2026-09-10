@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { PageHeader, Button } from "../../components/ui";
 import StaffCertificates from "./StaffCertificates";
 import StaffBadges from "./StaffBadges";
+import { PERM } from "../../auth/access";
 
 // Unified "Recognition" page: Certificates + Badges under one route with two tabs.
 // Replaces the two separate sidebar entries. Each child renders with `embedded` so
@@ -15,16 +16,21 @@ const TABS = [
 
 export default function Recognition() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const roleName = user?.role?.name?.trim().toLowerCase();
-  const isAdmin = roleName === "owner" || roleName === "admin";
+  const { hasPermission } = useAuth();
 
   const [tab, setTab] = useState("certificates");
+
+  // Each tab's admin console needs its own permission: the certificates console
+  // issues and revokes, the badge manager writes org settings.
+  const canManage =
+    tab === "certificates"
+      ? hasPermission(PERM.certificatesManage)
+      : hasPermission(PERM.settingsUpdate);
 
   return (
     <div className="space-y-5">
       <PageHeader title="Recognition" subtitle="Your certificates and badges">
-        {isAdmin && (
+        {canManage && (
           <Button
             variant="ghost"
             size="sm"

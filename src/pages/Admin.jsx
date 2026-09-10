@@ -2,21 +2,29 @@ import { useAuth } from "../auth/AuthContext";
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import ManagerDashboard from "../pages/dashboard/ManagerDashboard";
 import SuperAdminDashboard from "../pages/dashboard/SuperAdminDashboard";
+import { PERM } from "../auth/access";
 
 export default function Admin() {
-  const { isSuperAdmin, access, user } = useAuth();
-  // Owners/admins get the Manager dashboard even if their Staff record isn't org-wide —
-  // the role is what matters here (some owner accounts have orgWide=false in data).
-  const roleName = user?.role?.name?.trim().toLowerCase();
-  const isOwner =
-    !isSuperAdmin && (access?.orgWide || roleName === "owner" || roleName === "admin");
-  const isStaff = !isSuperAdmin && !isOwner;
+  const { isSuperAdmin, hasPermission } = useAuth();
+
+  // Which dashboard fits is a question about capability, not about what the
+  // role happens to be called: ManagerDashboard reads org-wide progress and
+  // compliance reports, so show it to whoever may read those. Anyone else gets
+  // their own learning. Managers reach their own courses via "My Learning".
+  const canSeeTeam =
+    hasPermission(PERM.staffProgress) && hasPermission(PERM.reportsRead);
+
+  if (isSuperAdmin) {
+    return (
+      <div className="mx-wd">
+        <SuperAdminDashboard />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-wd">
-      {isStaff && <StaffDashboard />}
-      {isOwner && <ManagerDashboard />}
-      {isSuperAdmin && <SuperAdminDashboard />}
+      {canSeeTeam ? <ManagerDashboard /> : <StaffDashboard />}
     </div>
   );
 }
