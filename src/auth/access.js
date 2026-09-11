@@ -37,6 +37,7 @@ export const PERM = Object.freeze({
   staffRead: "staff:read",
   locationsRead: "locations:read",
   rolesRead: "roles:read",
+  rolesCreate: "roles:create",
 
   coursesRead: "courses:read",
   coursesCreate: "courses:create",
@@ -85,6 +86,10 @@ export const NAV_SECTIONS = Object.freeze([
       { label: "Locations", icon: "fa-location-dot", path: "/dashboard/locations", permission: PERM.locationsRead },
       { label: "Staff", icon: "fa-users", path: "/dashboard/staff", permission: PERM.staffRead },
       { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses", permission: COURSE_ADMIN },
+      // Gated on create rather than read: the Roles page has no per-action
+      // gating yet, so offering it to a read-only role would show controls
+      // that 403. Owners and Admins are the only ones meant to shape roles.
+      { label: "Roles", icon: "fa-user-shield", path: "/dashboard/roles", permission: PERM.rolesCreate },
     ],
   },
   {
