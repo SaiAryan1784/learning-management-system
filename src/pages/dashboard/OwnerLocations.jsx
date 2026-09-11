@@ -13,9 +13,15 @@ import {
 } from "../../components/ui";
 import { SectionLoader } from "../../components/ui/Spinner";
 
+const MAX_EMAILS = 5;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emptyForm = () => ({ name: "", address: "", phone: "", emails: [""] });
+// Reads either shape, so this page works against a backend one release behind.
+const locEmails = (loc) => loc.emails ?? (loc.email ? [loc.email] : []);
+
 export default function OwnerLocations() {
   const [locations, setLocations] = useState([]);
-  const [form, setForm] = useState({ name: "", address: "", phone: "", email: "" });
+  const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -60,29 +66,43 @@ export default function OwnerLocations() {
     }
   }, [locations]);
 
+  const setEmailAt = (i, value) =>
+    setForm((f) => ({ ...f, emails: f.emails.map((e, j) => (j === i ? value : e)) }));
+  const addEmailRow = () =>
+    setForm((f) => (f.emails.length >= MAX_EMAILS ? f : { ...f, emails: [...f.emails, ""] }));
+  const removeEmailRow = (i) =>
+    setForm((f) => {
+      const next = f.emails.filter((_, j) => j !== i);
+      return { ...f, emails: next.length ? next : [""] };
+    });
+
   const handleSubmit = async () => {
-    // Only the name is required — the schema has always had address, phone and
-    // email optional. An email that IS supplied still has to be well formed.
+    // Only the name is required. Emails are optional, but any that are filled
+    // in must be well formed — blank rows are simply dropped.
     if (!form.name.trim()) { toastr.error("Location name is required", "error"); return; }
-    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      toastr.error("Enter a valid email", "error");
-      return;
-    }
+    const emails = form.emails.map((e) => e.trim()).filter(Boolean);
+    const bad = emails.find((e) => !EMAIL_RE.test(e));
+    if (bad) { toastr.error(`"${bad}" is not a valid email`, "error"); return; }
+
+    const payload = { name: form.name, address: form.address, phone: form.phone, emails, email: emails[0] || "" };
 
     try {
       setSubmitting(true);
       if (editId) {
-        await api.put(`/locations/${editId}`, form);
+        await api.put(`/locations/${editId}`, payload);
         toastr.success("Location updated successfully!", "success");
       } else {
-        await api.post("/locations", form);
+        await api.post("/locations", payload);
         toastr.success("Location added successfully!", "success");
       }
       resetForm();
       setOpenPop(false);
       loadLocations();
     } catch (err) {
-      toastr.error("Something went wrong. Try again.", "error");
+      toastr.error(
+        err.response?.data?.error || err.response?.data?.message || "Something went wrong. Try again.",
+        "error",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -90,12 +110,17 @@ export default function OwnerLocations() {
 
   const handleEdit = (loc) => {
     setEditId(loc._id);
-    setForm({ name: loc.name, address: loc.address, phone: loc.phone, email: loc.email || "" });
+    setForm({
+      name: loc.name,
+      address: loc.address || "",
+      phone: loc.phone || "",
+      emails: locEmails(loc).length ? [...locEmails(loc)] : [""],
+    });
     setOpenPop(true);
   };
 
   const resetForm = () => {
-    setForm({ name: "", address: "", phone: "", email: "" });
+    setForm(emptyForm());
     setEditId(null);
   };
 
@@ -106,11 +131,11 @@ export default function OwnerLocations() {
 
   const openInvite = (loc) => {
     setInviteLoc(loc);
-    setInviteEmail(loc.email || "");
+    setInviteEmail(locEmails(loc)[0] || "");
   };
 
   const handleInviteManager = async () => {
-    if (!inviteEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) {
+    if (!inviteEmail.trim() || !EMAIL_RE.test(inviteEmail.trim())) {
       toastr.error("Enter a valid email", "error");
       return;
     }
@@ -180,7 +205,7 @@ export default function OwnerLocations() {
               <th>Name</th>
               <th>Address</th>
               <th>Phone</th>
-              <th>Email</th>
+              <th>Emails</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -197,7 +222,17 @@ export default function OwnerLocations() {
                   <td>{loc.name}</td>
                   <td>{loc.address}</td>
                   <td>{loc.phone}</td>
-                  <td>{loc.email}</td>
+                  <td>
+                    {locEmails(loc).length ? (
+                      <div className="flex flex-col gap-0.5">
+                        {locEmails(loc).map((e) => (
+                          <span key={e} className="text-sm">{e}</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-brand-muted">—</span>
+                    )}
+                  </td>
                   <td>
                     <div className="flex items-center gap-2">
                       <button className={actionBtn} onClick={() => handleEdit(loc)} title="Edit">
@@ -243,17 +278,55 @@ export default function OwnerLocations() {
             { label: "Location Name", field: "name", placeholder: "e.g. Head Office", required: true },
             { label: "Address", field: "address", placeholder: "123 Main Street" },
             { label: "Phone", field: "phone", placeholder: "+1 555 000 0000" },
-            { label: "Email", field: "email", placeholder: "location@example.com", type: "email", hint: "Contact email for this location. Use “Invite manager” later to send a manager account invite." },
-          ].map(({ label, field, placeholder, type, hint, required }) => (
-            <FormField key={field} label={label} required={required} hint={hint}>
+          ].map(({ label, field, placeholder, required }) => (
+            <FormField key={field} label={label} required={required}>
               <Input
-                type={type || "text"}
+                type="text"
                 placeholder={placeholder}
                 value={form[field]}
                 onChange={(e) => setForm({ ...form, [field]: e.target.value })}
               />
             </FormField>
           ))}
+
+          <FormField
+            label="Contact emails"
+            hint={`Up to ${MAX_EMAILS}. The first one is offered by default when you invite a manager.`}
+          >
+            <div className="space-y-2">
+              {form.emails.map((value, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    type="email"
+                    placeholder={i === 0 ? "location@example.com" : "another@example.com"}
+                    value={value}
+                    onChange={(e) => setEmailAt(i, e.target.value)}
+                  />
+                  {form.emails.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeEmailRow(i)}
+                      className="flex-shrink-0 w-8 h-8 rounded-lg text-brand-muted hover:text-brand-danger hover:bg-brand-danger/10 transition-colors"
+                      title="Remove this email"
+                      aria-label="Remove this email"
+                    >
+                      <i className="fa-solid fa-xmark text-xs" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {form.emails.length < MAX_EMAILS && (
+                <button
+                  type="button"
+                  onClick={addEmailRow}
+                  className="text-sm font-semibold text-emerald hover:underline"
+                >
+                  <i className="fa-solid fa-plus text-xs mr-1.5" />
+                  Add another email
+                </button>
+              )}
+            </div>
+          </FormField>
         </div>
       </Modal>
 
