@@ -27,7 +27,7 @@ export default function OwnerLocations() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Manager-invite modal (explicit action, separate from create)
+  // Franchise-owner invite modal (explicit action, separate from create)
   const [inviteLoc, setInviteLoc] = useState(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
@@ -142,7 +142,7 @@ export default function OwnerLocations() {
     try {
       setInviting(true);
       await api.post(`/locations/${inviteLoc._id}/invite-manager`, { email: inviteEmail.trim() });
-      toastr.success("Manager invite sent!", "success");
+      toastr.success("Franchise owner invite sent!", "success");
       setInviteLoc(null);
       setInviteEmail("");
     } catch (err) {
@@ -238,7 +238,7 @@ export default function OwnerLocations() {
                       <button className={actionBtn} onClick={() => handleEdit(loc)} title="Edit">
                         <i className="fa-solid fa-edit text-xs"></i>
                       </button>
-                      <button className={actionBtn} onClick={() => openInvite(loc)} title="Invite manager">
+                      <button className={actionBtn} onClick={() => openInvite(loc)} title="Invite franchise owner">
                         <i className="fa-solid fa-user-plus text-xs"></i>
                       </button>
                       <button
@@ -291,7 +291,7 @@ export default function OwnerLocations() {
 
           <FormField
             label="Contact emails"
-            hint={`Up to ${MAX_EMAILS}. The first one is offered by default when you invite a manager.`}
+            hint={`Up to ${MAX_EMAILS}. The first one is offered by default when you invite the franchise owner.`}
           >
             <div className="space-y-2">
               {form.emails.map((value, i) => (
@@ -333,7 +333,7 @@ export default function OwnerLocations() {
       <Modal
         isOpen={!!inviteLoc}
         onClose={() => setInviteLoc(null)}
-        title={`Invite manager${inviteLoc?.name ? ` — ${inviteLoc.name}` : ""}`}
+        title={`Invite franchise owner${inviteLoc?.name ? ` — ${inviteLoc.name}` : ""}`}
         footer={
           <>
             <Button variant="ghost" onClick={() => setInviteLoc(null)}>
@@ -347,12 +347,12 @@ export default function OwnerLocations() {
       >
         <div className="space-y-4">
           <p className="text-caption text-brand-muted">
-            Sends an account invite. The recipient sets a password and becomes a Manager scoped to this location.
+            Sends an account invite. The recipient sets a password and becomes the Franchise Owner of this location — they can onboard and manage their own staff here, and cannot edit corporate courses.
           </p>
-          <FormField label="Manager email" required hint="They’ll receive an invite link to accept.">
+          <FormField label="Franchise owner email" required hint="They’ll receive an invite link to accept.">
             <Input
               type="email"
-              placeholder="manager@example.com"
+              placeholder="owner@example.com"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
             />
