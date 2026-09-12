@@ -131,7 +131,7 @@ export default function OwnerStaff() {
       toastr.success("Staff member deleted");
       loadData();
     } catch (err) {
-      toastr.error(err.response?.data?.message || "Delete failed");
+      toastr.error(err.response?.data?.error || err.response?.data?.message || "Delete failed");
     }
   };
 
@@ -146,7 +146,13 @@ export default function OwnerStaff() {
       cancelEdit();
       loadData();
     } catch (err) {
-      toastr.error("Failed to update staff", "error");
+      // The API says exactly why ("You cannot modify Owner account", a location
+      // you don't hold, ...). Hiding that behind a generic line cost the client a
+      // support round-trip.
+      toastr.error(
+        err.response?.data?.error || err.response?.data?.message || "Failed to update staff",
+        "error",
+      );
     } finally {
       setSubmitting(false);
     }
