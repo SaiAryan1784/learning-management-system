@@ -5,6 +5,8 @@ import toastr from "toastr";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { TableContainer } from "../../components/ui/TableContainer";
 import { Modal } from "../../components/ui/Modal";
+import { useAuth } from "../../auth/AuthContext";
+import { AUTHORING } from "../../auth/access";
 
 /**
  * Assign a Path to staff — the course-level sibling of `CourseAssignStaff`,
@@ -15,6 +17,7 @@ import { Modal } from "../../components/ui/Modal";
  * ownership of the table, desyncing clicks from `selected` state).
  */
 export default function PathAssignStaff() {
+  const { hasPermission } = useAuth();
   const { pathId } = useParams();
 
   const [path, setPath] = useState(null);
@@ -136,7 +139,7 @@ export default function PathAssignStaff() {
           );
         })()}
         <Link
-          to={`/dashboard/paths/${pathId}/courses`}
+          to={hasPermission(AUTHORING) ? `/dashboard/paths/${pathId}/courses` : "/dashboard/courses"}
           className="flex items-center justify-center w-8 h-8 bg-charcoal-light hover:bg-charcoal-muted text-white/60 rounded-lg transition-colors"
         >
           <i className="fa-solid fa-arrow-left text-xs"></i>

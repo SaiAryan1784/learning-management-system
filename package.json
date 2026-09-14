@@ -7,7 +7,9 @@
     "copy:pdfjs": "node scripts/copy-pdfjs-assets.mjs",
     "dev": "npm run copy:pdfjs && vite",
     "build": "npm run copy:pdfjs && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:access": "node scripts/check-access.mjs scripts/role-presets.json",
+    "prebuild": "npm run check:access"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

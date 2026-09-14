@@ -5,6 +5,8 @@ import toastr from "toastr";
 import { PageHeader, Card, Button, Badge, Modal, EmptyState, SkeletonCard } from "../../components/ui";
 import FilePreview from "../../components/lesson/FilePreview";
 import { onFilePick } from "../../utils/fileInput";
+import { useAuth } from "../../auth/AuthContext";
+import { PERM } from "../../auth/access";
 
 const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
 const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
@@ -27,6 +29,10 @@ const emptyDesign = {
 };
 
 export default function CertificateManager() {
+  const { hasPermission } = useAuth();
+  // Template design is an org setting; issuing certificates is not. Trainer
+  // holds the second without the first.
+  const canDesign = hasPermission(PERM.settingsUpdate);
   const navigate = useNavigate();
   const [view, setView] = useState("issued"); // issued | designs
   const [certificates, setCertificates] = useState([]);
@@ -228,15 +234,17 @@ export default function CertificateManager() {
   return (
     <div className="space-y-5">
       <PageHeader title="Manage Certificates" subtitle="Issued certificates and per-course certificate designs">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="!text-white !border-white/20 hover:!bg-white/10"
-          leadingIcon={<i className="fa-solid fa-sliders text-xs" />}
-          onClick={() => navigate("/dashboard/certificates/setup")}
-        >
-          Template Setup
-        </Button>
+        {canDesign && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="!text-white !border-white/20 hover:!bg-white/10"
+            leadingIcon={<i className="fa-solid fa-sliders text-xs" />}
+            onClick={() => navigate("/dashboard/certificates/setup")}
+          >
+            Template Setup
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -254,12 +262,14 @@ export default function CertificateManager() {
             <i className="fa-solid fa-triangle-exclamation mr-2" />
             No certificate template set up yet — courses will use the built-in default.
           </p>
-          <button
-            className="text-sm font-semibold text-amber-900 hover:underline whitespace-nowrap"
-            onClick={() => navigate("/dashboard/certificates/setup")}
-          >
-            Configure template →
-          </button>
+          {canDesign && (
+            <button
+              className="text-sm font-semibold text-amber-900 hover:underline whitespace-nowrap"
+              onClick={() => navigate("/dashboard/certificates/setup")}
+            >
+              Configure template →
+            </button>
+          )}
         </div>
       )}
 
@@ -523,9 +533,13 @@ export default function CertificateManager() {
         <div className="space-y-4">
           <p className="text-caption text-brand-muted">
             Overrides for this course only. Anything left blank falls back to your{" "}
-            <button className="font-semibold text-emerald hover:underline" onClick={() => navigate("/dashboard/certificates/setup")}>
-              organization template
-            </button>.
+            {canDesign ? (
+              <button className="font-semibold text-emerald hover:underline" onClick={() => navigate("/dashboard/certificates/setup")}>
+                organization template
+              </button>
+            ) : (
+              <span className="font-semibold">organization template</span>
+            )}.
           </p>
           <label className="flex items-center gap-2 text-sm text-brand-text cursor-pointer">
             <input type="checkbox" className="accent-emerald w-4 h-4" checked={designForm.enabled} onChange={(e) => setDesign({ enabled: e.target.checked })} />

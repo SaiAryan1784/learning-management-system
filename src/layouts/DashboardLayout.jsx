@@ -1,7 +1,7 @@
 import { Outlet, useNavigate, NavLink, useLocation } from "react-router-dom";
 import GlobalSearch from "../components/GlobalSearch";
 import { useAuth } from "../auth/AuthContext";
-import { visibleSections, visibleReports } from "../auth/access";
+import { visibleSections, visibleReports, PERM } from "../auth/access";
 import { useEffect, useState, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageLoader, SectionLoader } from "../components/ui/Spinner";
@@ -532,7 +532,8 @@ export default function DashboardLayout() {
                       )}
                     </div>
 
-                    {/* Footer */}
+                    {/* Footer — the log is an org report, not a learner page */}
+                    {hasPermission(PERM.reportsRead) && (
                     <div className="border-t border-brand-border/40 px-4 py-3">
                       <NavLink
                         to="/dashboard/reports/notification-logs"
@@ -543,6 +544,7 @@ export default function DashboardLayout() {
                         <i className="fa-solid fa-arrow-right text-[10px]" />
                       </NavLink>
                     </div>
+                    )}
                   </motion.div>
                 );
               })()}
