@@ -6,6 +6,7 @@ import {
 } from "recharts";
 import api from "../../api/api";
 import { useAuth } from "../../auth/AuthContext";
+import { PERM } from "../../auth/access";
 import {
   Card, Badge, Button, SkeletonCard, EmptyState, ProgressBar,
 } from "../../components/ui";
@@ -74,15 +75,17 @@ function SectionHeading({ icon, title, right }) {
   );
 }
 
+// Each action names the permission its destination route requires, so a
+// Franchise Owner is never offered "Add Course" only to bounce off the guard.
 const QUICK_ACTIONS = [
-  { label: "Add Course", icon: "fa-plus", to: "/dashboard/course-add" },
-  { label: "Invite Staff", icon: "fa-user-plus", to: "/dashboard/staff" },
-  { label: "View Reports", icon: "fa-chart-line", to: "/dashboard/reports/compliance" },
+  { label: "Add Course", icon: "fa-plus", to: "/dashboard/course-add", permission: PERM.coursesCreate },
+  { label: "Invite Staff", icon: "fa-user-plus", to: "/dashboard/staff", permission: PERM.staffCreate },
+  { label: "View Reports", icon: "fa-chart-line", to: "/dashboard/reports/compliance", permission: PERM.reportsRead },
 ];
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const lastFetchRef = useRef(0);
 
   const [overview, setOverview] = useState(null);
@@ -162,7 +165,7 @@ export default function ManagerDashboard() {
             </h1>
             <p className="text-sm text-white/70 mt-2 max-w-md">{statusLine}</p>
             <div className="flex flex-wrap gap-2 mt-5">
-              {QUICK_ACTIONS.map((a) => (
+              {QUICK_ACTIONS.filter((a) => hasPermission(a.permission)).map((a) => (
                 <button
                   key={a.label}
                   type="button"

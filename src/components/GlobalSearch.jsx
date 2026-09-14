@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../api/api";
+import { useAuth } from "../auth/AuthContext";
+import { PERM, AUTHORING } from "../auth/access";
 
 function debounce(fn, delay) {
   let t;
@@ -9,6 +11,7 @@ function debounce(fn, delay) {
 }
 
 export default function GlobalSearch() {
+  const { hasPermission } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -43,9 +46,11 @@ export default function GlobalSearch() {
     else { setResults(null); setLoading(false); }
   };
 
+  // A course hit opens the course editor and a staff hit opens their progress
+  // page, so only offer each to people the destination route will admit.
   const allItems = [
-    ...(results?.courses || []).map((c) => ({ type: "course", ...c })),
-    ...(results?.staff || []).map((s) => ({ type: "staff", ...s })),
+    ...(hasPermission(AUTHORING) ? results?.courses || [] : []).map((c) => ({ type: "course", ...c })),
+    ...(hasPermission(PERM.staffProgress) ? results?.staff || [] : []).map((s) => ({ type: "staff", ...s })),
   ];
 
   const go = (item) => {

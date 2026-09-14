@@ -12,6 +12,8 @@ import {
   FormField,
 } from "../../components/ui";
 import { SectionLoader } from "../../components/ui/Spinner";
+import { useAuth } from "../../auth/AuthContext";
+import { PERM } from "../../auth/access";
 
 const MAX_EMAILS = 5;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -20,6 +22,15 @@ const emptyForm = () => ({ name: "", address: "", phone: "", emails: [""] });
 const locEmails = (loc) => loc.emails ?? (loc.email ? [loc.email] : []);
 
 export default function OwnerLocations() {
+  const { hasPermission, access } = useAuth();
+  // The page needs only locations:read, so a Franchise Owner reaches it to see
+  // their own location's details. Each control is gated on what the API
+  // enforces. Inviting a franchise owner is an org-level act: location-scoped
+  // people add Managers and Staff from the Staff page instead.
+  const canCreate = hasPermission(PERM.locationsCreate);
+  const canUpdate = hasPermission(PERM.locationsUpdate);
+  const canDelete = hasPermission(PERM.locationsDelete);
+  const canInviteOwner = hasPermission(PERM.staffCreate) && access?.orgWide === true;
   const [locations, setLocations] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
@@ -179,15 +190,17 @@ export default function OwnerLocations() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Locations" subtitle="Manage your business locations">
-        <Button
-          variant="primary"
-          size="sm"
-          leadingIcon={<i className="fa-solid fa-plus text-xs" />}
-          onClick={() => { resetForm(); setOpenPop(true); }}
-        >
-          Add Location
-        </Button>
+      <PageHeader title="Locations" subtitle={canCreate ? "Manage your business locations" : "Your location"}>
+        {canCreate && (
+          <Button
+            variant="primary"
+            size="sm"
+            leadingIcon={<i className="fa-solid fa-plus text-xs" />}
+            onClick={() => { resetForm(); setOpenPop(true); }}
+          >
+            Add Location
+          </Button>
+        )}
         <Link
           to="/dashboard"
           className="flex items-center justify-center w-8 h-8 bg-charcoal-light hover:bg-charcoal-muted text-white/60 rounded-lg transition-colors no-underline"
@@ -235,19 +248,28 @@ export default function OwnerLocations() {
                   </td>
                   <td>
                     <div className="flex items-center gap-2">
-                      <button className={actionBtn} onClick={() => handleEdit(loc)} title="Edit">
-                        <i className="fa-solid fa-edit text-xs"></i>
-                      </button>
-                      <button className={actionBtn} onClick={() => openInvite(loc)} title="Invite franchise owner">
-                        <i className="fa-solid fa-user-plus text-xs"></i>
-                      </button>
-                      <button
-                        className={`${actionBtn} hover:bg-brand-danger/10 hover:text-brand-danger hover:border-brand-danger transition-colors`}
-                        onClick={() => setDeleteLoc(loc)}
-                        title="Delete"
-                      >
-                        <i className="fa-solid fa-trash text-xs"></i>
-                      </button>
+                      {canUpdate && (
+                        <button className={actionBtn} onClick={() => handleEdit(loc)} title="Edit">
+                          <i className="fa-solid fa-edit text-xs"></i>
+                        </button>
+                      )}
+                      {canInviteOwner && (
+                        <button className={actionBtn} onClick={() => openInvite(loc)} title="Invite franchise owner">
+                          <i className="fa-solid fa-user-plus text-xs"></i>
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          className={`${actionBtn} hover:bg-brand-danger/10 hover:text-brand-danger hover:border-brand-danger transition-colors`}
+                          onClick={() => setDeleteLoc(loc)}
+                          title="Delete"
+                        >
+                          <i className="fa-solid fa-trash text-xs"></i>
+                        </button>
+                      )}
+                      {!canUpdate && !canInviteOwner && !canDelete && (
+                        <span className="text-brand-muted text-xs">—</span>
+                      )}
                     </div>
                   </td>
                 </tr>

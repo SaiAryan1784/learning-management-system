@@ -35,7 +35,11 @@ export const PERM = Object.freeze({
   staffProgress: "reports:read",
 
   staffRead: "staff:read",
+  staffCreate: "staff:create",
   locationsRead: "locations:read",
+  locationsCreate: "locations:create",
+  locationsUpdate: "locations:update",
+  locationsDelete: "locations:delete",
   rolesRead: "roles:read",
   rolesCreate: "roles:create",
 
@@ -65,6 +69,16 @@ export const PERM = Object.freeze({
 export const COURSE_ADMIN = Object.freeze([PERM.coursesCreate, PERM.coursesAssign]);
 
 /**
+ * Authoring screens — the lesson list with its Add Lesson / Add Guide / reorder
+ * / delete controls, the path-courses editor, the course form. These are gated
+ * on CREATE, not read: a Franchise Owner holds lessons:read (needed to take
+ * the training) and reaching these pages showed them a wall of controls that
+ * all 403. Every button that leads here must check the same constant, so the
+ * catalogue reads PERM.authoring too.
+ */
+export const AUTHORING = PERM.coursesCreate;
+
+/**
  * Sidebar structure for every non-platform-admin user.
  *
  * `permission: null` means any authenticated user — used for the pages that
@@ -85,7 +99,8 @@ export const NAV_SECTIONS = Object.freeze([
     items: [
       { label: "Locations", icon: "fa-location-dot", path: "/dashboard/locations", permission: PERM.locationsRead },
       { label: "Staff", icon: "fa-users", path: "/dashboard/staff", permission: PERM.staffRead },
-      { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses", permission: COURSE_ADMIN },
+      // Non-authors get a paths-only version of this page, so the link says so.
+      { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses", permission: COURSE_ADMIN, nonAuthorLabel: "Paths" },
       // Gated on create rather than read: the Roles page has no per-action
       // gating yet, so offering it to a read-only role would show controls
       // that 403. Owners and Admins are the only ones meant to shape roles.
@@ -132,9 +147,14 @@ const allowed = (hasPermission) => (item) => can(hasPermission, item.permission)
  * already returns true for platform admins and for a role holding "*".
  */
 export function visibleSections(hasPermission) {
+  const author = hasPermission(AUTHORING);
   return NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter(allowed(hasPermission)),
+    items: section.items
+      .filter(allowed(hasPermission))
+      .map((item) =>
+        item.nonAuthorLabel && !author ? { ...item, label: item.nonAuthorLabel } : item,
+      ),
   })).filter((section) => section.items.length > 0);
 }
 

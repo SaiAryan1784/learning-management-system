@@ -9,11 +9,16 @@ import { SectionLoader } from "../../components/ui/Spinner";
 import { useAuth } from "../../auth/AuthContext";
 import CoursePathFormModal from "../../components/dashboard/CoursePathFormModal";
 import CourseCover from "../../components/dashboard/CourseCover";
-import { PERM } from "../../auth/access";
+import { PERM, AUTHORING } from "../../auth/access";
 
 export default function OSCourses() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
+  // Two audiences share this screen. Authors (Owner, Admin, Trainer) get the
+  // full catalogue and the builders. Everyone else who may assign training
+  // (Franchise Owner, Manager) gets paths only — the client asked for the
+  // individual courses and their edit controls to be gone from that view.
+  const canAuthor = hasPermission(AUTHORING);
   const [courses, setCourses] = useState([]);
   const [paths, setPaths] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,30 +107,37 @@ export default function OSCourses() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Courses" subtitle="Published courses visible to staff">
-        <Link
-          to="/dashboard/courses/drafts"
-          className="flex items-center gap-2 bg-charcoal-light hover:bg-charcoal-muted text-white/80 text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg transition-colors"
-        >
-          <i className="fa-solid fa-pen-ruler text-xs"></i>
-          Drafts
-        </Link>
-        <Button
-          variant="secondary"
-          size="sm"
-          leadingIcon={<i className="fa-solid fa-folder-plus text-xs" />}
-          onClick={() => setPathModalOpen(true)}
-        >
-          New Path
-        </Button>
-        <Button
-          variant="primary"
-          size="sm"
-          leadingIcon={<i className="fa-solid fa-plus text-xs" />}
-          onClick={() => navigate("/dashboard/course-add")}
-        >
-          New Course
-        </Button>
+      <PageHeader
+        title={canAuthor ? "Courses" : "Paths"}
+        subtitle={canAuthor ? "Published courses visible to staff" : "Assign a path to bring your team through its courses in order"}
+      >
+        {canAuthor && (
+          <>
+            <Link
+              to="/dashboard/courses/drafts"
+              className="flex items-center gap-2 bg-charcoal-light hover:bg-charcoal-muted text-white/80 text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg transition-colors"
+            >
+              <i className="fa-solid fa-pen-ruler text-xs"></i>
+              Drafts
+            </Link>
+            <Button
+              variant="secondary"
+              size="sm"
+              leadingIcon={<i className="fa-solid fa-folder-plus text-xs" />}
+              onClick={() => setPathModalOpen(true)}
+            >
+              New Path
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              leadingIcon={<i className="fa-solid fa-plus text-xs" />}
+              onClick={() => navigate("/dashboard/course-add")}
+            >
+              New Course
+            </Button>
+          </>
+        )}
       </PageHeader>
 
       {/* Paths — ordered groups of courses, assignable as one unit. Shown above
@@ -175,17 +187,19 @@ export default function OSCourses() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-brand-border">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      leadingIcon={<i className="fa-solid fa-folder-open text-[10px]" />}
-                      onClick={() => navigate(`/dashboard/paths/${path._id}/courses`)}
-                    >
-                      Courses
-                    </Button>
+                    {canAuthor && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        leadingIcon={<i className="fa-solid fa-folder-open text-[10px]" />}
+                        onClick={() => navigate(`/dashboard/paths/${path._id}/courses`)}
+                      >
+                        Courses
+                      </Button>
+                    )}
                     {path.status === "published" ? (
                       <Button
-                        variant="ghost"
+                        variant={canAuthor ? "ghost" : "outline"}
                         size="sm"
                         leadingIcon={<i className="fa-solid fa-user-plus text-[10px]" />}
                         onClick={() => navigate(`/dashboard/paths/${path._id}/assign`)}
@@ -226,6 +240,18 @@ export default function OSCourses() {
 
       {loading ? (
         <SectionLoader />
+      ) : !canAuthor ? (
+        paths.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 bg-surface border border-brand-border rounded-xl text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald/10 flex items-center justify-center mb-4">
+              <i className="fa-solid fa-folder-tree text-icon text-2xl" />
+            </div>
+            <h3 className="text-lg font-semibold text-brand-text mb-1">No paths published yet</h3>
+            <p className="text-sm text-brand-muted max-w-xs">
+              Your organization's admins publish paths here; once one is live you can assign it to your team.
+            </p>
+          </div>
+        )
       ) : courses.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-surface border border-brand-border rounded-xl text-center">
           <div className="w-16 h-16 rounded-full bg-emerald/10 flex items-center justify-center mb-4">

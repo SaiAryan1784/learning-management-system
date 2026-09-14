@@ -3,8 +3,11 @@ import api from "../../api/api";
 import toastr from "toastr";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatCard } from "../../components/ui/StatCard";
+import { useAuth } from "../../auth/AuthContext";
+import { PERM } from "../../auth/access";
 
 export default function RunAssignments() {
+  const { hasPermission } = useAuth();
   const [staff, setStaff] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState([]);
   const [onboardingOnly, setOnboardingOnly] = useState(false);
@@ -103,13 +106,17 @@ export default function RunAssignments() {
           >
             {loading ? "Running..." : "Run Assignment"}
           </button>
-          <button
-            className="bg-charcoal hover:bg-charcoal-light text-white font-semibold text-sm uppercase tracking-wide px-5 py-2 rounded-lg transition-colors disabled:opacity-50"
-            onClick={runAutomation}
-            disabled={loading}
-          >
-            {loading ? "Running..." : "Run Automation"}
-          </button>
+          {/* Automation is an org-wide job behind settings:update; the page
+              itself only needs compliance:run, which Franchise Owners hold. */}
+          {hasPermission(PERM.settingsUpdate) && (
+            <button
+              className="bg-charcoal hover:bg-charcoal-light text-white font-semibold text-sm uppercase tracking-wide px-5 py-2 rounded-lg transition-colors disabled:opacity-50"
+              onClick={runAutomation}
+              disabled={loading}
+            >
+              {loading ? "Running..." : "Run Automation"}
+            </button>
+          )}
         </div>
       </div>
 

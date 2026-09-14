@@ -18,8 +18,15 @@ import {
 } from "../../components/ui";
 
 export default function OwnerStaff() {
-  const { user, hasPermission } = useAuth();
+  const { user, hasPermission, access } = useAuth();
   const navigate = useNavigate();
+
+  // A location-scoped person (Franchise Owner, Manager) can only place people
+  // at their own locations, and "no location" would mean "unassigned", not
+  // "org-wide" — so their invites start with their own location(s) ticked.
+  const scoped = access?.orgWide !== true;
+  const homeLocations = scoped ? (access?.locations || []).map((l) => (typeof l === "string" ? l : l?._id)).filter(Boolean) : [];
+  const blankForm = () => ({ email: "", roleId: "", locations: [...homeLocations] });
 
   // The page itself only needs staff:read, so roles that may view the team
   // without administering it (Manager) reach it. Each action is gated on the
@@ -32,7 +39,7 @@ export default function OwnerStaff() {
   const [staffList, setStaffList] = useState([]);
   const [roles, setRoles] = useState([]);
   const [locations, setLocations] = useState([]);
-  const [form, setForm] = useState({ email: "", roleId: "", locations: [] });
+  const [form, setForm] = useState(blankForm);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("active");
@@ -51,7 +58,9 @@ export default function OwnerStaff() {
       }
       const [staffRes, rolesRes, locRes, seatsRes] = await Promise.all([
         api.get("/staff"),
-        api.get("/roles"),
+        // Only the roles this person may hand out — the server applies the
+        // same rule on invite/update, so nothing offered here can be refused.
+        api.get("/roles", { params: { grantable: true } }),
         api.get("/locations"),
         api.get("/staff/seats").catch(() => null),
       ]);
@@ -92,8 +101,8 @@ export default function OwnerStaff() {
         roleId: form.roleId,
         locations: form.locations,
       });
-      toastr.success(`Invite created! OTP: ${res.data.otp}`, "success");
-      setForm({ email: "", roleId: "", locations: [] });
+      toastr.success(res.data.otp ? `Invite created! OTP: ${res.data.otp}` : "Invite sent", "success");
+      setForm(blankForm());
       loadData();
       setOpenPop(false);
     } catch (err) {
@@ -120,7 +129,7 @@ export default function OwnerStaff() {
 
   const cancelEdit = () => {
     setEditStaffId(null);
-    setForm({ email: "", roleId: "", locations: [] });
+    setForm(blankForm());
     setOpenPop(false);
   };
 
@@ -208,7 +217,7 @@ export default function OwnerStaff() {
             leadingIcon={<i className="fa-solid fa-plus text-xs" />}
             onClick={() => {
               setEditStaffId(null);
-              setForm({ email: "", roleId: "", locations: [] });
+              setForm(blankForm());
               setOpenPop(true);
             }}
           >
@@ -343,7 +352,10 @@ export default function OwnerStaff() {
             </Select>
           </FormField>
 
-          <FormField label="Assign Locations" hint="Leave empty for org-wide access.">
+          <FormField
+            label="Assign Locations"
+            hint={scoped ? "They will belong to the location(s) you tick." : "Leave empty for org-wide access."}
+          >
             <div className="flex flex-wrap gap-2">
               {locations.map((loc) => (
                 <motion.label

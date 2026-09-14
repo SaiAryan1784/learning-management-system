@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
-import { PERM, COURSE_ADMIN, can } from "./auth/access";
+import { PERM, COURSE_ADMIN, AUTHORING, can } from "./auth/access";
 import useIdleLogout from "./pages/UserIdleLogout";
 import { PageLoader } from "./components/ui/Spinner";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -164,18 +164,18 @@ function AppContent() {
           <Route path="courses/drafts"        element={<Guard permission={PERM.coursesCreate}><CourseDrafts /></Guard>} />
           <Route path="course-add/:courseId?" element={<Guard permission={PERM.coursesCreate}><CourseAdd /></Guard>} />
 
-          <Route path="courses/:courseId/lessons"                element={<Guard permission={PERM.lessonsRead}><CourseLessons /></Guard>} />
+          <Route path="courses/:courseId/lessons"                element={<Guard permission={AUTHORING}><CourseLessons /></Guard>} />
           <Route path="courses/:courseId/lessons/new"            element={<Guard permission={PERM.lessonsCreate}><LessonBuilder /></Guard>} />
           <Route path="courses/:courseId/lessons/:lessonId/edit" element={<Guard permission={PERM.lessonsUpdate}><LessonBuilder /></Guard>} />
 
           {/* Guides — same two components, scoped to a guide instead of the course.
               URLs stay on /paths/ so existing links keep working. */}
-          <Route path="courses/:courseId/paths/:pathId/lessons"     element={<Guard permission={PERM.lessonsRead}><CourseLessons /></Guard>} />
+          <Route path="courses/:courseId/paths/:pathId/lessons"     element={<Guard permission={AUTHORING}><CourseLessons /></Guard>} />
           <Route path="courses/:courseId/paths/:pathId/lessons/new" element={<Guard permission={PERM.lessonsCreate}><LessonBuilder /></Guard>} />
           <Route path="courses/:courseId/assign"                    element={<Guard permission={PERM.coursesAssign}><CourseAssignStaff /></Guard>} />
 
           {/* Paths — org-level groups of courses */}
-          <Route path="paths/:pathId/courses" element={<Guard permission={PERM.coursesRead}><PathCourses /></Guard>} />
+          <Route path="paths/:pathId/courses" element={<Guard permission={AUTHORING}><PathCourses /></Guard>} />
           <Route path="paths/:pathId/assign"  element={<Guard permission={PERM.coursesAssign}><PathAssignStaff /></Guard>} />
 
           {/* Compliance */}
