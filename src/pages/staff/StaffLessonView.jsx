@@ -51,6 +51,52 @@ function lessonHref(courseId, lessonId, guideId) {
   return guideId ? `${base}?guide=${guideId}` : base;
 }
 
+/**
+ * Where the learner is, and where Previous/Next go — derived from one payload.
+ *
+ * Kept a pure function of the content response rather than component state so
+ * that "Complete & Next" can re-resolve against FRESHLY fetched content. It
+ * skips locked pages, and completing a lesson is exactly what unlocks the next
+ * one, so resolving against the pre-completion payload jumped the learner over
+ * the page they had just earned.
+ */
+function resolveNavigation(courseData, lessonId, requestedGuideId) {
+  const allLessons = courseData?.lessons || [];
+  const items = courseData?.items || allLessons.map((l) => ({ kind: "lesson", ...l }));
+
+  const guidesForCurrent = items
+    .filter((it) => it.kind === "path")
+    .filter((g) => (g.lessons || []).some((l) => l._id === lessonId));
+
+  const currentGuide =
+    guidesForCurrent.find((g) => String(g._id) === String(requestedGuideId)) ||
+    guidesForCurrent[0] ||
+    null;
+
+  const guidePages = currentGuide?.lessons || [];
+  const pageIndex = currentGuide ? guidePages.findIndex((l) => l._id === lessonId) : -1;
+  const currentIndex = allLessons.findIndex((l) => l._id === lessonId);
+
+  // Inside a guide, Previous/Next walk that guide's pages and stop at its edges
+  // — a guide is one topic, so falling out of it mid-flow reads as a bug.
+  // A top-level lesson keeps walking the whole course.
+  let prevLesson = null;
+  let nextLesson = null;
+  if (currentGuide && pageIndex >= 0) {
+    prevLesson = pageIndex > 0 ? guidePages[pageIndex - 1] : null;
+    nextLesson = guidePages.slice(pageIndex + 1).find((l) => !l.locked) || null;
+  } else {
+    prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+    // Skip lessons still locked behind an incomplete prerequisite.
+    nextLesson =
+      currentIndex >= 0
+        ? allLessons.slice(currentIndex + 1).find((l) => !l.locked) || null
+        : null;
+  }
+
+  return { allLessons, items, currentGuide, guidePages, pageIndex, currentIndex, prevLesson, nextLesson };
+}
+
 function LessonTile({ lesson, currentLessonId, completedIds, courseId, guideId, navigate }) {
   const isActive = lesson._id === currentLessonId;
   const isCompleted = completedIds.has(lesson._id);
@@ -234,6 +280,9 @@ export default function StaffLessonView() {
   const loadCourseContent = async () => {
     const res = await api.get(`/progress/me/assigned-courses/${courseId}/content`);
     setCourseData(res.data);
+    // Returned as well as stored: completing a lesson has to navigate from the
+    // payload it just fetched, not from the state this render closed over.
+    return res.data;
   };
 
   const loadProgress = async () => {
@@ -268,20 +317,17 @@ export default function StaffLessonView() {
     rootRef.current?.closest("main")?.scrollTo({ top: 0, behavior: "smooth" });
   }, [lessonId]);
 
-  const allLessons = courseData?.lessons || [];
+  const nav = useMemo(
+    () => resolveNavigation(courseData, lessonId, requestedGuideId),
+    [courseData, lessonId, requestedGuideId]
+  );
+  const { allLessons, items, currentGuide, guidePages, pageIndex, currentIndex, prevLesson, nextLesson } = nav;
+
   const currentLesson = allLessons.find((l) => l._id === lessonId);
   const progressPercent = progressData?.progressPercent || 0;
   const completedIds = useMemo(
     () => new Set((progressData?.lessons || []).filter((l) => l.status === "completed").map((l) => l.lessonId)),
     [progressData]
-  );
-
-  // The server sends `lessons` already linearized across paths, so index±1 stays
-  // correct. `items` is the same content grouped; falling back to a flat mapping
-  // keeps this working against a backend that predates paths.
-  const items = useMemo(
-    () => courseData?.items || allLessons.map((l) => ({ kind: "lesson", ...l })),
-    [courseData, allLessons]
   );
 
   // Collapse runs of top-level lessons into ONE responsive grid. Rendering a
@@ -301,52 +347,15 @@ export default function StaffLessonView() {
     return rows;
   }, [items]);
 
-  // Every guide this lesson appears in. `items` is authoritative about grouping
-  // and order — unlike `lesson.pathId`, which only records the first occurrence.
-  const guidesForCurrent = useMemo(
-    () =>
-      items
-        .filter((it) => it.kind === "path")
-        .filter((g) => (g.lessons || []).some((l) => l._id === lessonId)),
-    [items, lessonId]
-  );
-
-  // Which guide the learner is actually reading: the one they clicked in from,
-  // else the only/first one that holds this lesson, else none (top-level lesson).
-  const currentGuide =
-    guidesForCurrent.find((g) => String(g._id) === String(requestedGuideId)) ||
-    guidesForCurrent[0] ||
-    null;
-
-  const guidePages = currentGuide?.lessons || [];
-  const pageIndex = currentGuide ? guidePages.findIndex((l) => l._id === lessonId) : -1;
-
-  const currentIndex = allLessons.findIndex((l) => l._id === lessonId);
-
-  // Inside a guide, Previous/Next walk that guide's pages and stop at its edges
-  // — a guide is one topic, so falling out of it mid-flow reads as a bug.
-  // A top-level lesson keeps walking the whole course.
-  let prevLesson = null;
-  let nextLesson = null;
-  if (currentGuide && pageIndex >= 0) {
-    prevLesson = pageIndex > 0 ? guidePages[pageIndex - 1] : null;
-    nextLesson = guidePages.slice(pageIndex + 1).find((l) => !l.locked) || null;
-  } else {
-    prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
-    // Skip lessons still locked behind an incomplete prerequisite.
-    nextLesson =
-      currentIndex >= 0
-        ? allLessons.slice(currentIndex + 1).find((l) => !l.locked) || null
-        : null;
-  }
-
-  const goNext = () => {
-    if (nextLesson) {
-      navigate(lessonHref(courseId, nextLesson._id, currentGuide?._id));
+  const goTo = (target, guide) => {
+    if (target) {
+      navigate(lessonHref(courseId, target._id, guide?._id));
     } else {
       navigate("/dashboard/my-dashboard");
     }
   };
+
+  const goNext = () => goTo(nextLesson, currentGuide);
 
   const handleComplete = async () => {
     try {
@@ -355,9 +364,12 @@ export default function StaffLessonView() {
       // in, so the sequential-unlock check is exact rather than permissive
       // across every course that happens to reach this lesson.
       const res = await api.post(`/progress/lessons/${lessonId}/complete`, { courseId });
-      await loadProgress();
+      // Refetch CONTENT as well as progress: this completion is what unlocks
+      // the next page, and Next skips anything still flagged locked.
+      const [fresh] = await Promise.all([loadCourseContent(), loadProgress()]);
       (res.data?.newBadges || []).forEach((b) => toastr.success(`🏅 Badge earned: ${b.name}`));
-      goNext();
+      const after = resolveNavigation(fresh, lessonId, requestedGuideId);
+      goTo(after.nextLesson, after.currentGuide);
     } catch (err) {
       toastr.error("Could not mark complete");
     } finally {
