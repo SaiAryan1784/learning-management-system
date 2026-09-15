@@ -97,6 +97,35 @@ function resolveNavigation(courseData, lessonId, requestedGuideId) {
   return { allLessons, items, currentGuide, guidePages, pageIndex, currentIndex, prevLesson, nextLesson };
 }
 
+/**
+ * Has this question been answered? Mirrors `knowledgeCheck.service` on the
+ * server, which enforces the same rule — this copy only decides whether the
+ * button is enabled and which questions to point at.
+ */
+function isAnswered(block, value) {
+  if (value === null || value === undefined) return false;
+  switch (block.kind) {
+    case "mcq":
+      return Array.isArray(value) && value.length > 0;
+    case "text_answer":
+      return typeof value === "string" && value.trim().length > 0;
+    case "survey":
+      return typeof value === "number" && value > 0;
+    case "matching": {
+      if (!Array.isArray(value)) return false;
+      const pairs = block.config?.pairs || [];
+      const done = value.filter((v) => v?.left && v?.right);
+      return pairs.length > 0 ? done.length >= pairs.length : done.length > 0;
+    }
+    case "file_upload":
+      return Boolean(value?.storageKey || value?.contentUrl);
+    case "esignature":
+      return typeof value === "string" ? value.trim().length > 0 : Boolean(value);
+    default:
+      return true;
+  }
+}
+
 function LessonTile({ lesson, currentLessonId, completedIds, courseId, guideId, navigate }) {
   const isActive = lesson._id === currentLessonId;
   const isCompleted = completedIds.has(lesson._id);
@@ -363,6 +392,13 @@ export default function StaffLessonView() {
       // Tells the backend which course context this completion is happening
       // in, so the sequential-unlock check is exact rather than permissive
       // across every course that happens to reach this lesson.
+      // Record and grade the page's questions first — completion is refused
+      // server-side until every one of them has an answer.
+      if (questions.length > 0) {
+        await api.post(`/courses/${courseId}/lessons/${lessonId}/quiz/submit`, {
+          responses: questions.map((b) => ({ blockId: b._id, value: responses[b._id] ?? null })),
+        });
+      }
       const res = await api.post(`/progress/lessons/${lessonId}/complete`, { courseId });
       // Refetch CONTENT as well as progress: this completion is what unlocks
       // the next page, and Next skips anything still flagged locked.
@@ -371,7 +407,7 @@ export default function StaffLessonView() {
       const after = resolveNavigation(fresh, lessonId, requestedGuideId);
       goTo(after.nextLesson, after.currentGuide);
     } catch (err) {
-      toastr.error("Could not mark complete");
+      toastr.error(err.response?.data?.message || "Could not mark complete");
     } finally {
       setCompleting(false);
     }
@@ -528,6 +564,12 @@ export default function StaffLessonView() {
   const isQuiz = currentLesson.option === "quiz";
   const alreadyPassed = completedIds.has(currentLesson._id) && isQuiz;
 
+  // Questions living on an ordinary page. They used to render, collect answers
+  // into state and go nowhere — the learner could click straight past them.
+  const questions = (currentLesson.blocks || []).filter((b) => b.category === "knowledge_check");
+  const unansweredCount = questions.filter((b) => !isAnswered(b, responses[b._id])).length;
+  const blockedByQuestions = !isQuiz && questions.length > 0 && unansweredCount > 0;
+
   // A guide is one topic, so its last page ends the guide rather than silently
   // spilling the learner into the next one.
   const inGuide = Boolean(currentGuide);
@@ -607,6 +649,17 @@ export default function StaffLessonView() {
                 </div>
               )}
 
+              {blockedByQuestions && (
+                <div className="mt-5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 flex items-start gap-3">
+                  <i className="fa-solid fa-circle-info text-amber-600 text-sm mt-0.5"></i>
+                  <p className="text-sm text-amber-800">
+                    {unansweredCount === questions.length
+                      ? `Answer the ${questions.length} question${questions.length === 1 ? "" : "s"} above to continue.`
+                      : `${unansweredCount} more question${unansweredCount === 1 ? "" : "s"} to answer before you can continue.`}
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between gap-3 pt-5 mt-2 border-t border-brand-border">
                 <Button
                   variant="ghost"
@@ -630,7 +683,14 @@ export default function StaffLessonView() {
                     </Button>
                   )
                 ) : (
-                  <Button variant="primary" loading={completing} trailingIcon={<i className="fa-solid fa-check text-xs" />} onClick={handleComplete}>
+                  <Button
+                    variant="primary"
+                    loading={completing}
+                    disabled={blockedByQuestions}
+                    title={blockedByQuestions ? "Answer the questions on this page first" : undefined}
+                    trailingIcon={<i className="fa-solid fa-check text-xs" />}
+                    onClick={handleComplete}
+                  >
                     {completeLabel}
                   </Button>
                 )}
