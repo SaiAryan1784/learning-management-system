@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../api/api";
@@ -224,6 +224,12 @@ export default function StaffLessonView() {
   const [completing, setCompleting] = useState(false);
   const [responses, setResponses] = useState({}); // blockId -> value
   const [quizResult, setQuizResult] = useState(null);
+  // The outline is a jump-list, not the lesson. A real course here has 40+
+  // lessons, so leaving it expanded buried the lesson itself thousands of
+  // pixels down the page and learners reported "nothing loads".
+  const [outlineOpen, setOutlineOpen] = useState(false);
+
+  const rootRef = useRef(null);
 
   const loadCourseContent = async () => {
     const res = await api.get(`/progress/me/assigned-courses/${courseId}/content`);
@@ -255,6 +261,13 @@ export default function StaffLessonView() {
     setQuizResult(null);
   }, [lessonId]);
 
+  // Next/Previous keep the learner mounted on the same route, so without this
+  // they land on the new lesson still scrolled to wherever they finished the
+  // last one. The dashboard scrolls <main>, not the window.
+  useEffect(() => {
+    rootRef.current?.closest("main")?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [lessonId]);
+
   const allLessons = courseData?.lessons || [];
   const currentLesson = allLessons.find((l) => l._id === lessonId);
   const progressPercent = progressData?.progressPercent || 0;
@@ -270,6 +283,23 @@ export default function StaffLessonView() {
     () => courseData?.items || allLessons.map((l) => ({ kind: "lesson", ...l })),
     [courseData, allLessons]
   );
+
+  // Collapse runs of top-level lessons into ONE responsive grid. Rendering a
+  // grid per lesson put a single tile on every row, which is what turned a
+  // 43-lesson course's outline into ~4,000px of scroll.
+  const outlineRows = useMemo(() => {
+    const rows = [];
+    for (const item of items) {
+      if (item.kind === "path") {
+        rows.push({ kind: "path", item });
+        continue;
+      }
+      const last = rows[rows.length - 1];
+      if (last?.kind === "lessons") last.lessons.push(item);
+      else rows.push({ kind: "lessons", lessons: [item] });
+    }
+    return rows;
+  }, [items]);
 
   // Every guide this lesson appears in. `items` is authoritative about grouping
   // and order — unlike `lesson.pathId`, which only records the first occurrence.
@@ -497,7 +527,7 @@ export default function StaffLessonView() {
     : inGuide ? "Complete Guide" : "Complete Lesson";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" ref={rootRef}>
       {/* Sticky header */}
       <div className="sticky top-0 z-30 -mx-6 -mt-6 bg-surface/95 backdrop-blur border-b border-brand-border">
         <div className="flex items-center justify-between gap-4 px-6 py-2.5">
@@ -538,40 +568,6 @@ export default function StaffLessonView() {
         </div>
         <ProgressBar percent={progressPercent} size="xs" />
       </div>
-
-      <Card padded>
-        <div className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-3">
-          Course contents
-        </div>
-
-        <div className="space-y-4">
-          {items.map((item) =>
-            item.kind === "path" ? (
-              <PathGroup
-                key={item._id}
-                path={item}
-                currentLessonId={lessonId}
-                completedIds={completedIds}
-                courseId={courseId}
-                navigate={navigate}
-              />
-            ) : (
-              <div
-                key={item.occurrenceKey || item._id}
-                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
-              >
-                <LessonTile
-                  lesson={item}
-                  currentLessonId={lessonId}
-                  completedIds={completedIds}
-                  courseId={courseId}
-                  navigate={navigate}
-                />
-              </div>
-            )
-          )}
-        </div>
-      </Card>
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -631,6 +627,61 @@ export default function StaffLessonView() {
           </ThemeScope>
         </motion.div>
       </AnimatePresence>
+
+      {/* The jump-list lives BELOW the lesson and starts closed. Above it and
+          open, a large course pushed the lesson itself off the bottom of the
+          screen and the page read as broken. */}
+      <Card padded>
+        <button
+          type="button"
+          className="w-full flex items-center justify-between gap-3 text-left"
+          onClick={() => setOutlineOpen((o) => !o)}
+          aria-expanded={outlineOpen}
+        >
+          <span className="text-xs font-semibold text-brand-muted uppercase tracking-wide">
+            Course contents
+            <span className="ml-2 normal-case font-medium text-brand-muted/80">
+              {allLessons.length} lesson{allLessons.length === 1 ? "" : "s"}
+            </span>
+          </span>
+          <i
+            className={`fa-solid fa-chevron-${outlineOpen ? "up" : "down"} text-xs text-brand-muted`}
+          ></i>
+        </button>
+
+        {outlineOpen && (
+          <div className="space-y-4 mt-4">
+            {outlineRows.map((row) =>
+              row.kind === "path" ? (
+                <PathGroup
+                  key={row.item._id}
+                  path={row.item}
+                  currentLessonId={lessonId}
+                  completedIds={completedIds}
+                  courseId={courseId}
+                  navigate={navigate}
+                />
+              ) : (
+                <div
+                  key={row.lessons[0].occurrenceKey || row.lessons[0]._id}
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+                >
+                  {row.lessons.map((lesson) => (
+                    <LessonTile
+                      key={lesson.occurrenceKey || lesson._id}
+                      lesson={lesson}
+                      currentLessonId={lessonId}
+                      completedIds={completedIds}
+                      courseId={courseId}
+                      navigate={navigate}
+                    />
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
