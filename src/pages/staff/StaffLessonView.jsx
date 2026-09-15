@@ -395,9 +395,18 @@ export default function StaffLessonView() {
       // Record and grade the page's questions first — completion is refused
       // server-side until every one of them has an answer.
       if (questions.length > 0) {
-        await api.post(`/courses/${courseId}/lessons/${lessonId}/quiz/submit`, {
-          responses: questions.map((b) => ({ blockId: b._id, value: responses[b._id] ?? null })),
-        });
+        try {
+          await api.post(`/courses/${courseId}/lessons/${lessonId}/quiz/submit`, {
+            responses: questions.map((b) => ({ blockId: b._id, value: responses[b._id] ?? null })),
+          });
+        } catch (err) {
+          // An API that predates page-level questions rejects this with 404
+          // ("Quiz lesson not found"). Don't strand the learner on a page they
+          // have answered: carry on and let completion proceed as it did
+          // before. Once the API is current, submission succeeds and the
+          // server enforces the gate. Anything else is a real failure.
+          if (err.response?.status !== 404) throw err;
+        }
       }
       const res = await api.post(`/progress/lessons/${lessonId}/complete`, { courseId });
       // Refetch CONTENT as well as progress: this completion is what unlocks
