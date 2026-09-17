@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import api from "../../api/api";
 import VideoLightbox from "./VideoLightbox";
+import ChatMarkdown from "./ChatMarkdown";
 
 const SESSION_KEY = "lms_chat_session_id";
 const MAX_MSG_LEN = 4000;
@@ -266,10 +267,10 @@ export default function ChatWidget() {
                         L
                       </div>
                       <div
-                        className="max-w-[82%] rounded-2xl rounded-bl-sm border border-brand-border bg-surface px-3.5 py-2.5 text-sm leading-relaxed text-brand-text whitespace-pre-wrap"
+                        className="max-w-[82%] rounded-2xl rounded-bl-sm border border-brand-border bg-surface px-3.5 py-2.5 text-sm leading-relaxed text-brand-text"
                         style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
                       >
-                        {msg.content}
+                        <ChatMarkdown text={msg.content} />
                       </div>
                     </div>
 
