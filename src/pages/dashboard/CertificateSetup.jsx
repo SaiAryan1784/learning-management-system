@@ -6,9 +6,8 @@ import { PageHeader, Card, Button } from "../../components/ui";
 import FilePreview from "../../components/lesson/FilePreview";
 import { CERT_FONTS } from "../staff/StaffCertificates";
 import { onFilePick } from "../../utils/fileInput";
+import { toAbsoluteUrl } from "../../utils/fileUrl";
 
-const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
-const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
 
 const inputClass =
   "w-full px-3.5 py-2.5 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent";

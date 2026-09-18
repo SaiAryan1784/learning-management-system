@@ -12,15 +12,13 @@ import {
   EmptyState,
   SkeletonCard,
 } from "../../components/ui";
+import CertificatePreview, {
+  CertificatePrintStyles,
+  resolveCertDesign,
+} from "../../components/certificates/CertificatePreview";
 
-const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
-const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
 
-export const CERT_FONTS = {
-  serif: "Georgia, 'Times New Roman', serif",
-  sans: "system-ui, -apple-system, sans-serif",
-  mono: "'Courier New', monospace",
-};
+export { CERT_FONTS } from "../../components/certificates/CertificatePreview";
 
 export default function StaffCertificates({ embedded = false }) {
   const navigate = useNavigate();
@@ -63,18 +61,7 @@ export default function StaffCertificates({ embedded = false }) {
 
   return (
     <div className="space-y-5">
-      {/* Print-only styling: show solely the certificate node when printing. */}
-      <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          #cert-print, #cert-print * { visibility: visible !important; }
-          #cert-print {
-            position: fixed; inset: 0; margin: 0; padding: 48px;
-            width: 100%; box-shadow: none !important; background: #fff !important;
-          }
-          .no-print { display: none !important; }
-        }
-      `}</style>
+      <CertificatePrintStyles />
 
       {!embedded && (
         <PageHeader title="My Certificates" subtitle="Certificates earned from completed courses">
@@ -155,149 +142,35 @@ export default function StaffCertificates({ embedded = false }) {
         title="Certificate"
         maxWidth="max-w-2xl"
       >
-        {selectedCert && (() => {
-          // `subject` is the normalised course-or-path the certificate was
-          // earned for, so a path certificate renders with the path's own
-          // design instead of blowing up on a null `course`.
-          const base = selectedCert.subject?.certificate || selectedCert.course?.certificate || {};
-          // Merge: subject values override the org-wide defaults; empty falls back to org.
-          const certCfg = {
-            title: base.title || orgCert.title || "Certificate of Completion",
-            signatoryName: base.signatoryName || orgCert.signatoryName || "",
-            signatoryRole: base.signatoryRole || orgCert.signatoryRole || "",
-            logoUrl: base.logoUrl || orgCert.logoUrl || "",
-            primaryColor: orgCert.primaryColor || "#10B981",
-            fontStyle: orgCert.fontStyle || "serif",
-          };
-          // Effective design: course's own uploaded design wins; else the org's uploaded
-          // template; else the generated template below.
-          let designUrl = "";
-          let designType = "image";
-          if (base.mode === "upload" && base.designUrl) {
-            designUrl = base.designUrl;
-            designType = base.designType || "image";
-          } else if (orgCert.templateUrl) {
-            designUrl = orgCert.templateUrl;
-            designType = orgCert.templateType || "image";
-          }
-          const isUpload = !!designUrl;
-          const designSrc = toAbsoluteUrl(designUrl);
-          certCfg.designType = designType;
-
-          // Owner-uploaded design (static, shown as-is to every recipient).
-          if (isUpload) {
-            return (
-              <>
-                {certCfg.designType === "pdf" ? (
-                  <div className="rounded-xl border border-brand-border overflow-hidden bg-canvas">
-                    <iframe src={designSrc} title="Certificate" className="block w-full" style={{ height: "80vh", minHeight: 600 }} />
-                  </div>
-                ) : (
-                  <div id="cert-print" className="rounded-xl border border-brand-border overflow-hidden bg-white">
-                    <img src={designSrc} alt="Certificate" className="block w-full" />
-                  </div>
-                )}
-                <div className="no-print flex justify-end gap-2 mt-4">
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedCert(null)}>Close</Button>
-                  {certCfg.designType === "pdf" ? (
-                    <a href={designSrc} target="_blank" rel="noreferrer" download>
-                      <Button variant="primary" size="sm" leadingIcon={<i className="fa-solid fa-download text-xs" />}>
-                        Download PDF
-                      </Button>
-                    </a>
-                  ) : (
-                    <Button variant="primary" size="sm" leadingIcon={<i className="fa-solid fa-download text-xs" />} onClick={handlePrint}>
-                      Print / Save PDF
-                    </Button>
-                  )}
-                </div>
-              </>
-            );
-          }
-
-          return (
-            <>
-            <div
-              id="cert-print"
-              className="relative overflow-hidden bg-gradient-to-b from-emerald-muted/40 to-surface rounded-xl p-8 border border-brand-border"
-              style={{ fontFamily: CERT_FONTS[certCfg.fontStyle] || CERT_FONTS.serif }}
-            >
-              <div className="text-center mb-6">
-                <img src={certCfg.logoUrl || "/images/title-img.png"} alt="seal" className="h-16 mx-auto mb-4" />
-                <h3 className="text-caption font-bold text-brand-muted uppercase tracking-widest mb-4">
-                  {certCfg.title || "Certificate of Completion"}
-                </h3>
-                <div className="h-px bg-brand-border mb-4" />
-                <p className="text-caption text-brand-muted uppercase tracking-wider mb-2">
-                  This certifies that
-                </p>
-                <h2 className="text-display text-brand-text mb-1">
-                  {selectedCert.staff?.name || "—"}
-                </h2>
-                <p className="text-caption text-brand-muted uppercase tracking-wider mb-2">
-                  has successfully completed
-                </p>
-                <h3 className="text-subheading mb-4" style={{ color: certCfg.primaryColor }}>
-                  {selectedCert.subject?.title || selectedCert.course?.title}
-                </h3>
-                <div className="h-px bg-brand-border mb-4" />
-                <p className="text-caption text-brand-muted mb-2">
-                  Issued on {new Date(selectedCert.issuedAt).toLocaleDateString()}
-                  {selectedCert.expiresAt
-                    ? ` · Valid until ${new Date(selectedCert.expiresAt).toLocaleDateString()}`
-                    : ""}
-                </p>
-              </div>
-
-              <div className="flex items-center justify-center mb-4">
-                <img src="/images/stamp.png" alt="stamp" className="h-14 opacity-80" />
-              </div>
-
-              {certCfg.signatoryName && (
-                <div className="text-center mb-4">
-                  <div className="h-px w-40 bg-brand-border mb-1 mx-auto" />
-                  <p className="text-caption font-semibold text-brand-text">{certCfg.signatoryName}</p>
-                  {certCfg.signatoryRole && (
-                    <p className="text-[10px] text-brand-muted">{certCfg.signatoryRole}</p>
-                  )}
-                </div>
-              )}
-
-              <div className="text-center">
-                <p className="text-[10px] text-brand-muted uppercase tracking-wider">
-                  Certificate No.
-                </p>
-                <p className="text-caption font-semibold text-brand-text mb-1">
-                  {selectedCert.certificateNo}
-                </p>
-                {selectedCert.verificationCode && (
-                  <p className="text-[10px] text-brand-muted">
-                    Verification code: {selectedCert.verificationCode}
-                  </p>
-                )}
-              </div>
-            </div>
-
+        {selectedCert && (
+          <>
+            <CertificatePreview cert={selectedCert} orgCert={orgCert} />
             <div className="no-print flex justify-end gap-2 mt-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedCert(null)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setSelectedCert(null)}>
                 Close
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                leadingIcon={<i className="fa-solid fa-download text-xs" />}
-                onClick={handlePrint}
-              >
-                Print / Save PDF
-              </Button>
+              {(() => {
+                const { isUpload, designSrc, designType } = resolveCertDesign(selectedCert, orgCert);
+                return isUpload && designType === "pdf" ? (
+                  <a href={designSrc} target="_blank" rel="noreferrer" download>
+                    <Button variant="primary" size="sm" leadingIcon={<i className="fa-solid fa-download text-xs" />}>
+                      Download PDF
+                    </Button>
+                  </a>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leadingIcon={<i className="fa-solid fa-download text-xs" />}
+                    onClick={handlePrint}
+                  >
+                    Print / Save PDF
+                  </Button>
+                );
+              })()}
             </div>
-            </>
-          );
-        })()}
+          </>
+        )}
       </Modal>
     </div>
   );

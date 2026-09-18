@@ -7,9 +7,12 @@ import FilePreview from "../../components/lesson/FilePreview";
 import { onFilePick } from "../../utils/fileInput";
 import { useAuth } from "../../auth/AuthContext";
 import { PERM } from "../../auth/access";
+import { toAbsoluteUrl } from "../../utils/fileUrl";
+import CertificatePreview, {
+  CertificatePrintStyles,
+  resolveCertDesign,
+} from "../../components/certificates/CertificatePreview";
 
-const FILE_BASE_URL = (api.defaults.baseURL || "").replace("/api", "");
-const toAbsoluteUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${FILE_BASE_URL}${u}`);
 
 const inputClass =
   "w-full px-3.5 py-2.5 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted bg-white focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent";
@@ -57,6 +60,10 @@ export default function CertificateManager() {
   const [savingDesign, setSavingDesign] = useState(false);
   const [uploadingDesign, setUploadingDesign] = useState(false);
   const [templateConfigured, setTemplateConfigured] = useState(true);
+  // The org-wide certificate defaults, needed to render an issued certificate
+  // exactly as its recipient sees it.
+  const [orgCert, setOrgCert] = useState({});
+  const [viewCert, setViewCert] = useState(null);
 
   const load = async () => {
     try {
@@ -76,6 +83,7 @@ export default function CertificateManager() {
         .get("/organization/settings")
         .then((r) => {
           const c = r.data.organization?.certificateSettings || {};
+          setOrgCert(c);
           setTemplateConfigured(!!(c.templateUrl || c.logoUrl || c.signatoryName));
         })
         .catch(() => {});
@@ -347,11 +355,19 @@ export default function CertificateManager() {
                       <td className="px-4 py-3 text-brand-muted">{new Date(cert.issuedAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-brand-muted">{cert.expiresAt ? new Date(cert.expiresAt).toLocaleDateString() : "—"}</td>
                       <td className="px-4 py-3 text-right">
-                        {cert.status === "active" && (
-                          <button className="text-xs font-semibold text-brand-danger hover:underline" onClick={() => handleRevoke(cert)}>
-                            <i className="fa-solid fa-ban mr-1 text-[10px]" />Revoke
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            className="text-xs font-semibold text-emerald hover:underline"
+                            onClick={() => setViewCert(cert)}
+                          >
+                            <i className="fa-solid fa-eye mr-1 text-[10px]" />View
                           </button>
-                        )}
+                          {cert.status === "active" && (
+                            <button className="text-xs font-semibold text-brand-danger hover:underline" onClick={() => handleRevoke(cert)}>
+                              <i className="fa-solid fa-ban mr-1 text-[10px]" />Revoke
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -504,6 +520,45 @@ export default function CertificateManager() {
       )}
 
       {/* Issue modal */}
+      <CertificatePrintStyles />
+
+      <Modal
+        isOpen={!!viewCert}
+        onClose={() => setViewCert(null)}
+        title={viewCert ? `Certificate — ${viewCert.staff?.name || viewCert.staff?.email || ""}` : "Certificate"}
+        maxWidth="max-w-2xl"
+      >
+        {viewCert && (
+          <>
+            <CertificatePreview cert={viewCert} orgCert={orgCert} />
+            <div className="no-print flex justify-end gap-2 mt-4">
+              <Button variant="ghost" size="sm" onClick={() => setViewCert(null)}>
+                Close
+              </Button>
+              {(() => {
+                const { isUpload, designSrc, designType } = resolveCertDesign(viewCert, orgCert);
+                return isUpload && designType === "pdf" ? (
+                  <a href={designSrc} target="_blank" rel="noreferrer" download>
+                    <Button variant="primary" size="sm" leadingIcon={<i className="fa-solid fa-download text-xs" />}>
+                      Download PDF
+                    </Button>
+                  </a>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leadingIcon={<i className="fa-solid fa-download text-xs" />}
+                    onClick={() => window.print()}
+                  >
+                    Print / Save PDF
+                  </Button>
+                );
+              })()}
+            </div>
+          </>
+        )}
+      </Modal>
+
       <Modal isOpen={issueOpen} onClose={() => setIssueOpen(false)} title="Issue Certificate" maxWidth="max-w-md">
         <div className="space-y-4">
           <p className="text-caption text-brand-muted">Manually award a certificate. This bypasses the normal completion requirement.</p>

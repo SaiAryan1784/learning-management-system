@@ -4,7 +4,6 @@ import { useAuth } from "../../auth/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import toastr from "toastr";
-import $ from "jquery";
 import {
   PageHeader,
   TableContainer,
@@ -43,6 +42,7 @@ export default function OwnerStaff() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("active");
+  const [search, setSearch] = useState("");
   const [editStaffId, setEditStaffId] = useState(null);
   const [openPop, setOpenPop] = useState(false);
   // Seat usage is computed server-side (see staffSeats.service) rather than
@@ -53,9 +53,6 @@ export default function OwnerStaff() {
   const loadData = async () => {
     try {
       setLoading(true);
-      if ($.fn.DataTable.isDataTable("#staffTable")) {
-        $("#staffTable").DataTable().destroy();
-      }
       const [staffRes, rolesRes, locRes, seatsRes] = await Promise.all([
         api.get("/staff"),
         // Only the roles this person may hand out — the server applies the
@@ -79,15 +76,6 @@ export default function OwnerStaff() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (!loading && staffList.length > 0) {
-      setTimeout(() => {
-        if (!$.fn.DataTable.isDataTable("#staffTable")) {
-          $("#staffTable").DataTable();
-        }
-      }, 0);
-    }
-  }, [staffList, loading, activeTab]);
 
   const handleInvite = async () => {
     if (!form.email || !form.roleId) {
@@ -176,9 +164,31 @@ export default function OwnerStaff() {
     }));
   };
 
-  const filteredStaff = staffList.filter((s) =>
-    activeTab === "active" ? s.inviteStatus === "accepted" : s.inviteStatus === "pending"
-  );
+  // Searching and filtering happen in React, deliberately.
+  //
+  // This table used to be handed to jQuery DataTables, which then owned the
+  // DOM that React also renders — and switching tabs re-rendered the rows
+  // underneath it, so React tried to remove nodes DataTables had already
+  // replaced and the whole page hit its error boundary ("Something went
+  // wrong"). Same trap documented in PathAssignStaff; don't reintroduce it.
+  const term = search.trim().toLowerCase();
+  const filteredStaff = staffList
+    .filter((s) =>
+      activeTab === "active" ? s.inviteStatus === "accepted" : s.inviteStatus === "pending"
+    )
+    .filter((s) => {
+      if (!term) return true;
+      const haystack = [
+        s.user?.name,
+        s.email,
+        s.role?.name,
+        ...(s.locations || []).map((l) => l.name),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(term);
+    });
 
   const actionBtn =
     "flex items-center justify-center w-7 h-7 rounded-md border border-brand-border text-brand-muted hover:bg-emerald-muted hover:text-emerald hover:border-emerald transition-colors";
@@ -253,6 +263,17 @@ export default function OwnerStaff() {
         ))}
       </div>
 
+      <div className="relative w-full max-w-xs">
+        <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-brand-muted" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search name, email, role or location"
+          className="w-full rounded-lg border border-brand-border bg-white py-2 pl-8 pr-3 text-sm text-brand-text placeholder-brand-muted focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald"
+        />
+      </div>
+
       {loading ? (
         <SectionLoader />
       ) : (
@@ -269,6 +290,17 @@ export default function OwnerStaff() {
               </tr>
             </thead>
             <tbody>
+              {filteredStaff.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-caption text-brand-muted">
+                    {search
+                      ? `No one matches "${search}".`
+                      : activeTab === "active"
+                        ? "No active staff yet."
+                        : "No pending invites."}
+                  </td>
+                </tr>
+              )}
               {filteredStaff.map((s) => (
                 <tr key={s._id}>
                   <td>{s.user?.name || "Pending activation"}</td>
