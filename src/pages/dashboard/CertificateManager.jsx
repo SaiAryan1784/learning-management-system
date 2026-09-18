@@ -41,6 +41,9 @@ export default function CertificateManager() {
   const [certificates, setCertificates] = useState([]);
   const [staff, setStaff] = useState([]);
   const [courses, setCourses] = useState([]);
+  // Paths carry their own certificate too — a learner earns it once every course
+  // in the path is complete — and it was impossible to configure from here.
+  const [paths, setPaths] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [issueOpen, setIssueOpen] = useState(false);
@@ -67,10 +70,11 @@ export default function CertificateManager() {
 
   const load = async () => {
     try {
-      const [certRes, staffRes, courseRes, eligibleRes] = await Promise.all([
+      const [certRes, staffRes, courseRes, pathRes, eligibleRes] = await Promise.all([
         api.get("/certificates/org"),
         api.get("/staff").catch(() => ({ data: { staff: [] } })),
         api.get("/courses").catch(() => ({ data: { courses: [] } })),
+        api.get("/paths").catch(() => ({ data: { paths: [] } })),
         // Managers without certificates:issue simply see no backfill tab.
         api.get("/certificates/eligible").catch(() => ({ data: { eligible: [] } })),
       ]);
@@ -78,6 +82,7 @@ export default function CertificateManager() {
       setEligible(eligibleRes.data.eligible || []);
       setStaff((staffRes.data.staff || []).filter((s) => s.inviteStatus === "accepted"));
       setCourses(courseRes.data.courses || []);
+      setPaths(pathRes.data.paths || []);
       // Has the org configured its default certificate template yet?
       api
         .get("/organization/settings")
@@ -129,12 +134,14 @@ export default function CertificateManager() {
 
   /* ── Design editing ── */
 
-  const openDesign = async (course) => {
-    setDesignCourse(course);
+  const openDesign = async (item) => {
+    setDesignCourse(item);
     setDesignForm(emptyDesign); // optimistic; replaced once detail loads
     try {
-      const res = await api.get(`/courses/${course._id}`);
-      const c = (res.data.course || res.data).certificate || {};
+      const res = await api.get(
+        item.kind === "path" ? `/paths/${item._id}` : `/courses/${item._id}`,
+      );
+      const c = (res.data.course || res.data.path || res.data).certificate || {};
       setDesignForm({
         enabled: c.enabled ?? true,
         mode: c.mode || "template",
@@ -146,7 +153,7 @@ export default function CertificateManager() {
         logoUrl: c.logoUrl || "",
       });
     } catch {
-      toastr.error("Failed to load course certificate config");
+      toastr.error("Failed to load certificate settings");
     }
   };
 
@@ -172,7 +179,12 @@ export default function CertificateManager() {
   const saveDesign = async () => {
     try {
       setSavingDesign(true);
-      await api.put(`/courses/${designCourse._id}`, { certificate: designForm });
+      await api.put(
+        designCourse.kind === "path"
+          ? `/paths/${designCourse._id}`
+          : `/courses/${designCourse._id}`,
+        { certificate: designForm },
+      );
       toastr.success("Certificate design saved");
       setDesignCourse(null);
       await load();
@@ -241,7 +253,7 @@ export default function CertificateManager() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Manage Certificates" subtitle="Issued certificates and per-course certificate designs">
+      <PageHeader title="Manage Certificates" subtitle="Issued certificates, and the certificate design for each course and path">
         {canDesign && (
           <Button
             variant="ghost"
@@ -337,7 +349,7 @@ export default function CertificateManager() {
                 <thead>
                   <tr className="text-left text-caption text-brand-muted border-b border-brand-border">
                     <th className="px-4 py-3 font-semibold">Staff</th>
-                    <th className="px-4 py-3 font-semibold">Course</th>
+                    <th className="px-4 py-3 font-semibold">Course / Path</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
                     <th className="px-4 py-3 font-semibold">Issued</th>
                     <th className="px-4 py-3 font-semibold">Expires</th>
@@ -428,7 +440,7 @@ export default function CertificateManager() {
                       />
                     </th>
                     <th className="px-4 py-3 font-semibold">Staff</th>
-                    <th className="px-4 py-3 font-semibold">Course</th>
+                    <th className="px-4 py-3 font-semibold">Course / Path</th>
                     <th className="px-4 py-3 font-semibold">Completed</th>
                   </tr>
                 </thead>
@@ -474,29 +486,43 @@ export default function CertificateManager() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
-        ) : courses.length === 0 ? (
+        ) : courses.length === 0 && paths.length === 0 ? (
           <Card padded={false}>
-            <EmptyState icon={<i className="fa-solid fa-palette" />} title="No courses" description="Create a course first to configure its certificate." />
+            <EmptyState
+              icon={<i className="fa-solid fa-palette" />}
+              title="Nothing to design yet"
+              description="Create a course or a path first, then set its certificate here."
+            />
           </Card>
         ) : (
           <Card padded={false} className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-caption text-brand-muted border-b border-brand-border">
-                  <th className="px-4 py-3 font-semibold">Course</th>
+                  <th className="px-4 py-3 font-semibold">Course / Path</th>
                   <th className="px-4 py-3 font-semibold">Certificate</th>
                   <th className="px-4 py-3 font-semibold">Design</th>
                   <th className="px-4 py-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {courses.map((c) => {
+                {[
+                  ...courses.map((c) => ({ ...c, kind: "course" })),
+                  ...paths.map((pth) => ({ ...pth, kind: "path" })),
+                ].map((c) => {
                   const cfg = c.certificate || {};
                   const enabled = cfg.enabled !== false;
                   const mode = cfg.mode || "template";
                   return (
-                    <tr key={c._id} className="border-b border-brand-border last:border-0">
-                      <td className="px-4 py-3 text-brand-text font-medium">{c.title}</td>
+                    <tr key={`${c.kind}-${c._id}`} className="border-b border-brand-border last:border-0">
+                      <td className="px-4 py-3 text-brand-text font-medium">
+                        <span className="flex items-center gap-2">
+                          {c.title}
+                          <Badge tone={c.kind === "path" ? "info" : "neutral"} size="sm" className="capitalize">
+                            {c.kind}
+                          </Badge>
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <Badge tone={enabled ? "success" : "neutral"} size="sm">{enabled ? "On" : "Off"}</Badge>
                       </td>
