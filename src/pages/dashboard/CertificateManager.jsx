@@ -6,7 +6,7 @@ import { PageHeader, Card, Button, Badge, Modal, EmptyState, SkeletonCard } from
 import FilePreview from "../../components/lesson/FilePreview";
 import { onFilePick } from "../../utils/fileInput";
 import { useAuth } from "../../auth/AuthContext";
-import { PERM, certificateCapabilities } from "../../auth/access";
+import { certificateCapabilities } from "../../auth/access";
 import { toAbsoluteUrl } from "../../utils/fileUrl";
 import CertificatePreview, {
   CertificatePrintStyles,
