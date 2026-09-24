@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import api from "../../api/api";
 import toastr from "toastr";
 import { useAuth } from "../../auth/AuthContext";
+import { PERM } from "../../auth/access";
 import {
   PageHeader,
   Button,
@@ -23,7 +24,7 @@ export { CERT_FONTS } from "../../components/certificates/CertificatePreview";
 export default function StaffCertificates({ embedded = false }) {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
-  const isAdmin = hasPermission("certificates:issue");
+  const isAdmin = hasPermission(PERM.certificatesTeam);
 
   const [certificates, setCertificates] = useState([]);
   const [selectedCert, setSelectedCert] = useState(null);

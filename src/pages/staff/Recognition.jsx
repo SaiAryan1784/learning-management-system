@@ -21,11 +21,15 @@ export default function Recognition() {
   const [tab, setTab] = useState("certificates");
 
   // Each tab's admin console needs its own permission: the certificates console
-  // issues and revokes, the badge manager writes org settings.
+  // issues and revokes (or, for a location leader, views their team's), the
+  // badge manager writes org settings.
   const canManage =
     tab === "certificates"
-      ? hasPermission(PERM.certificatesManage)
+      ? hasPermission(PERM.certificatesTeam)
       : hasPermission(PERM.settingsUpdate);
+  // A Franchise Owner or Manager reaches the same console read-only — say so.
+  const manageLabel =
+    tab === "certificates" && !hasPermission(PERM.certificatesManage) ? "Team Certificates" : "Manage";
 
   return (
     <div className="space-y-5">
@@ -44,7 +48,7 @@ export default function Recognition() {
               )
             }
           >
-            Manage
+            {manageLabel}
           </Button>
         )}
       </PageHeader>

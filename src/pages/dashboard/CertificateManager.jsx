@@ -6,7 +6,7 @@ import { PageHeader, Card, Button, Badge, Modal, EmptyState, SkeletonCard } from
 import FilePreview from "../../components/lesson/FilePreview";
 import { onFilePick } from "../../utils/fileInput";
 import { useAuth } from "../../auth/AuthContext";
-import { PERM } from "../../auth/access";
+import { PERM, certificateCapabilities } from "../../auth/access";
 import { toAbsoluteUrl } from "../../utils/fileUrl";
 import CertificatePreview, {
   CertificatePrintStyles,
@@ -33,9 +33,12 @@ const emptyDesign = {
 
 export default function CertificateManager() {
   const { hasPermission } = useAuth();
-  // Template design is an org setting; issuing certificates is not. Trainer
-  // holds the second without the first.
-  const canDesign = hasPermission(PERM.settingsUpdate);
+  // Issuers and designers get the full console; Franchise Owners and Managers
+  // get the Issued list read-only (view + download) for their own locations.
+  // canDesign (canDesignTemplate) mirrors PERM.settingsUpdate — it gates every
+  // navigate() to /dashboard/certificates/setup below.
+  const { canIssue, canRevoke, canEditDesigns, canDesignTemplate: canDesign } =
+    certificateCapabilities(hasPermission);
   const navigate = useNavigate();
   const [view, setView] = useState("issued"); // issued | designs
   const [certificates, setCertificates] = useState([]);
@@ -75,8 +78,10 @@ export default function CertificateManager() {
         api.get("/staff").catch(() => ({ data: { staff: [] } })),
         api.get("/courses").catch(() => ({ data: { courses: [] } })),
         api.get("/paths").catch(() => ({ data: { paths: [] } })),
-        // Managers without certificates:issue simply see no backfill tab.
-        api.get("/certificates/eligible").catch(() => ({ data: { eligible: [] } })),
+        // Only issuers have a backfill list; for anyone else the call is a certain 403.
+        canIssue
+          ? api.get("/certificates/eligible").catch(() => ({ data: { eligible: [] } }))
+          : Promise.resolve({ data: { eligible: [] } }),
       ]);
       setCertificates(certRes.data.certificates || []);
       setEligible(eligibleRes.data.eligible || []);
@@ -253,7 +258,14 @@ export default function CertificateManager() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Manage Certificates" subtitle="Issued certificates, and the certificate design for each course and path">
+      <PageHeader
+        title={canIssue ? "Manage Certificates" : "Team Certificates"}
+        subtitle={
+          canIssue
+            ? "Issued certificates, and the certificate design for each course and path"
+            : "Certificates earned by the people at your location — open one to view or download it"
+        }
+      >
         {canDesign && (
           <Button
             variant="ghost"
@@ -276,7 +288,7 @@ export default function CertificateManager() {
         </Button>
       </PageHeader>
 
-      {!templateConfigured && (
+      {!templateConfigured && canDesign && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
           <p className="text-sm text-amber-800">
             <i className="fa-solid fa-triangle-exclamation mr-2" />
@@ -294,26 +306,27 @@ export default function CertificateManager() {
       )}
 
       {/* View tabs */}
-      <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-fit">
-        {[
-          { v: "issued", label: "Issued", icon: "fa-certificate" },
-          {
-            v: "eligible",
-            label: `Ready to Issue${eligible.length ? ` (${eligible.length})` : ""}`,
-            icon: "fa-user-check",
-          },
-          { v: "designs", label: "Certificate Designs", icon: "fa-palette" },
-        ].map((t) => (
-          <button
-            key={t.v}
-            onClick={() => setView(t.v)}
-            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${view === t.v ? "bg-surface text-brand-text shadow-soft" : "text-brand-muted hover:text-brand-text"}`}
-          >
-            <i className={`fa-solid ${t.icon} mr-1.5 text-xs`} />
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {(() => {
+        const tabs = [
+          { v: "issued", label: "Issued", icon: "fa-certificate", show: true },
+          { v: "eligible", label: `Ready to Issue${eligible.length ? ` (${eligible.length})` : ""}`, icon: "fa-user-check", show: canIssue },
+          { v: "designs", label: "Certificate Designs", icon: "fa-palette", show: canEditDesigns },
+        ].filter((t) => t.show);
+        return tabs.length > 1 ? (
+          <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-fit">
+            {tabs.map((t) => (
+              <button
+                key={t.v}
+                onClick={() => setView(t.v)}
+                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${view === t.v ? "bg-surface text-brand-text shadow-soft" : "text-brand-muted hover:text-brand-text"}`}
+              >
+                <i className={`fa-solid ${t.icon} mr-1.5 text-xs`} />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        ) : null;
+      })()}
 
       {/* ── ISSUED ── */}
       {view === "issued" && (
@@ -330,9 +343,11 @@ export default function CertificateManager() {
                 </button>
               ))}
             </div>
-            <Button variant="primary" size="sm" leadingIcon={<i className="fa-solid fa-plus text-xs" />} onClick={() => setIssueOpen(true)}>
-              Issue Certificate
-            </Button>
+            {canIssue && (
+              <Button variant="primary" size="sm" leadingIcon={<i className="fa-solid fa-plus text-xs" />} onClick={() => setIssueOpen(true)}>
+                Issue Certificate
+              </Button>
+            )}
           </div>
 
           {loading ? (
@@ -374,7 +389,7 @@ export default function CertificateManager() {
                           >
                             <i className="fa-solid fa-eye mr-1 text-[10px]" />View
                           </button>
-                          {cert.status === "active" && (
+                          {cert.status === "active" && canRevoke && (
                             <button className="text-xs font-semibold text-brand-danger hover:underline" onClick={() => handleRevoke(cert)}>
                               <i className="fa-solid fa-ban mr-1 text-[10px]" />Revoke
                             </button>

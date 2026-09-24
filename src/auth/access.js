@@ -52,6 +52,12 @@ export const PERM = Object.freeze({
   lessonsUpdate: "lessons:update",
 
   certificatesManage: "certificates:issue",
+  // Seeing other people's certificates is seeing those people. Every learner
+  // holds certificates:read for their OWN record, so the team view is gated on
+  // staff:read — the API requires both (backend certificate.routes.ts).
+  certificatesTeam: "staff:read",
+  certificatesRevoke: "certificates:revoke",
+  coursesUpdate: "courses:update",
   settingsRead: "settings:read",
   settingsUpdate: "settings:update",
   complianceRun: "compliance:run",
@@ -85,6 +91,10 @@ export const AUTHORING = PERM.coursesCreate;
  * serve the viewer their own data (their dashboard, their assigned courses,
  * their certificates and badges). Those must never be permission-gated: a
  * learner with no administrative permissions still owns their own training.
+ *
+ * `altLabel: { unless: <permission>, label }` relabels an item for viewers who
+ * lack `unless` — the page is shared by two audiences (e.g. authors vs.
+ * everyone else) and the sidebar should say which one the viewer is getting.
  */
 export const NAV_SECTIONS = Object.freeze([
   {
@@ -100,7 +110,7 @@ export const NAV_SECTIONS = Object.freeze([
       { label: "Locations", icon: "fa-location-dot", path: "/dashboard/locations", permission: PERM.locationsRead },
       { label: "Staff", icon: "fa-users", path: "/dashboard/staff", permission: PERM.staffRead },
       // Non-authors get a paths-only version of this page, so the link says so.
-      { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses", permission: COURSE_ADMIN, nonAuthorLabel: "Paths" },
+      { label: "Courses", icon: "fa-book-open", path: "/dashboard/courses", permission: COURSE_ADMIN, altLabel: { unless: AUTHORING, label: "Paths" } },
       // Gated on create rather than read: the Roles page has no per-action
       // gating yet, so offering it to a read-only role would show controls
       // that 403. Owners and Admins are the only ones meant to shape roles.
@@ -111,7 +121,9 @@ export const NAV_SECTIONS = Object.freeze([
     label: "Recognition",
     items: [
       { label: "Recognition", icon: "fa-award", path: "/dashboard/certificates", permission: null },
-      { label: "Certificates Admin", icon: "fa-certificate", path: "/dashboard/certificates/manage", permission: PERM.certificatesManage },
+      // Franchise Owners and Managers get the same page read-only, under a name
+      // that says what it is for them.
+      { label: "Certificates Admin", icon: "fa-certificate", path: "/dashboard/certificates/manage", permission: PERM.certificatesTeam, altLabel: { unless: PERM.certificatesManage, label: "Team Certificates" } },
       { label: "Certificate Design", icon: "fa-pen-ruler", path: "/dashboard/certificates/setup", permission: PERM.settingsUpdate },
     ],
   },
@@ -147,15 +159,31 @@ const allowed = (hasPermission) => (item) => can(hasPermission, item.permission)
  * already returns true for platform admins and for a role holding "*".
  */
 export function visibleSections(hasPermission) {
-  const author = hasPermission(AUTHORING);
   return NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items
       .filter(allowed(hasPermission))
       .map((item) =>
-        item.nonAuthorLabel && !author ? { ...item, label: item.nonAuthorLabel } : item,
+        item.altLabel && !can(hasPermission, item.altLabel.unless)
+          ? { ...item, label: item.altLabel.label }
+          : item,
       ),
   })).filter((section) => section.items.length > 0);
+}
+
+/**
+ * What a viewer may do on the certificates page. It serves two audiences:
+ * people who issue and design certificates, and location leaders who only need
+ * to see and download their team's.
+ */
+export function certificateCapabilities(hasPermission) {
+  return {
+    canIssue: hasPermission(PERM.certificatesManage),
+    canRevoke: hasPermission(PERM.certificatesRevoke),
+    // "Edit design" saves the course or path itself.
+    canEditDesigns: hasPermission(PERM.coursesUpdate),
+    canDesignTemplate: hasPermission(PERM.settingsUpdate),
+  };
 }
 
 /** Filter the reports group for one user. */

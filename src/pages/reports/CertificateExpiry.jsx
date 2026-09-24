@@ -33,11 +33,12 @@ export default function CertificateExpiry() {
       data: certificates,
       destroy: true,
       columns: [
-        { title: "Name", data: "userName", defaultContent: "-" },
-        { title: "Course", data: "courseName", defaultContent: "-" },
-        { title: "Certificate", data: "certificateName", defaultContent: "-" },
-        { title: "Expiry Date", data: "expiryDate", render: (d) => d ? new Date(d).toLocaleDateString() : "-" },
-        { title: "Days Left", data: "daysLeft", render: (d) => d !== undefined ? `${d} days` : "-" },
+        // DataTables writes cells as HTML — escape anything a person typed.
+        { title: "Name", data: (row) => row.staffName || row.staffEmail || "-", render: $.fn.dataTable.render.text() },
+        { title: "Course", data: (row) => row.courseTitle || "-", render: $.fn.dataTable.render.text() },
+        { title: "Certificate", data: (row) => row.certificateNo || "-", render: $.fn.dataTable.render.text() },
+        { title: "Expiry Date", data: "expiresAt", render: (d) => (d ? new Date(d).toLocaleDateString() : "-") },
+        { title: "Days Left", data: "daysUntilExpiry", render: (d) => (d === null || d === undefined ? "-" : `${d} days`) },
       ],
     });
   }, [certificates]);

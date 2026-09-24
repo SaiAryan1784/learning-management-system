@@ -154,7 +154,7 @@ function AppContent() {
           <Route path="roles"     element={<Guard permission={PERM.rolesRead}><OwnerRoles /></Guard>} />
 
           {/* Recognition administration */}
-          <Route path="certificates/manage" element={<Guard permission={PERM.certificatesManage}><CertificateManager /></Guard>} />
+          <Route path="certificates/manage" element={<Guard permission={PERM.certificatesTeam}><CertificateManager /></Guard>} />
           <Route path="certificates/setup"  element={<Guard permission={PERM.settingsUpdate}><CertificateSetup /></Guard>} />
           <Route path="badges"              element={<Navigate to="/dashboard/certificates" replace />} />
           <Route path="badges/manage"       element={<Guard permission={PERM.settingsUpdate}><BadgeManager /></Guard>} />
