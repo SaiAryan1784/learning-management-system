@@ -15,6 +15,8 @@ import {
   FormField,
   Badge,
 } from "../../components/ui";
+import { nameFieldsFor, isPlaceholderName } from "../../utils/personName";
+import { inviteState } from "../../utils/staffInvite";
 
 export default function OwnerStaff() {
   const { user, hasPermission, access } = useAuth();
@@ -25,7 +27,7 @@ export default function OwnerStaff() {
   // "org-wide" — so their invites start with their own location(s) ticked.
   const scoped = access?.orgWide !== true;
   const homeLocations = scoped ? (access?.locations || []).map((l) => (typeof l === "string" ? l : l?._id)).filter(Boolean) : [];
-  const blankForm = () => ({ email: "", roleId: "", locations: [...homeLocations] });
+  const blankForm = () => ({ email: "", roleId: "", locations: [...homeLocations], firstName: "", lastName: "" });
 
   // The page itself only needs staff:read, so roles that may view the team
   // without administering it (Manager) reach it. Each action is gated on the
@@ -49,6 +51,11 @@ export default function OwnerStaff() {
   // derived from staffList here — the rules about who counts (platform admins,
   // the owner's free seat) must not be duplicated in the UI and drift.
   const [seats, setSeats] = useState(null);
+  // Names live on the person's account, which exists only once they accept.
+  const [editHasAccount, setEditHasAccount] = useState(false);
+  const [resendTarget, setResendTarget] = useState(null);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
 
   const loadData = async () => {
     try {
@@ -89,7 +96,9 @@ export default function OwnerStaff() {
         roleId: form.roleId,
         locations: form.locations,
       });
-      toastr.success(res.data.otp ? `Invite created! OTP: ${res.data.otp}` : "Invite sent", "success");
+      if (res.data.otp) toastr.success(`Invite created! OTP: ${res.data.otp}`, "success");
+      else if (res.data.emailSent === false) toastr.warning(res.data.message);
+      else toastr.success("Invite sent", "success");
       setForm(blankForm());
       loadData();
       setOpenPop(false);
@@ -107,10 +116,12 @@ export default function OwnerStaff() {
 
   const handleEdit = (staff) => {
     setEditStaffId(staff._id);
+    setEditHasAccount(Boolean(staff.user));
     setForm({
       email: staff.email,
       roleId: staff.role?._id || "",
       locations: staff.locations?.map((l) => l._id) || [],
+      ...nameFieldsFor(staff.user, staff.email),
     });
     setOpenPop(true);
   };
@@ -133,11 +144,18 @@ export default function OwnerStaff() {
   };
 
   const handleUpdate = async () => {
+    const first = form.firstName.trim();
+    const last = form.lastName.trim();
+    if (editHasAccount && (first || last) && !(first && last)) {
+      toastr.error("Enter both a first and a last name", "error");
+      return;
+    }
     try {
       setSubmitting(true);
       await api.put(`/staff/${editStaffId}`, {
         roleId: form.roleId,
         locations: form.locations,
+        ...(editHasAccount && first && last ? { firstName: first, lastName: last } : {}),
       });
       toastr.success("Staff updated successfully", "success");
       cancelEdit();
@@ -152,6 +170,27 @@ export default function OwnerStaff() {
       );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openResend = (s) => {
+    setResendTarget(s);
+    setResendEmail(s.email);
+  };
+
+  const handleResend = async () => {
+    try {
+      setResending(true);
+      const res = await api.post(`/staff/${resendTarget._id}/resend-invite`, { email: resendEmail.trim() });
+      if (res.data?.otp) toastr.success(`New invite created! OTP: ${res.data.otp}`);
+      else if (res.data?.emailSent === false) toastr.warning(res.data.message);
+      else toastr.success(res.data?.message || "New invite sent");
+      setResendTarget(null);
+      loadData();
+    } catch (err) {
+      toastr.error(err.response?.data?.message || err.response?.data?.error || "Could not resend the invite");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -190,6 +229,8 @@ export default function OwnerStaff() {
       return haystack.includes(term);
     });
 
+  const pendingCount = staffList.filter((s) => s.inviteStatus === "pending").length;
+
   const actionBtn =
     "flex items-center justify-center w-7 h-7 rounded-md border border-brand-border text-brand-muted hover:bg-emerald-muted hover:text-emerald hover:border-emerald transition-colors";
 
@@ -201,7 +242,13 @@ export default function OwnerStaff() {
         <Badge tone="danger" dot size="sm">Disabled</Badge>
       );
     }
-    return <Badge tone="warning" dot size="sm">Invite Pending</Badge>;
+    const invite = inviteState(s);
+    if (invite?.expired) return <Badge tone="danger" dot size="sm">Invite expired</Badge>;
+    return (
+      <span title={invite?.expiresAt ? `Code valid until ${invite.expiresAt.toLocaleDateString()}` : undefined}>
+        <Badge tone="warning" dot size="sm">Invite Pending</Badge>
+      </span>
+    );
   };
 
   return (
@@ -243,22 +290,25 @@ export default function OwnerStaff() {
       </PageHeader>
 
       <div className="flex items-center gap-1 bg-canvas border border-brand-border rounded-lg p-1 w-max">
-        {["active", "inactive"].map((tab) => (
+        {[
+          { v: "active", label: "Active" },
+          { v: "pending", label: `Pending invites${pendingCount ? ` (${pendingCount})` : ""}` },
+        ].map((tab) => (
           <button
-            key={tab}
-            className={`relative px-4 py-1.5 rounded-md text-xs font-semibold transition-colors capitalize ${
-              activeTab === tab ? "text-white" : "text-brand-muted hover:text-brand-text"
+            key={tab.v}
+            className={`relative px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              activeTab === tab.v ? "text-white" : "text-brand-muted hover:text-brand-text"
             }`}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => setActiveTab(tab.v)}
           >
-            {activeTab === tab && (
+            {activeTab === tab.v && (
               <motion.span
                 layoutId="staff-tab-pill"
                 className="absolute inset-0 bg-charcoal rounded-md"
                 transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
             )}
-            <span className="relative z-10">{tab}</span>
+            <span className="relative z-10">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -303,13 +353,27 @@ export default function OwnerStaff() {
               )}
               {filteredStaff.map((s) => (
                 <tr key={s._id}>
-                  <td>{s.user?.name || "Pending activation"}</td>
+                  <td>
+                    {s.user ? (
+                      <span className="inline-flex items-center gap-2">
+                        {s.user.name}
+                        {isPlaceholderName(s.user, s.email) && <Badge tone="warning" size="sm">Add real name</Badge>}
+                      </span>
+                    ) : (
+                      "Pending activation"
+                    )}
+                  </td>
                   <td>{s.email}</td>
                   <td>{s.role?.name}</td>
                   <td>{s.locations?.map((l) => l.name).join(", ") || "Org Wide"}</td>
                   <td>{statusBadge(s)}</td>
                   <td>
                     <div className="flex items-center gap-2">
+                      {s.inviteStatus === "pending" && canCreateStaff && (
+                        <button className={actionBtn} onClick={() => openResend(s)} title="Resend invite">
+                          <i className="fa-solid fa-paper-plane text-xs"></i>
+                        </button>
+                      )}
                       {canUpdateStaff && (
                         <button className={actionBtn} onClick={() => handleEdit(s)} title="Edit Staff">
                           <i className="fa fa-edit text-xs"></i>
@@ -373,6 +437,20 @@ export default function OwnerStaff() {
             </FormField>
           )}
 
+          {editStaffId && editHasAccount && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField label="First name" hint="Printed on their certificates.">
+                <Input value={form.firstName} maxLength={60} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+              </FormField>
+              <FormField label="Last name">
+                <Input value={form.lastName} maxLength={60} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+              </FormField>
+            </div>
+          )}
+          {editStaffId && !editHasAccount && (
+            <p className="text-caption text-brand-muted">They'll enter their own name when they accept the invite.</p>
+          )}
+
           <FormField label="Role" required>
             <Select value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })}>
               <option value="">Select Role</option>
@@ -409,6 +487,28 @@ export default function OwnerStaff() {
                 </motion.label>
               ))}
             </div>
+          </FormField>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(resendTarget)}
+        onClose={() => setResendTarget(null)}
+        title="Resend invite"
+        maxWidth="max-w-md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setResendTarget(null)}>Cancel</Button>
+            <Button variant="primary" loading={resending} onClick={handleResend}>Send new invite</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-brand-muted">
+            A fresh code is emailed, valid for 5 days. Any earlier invite email for this person stops working.
+          </p>
+          <FormField label="Email" hint="Correct the address here if it was mistyped.">
+            <Input type="email" value={resendEmail} onChange={(e) => setResendEmail(e.target.value)} />
           </FormField>
         </div>
       </Modal>

@@ -17,6 +17,8 @@ export default function AcceptInvite() {
   const email = params.get("email") || "";
 
   const [otp, setOtp] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPwd, setShowPwd] = useState(false);
@@ -31,6 +33,10 @@ export default function AcceptInvite() {
       toastr.error("Enter the OTP from your invite email");
       return;
     }
+    if (!firstName.trim() || !lastName.trim()) {
+      toastr.error("Enter your first and last name — they're printed on your certificates");
+      return;
+    }
     if (password.length < 8) {
       toastr.error("Password must be at least 8 characters");
       return;
@@ -41,7 +47,7 @@ export default function AcceptInvite() {
     }
     try {
       setLoading(true);
-      await api.post("/staff/accept-invite", { staffId, otp: otp.trim(), password });
+      await api.post("/staff/accept-invite", { staffId, otp: otp.trim(), password, firstName: firstName.trim(), lastName: lastName.trim() });
       toastr.success("Account created — please sign in");
       setTimeout(() => navigate("/login"), 700);
     } catch (err) {
@@ -61,7 +67,7 @@ export default function AcceptInvite() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-brand-text tracking-tight">Accept your invite</h1>
           <p className="text-sm text-brand-muted mt-2">
-            Set a password to finish creating your account.
+            Add your name and set a password to finish creating your account.
           </p>
         </div>
 
@@ -70,6 +76,18 @@ export default function AcceptInvite() {
           <div>
             <label className="block text-sm font-semibold text-brand-text mb-1.5">Email</label>
             <input type="email" value={email} readOnly className={`${inputClass} bg-canvas cursor-not-allowed`} />
+          </div>
+
+          {/* Name — printed on every certificate they earn */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-semibold text-brand-text mb-1.5">First name</label>
+              <input type="text" autoComplete="given-name" maxLength={60} value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-brand-text mb-1.5">Last name</label>
+              <input type="text" autoComplete="family-name" maxLength={60} value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputClass} />
+            </div>
           </div>
 
           {/* OTP */}
