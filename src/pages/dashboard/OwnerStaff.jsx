@@ -425,7 +425,7 @@ export default function OwnerStaff() {
           </>
         }
       >
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           {!editStaffId && (
             <FormField label="Staff Email" required>
               <Input
