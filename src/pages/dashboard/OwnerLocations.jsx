@@ -152,8 +152,12 @@ export default function OwnerLocations() {
     }
     try {
       setInviting(true);
-      await api.post(`/locations/${inviteLoc._id}/invite-manager`, { email: inviteEmail.trim() });
-      toastr.success("Franchise owner invite sent!", "success");
+      const res = await api.post(`/locations/${inviteLoc._id}/invite-manager`, { email: inviteEmail.trim() });
+      if (res.data?.emailSent === false) {
+        toastr.warning(res.data.message);
+      } else {
+        toastr.success("Franchise owner invite sent!", "success");
+      }
       setInviteLoc(null);
       setInviteEmail("");
     } catch (err) {

@@ -369,7 +369,7 @@ export default function OwnerStaff() {
                   <td>{statusBadge(s)}</td>
                   <td>
                     <div className="flex items-center gap-2">
-                      {s.inviteStatus === "pending" && canCreateStaff && (
+                      {s.inviteStatus === "pending" && canCreateStaff && roles.some((r) => String(r._id) === String(s.role?._id)) && (
                         <button className={actionBtn} onClick={() => openResend(s)} title="Resend invite">
                           <i className="fa-solid fa-paper-plane text-xs"></i>
                         </button>
